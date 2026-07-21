@@ -21,6 +21,8 @@
 
 const express = require('express');
 const catalyst = require('zcatalyst-sdk-node');
+const { handleCopilotChat } = require('./copilotEngine');
+const dataCache = require('./dataCache');
 
 const app = express();
 app.use(express.json({ limit: '2mb' }));
@@ -454,6 +456,49 @@ app.get('/api/employees', async (req, res) => {
     const data = await query(catalystApp, `SELECT * FROM Employee ${where} ORDER BY FirstName LIMIT 100`);
     res.status(200).json(data);
   } catch (err) { res.status(500).json({ error: errorMessage(err) }); }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ROUTE: GET /api/app-data — All tables in ONE request (replaces 60+ /api/masters calls)
+// The frontend dataService.js calls this instead of fetching each table individually.
+// Data is served from the shared 5-minute in-process cache in dataCache.js.
+// ═══════════════════════════════════════════════════════════════════════════
+app.get('/api/app-data', async (req, res) => {
+  try {
+    const catalystApp = catalyst.initialize(req);
+    const tables = await dataCache.fetchAll(catalystApp);
+    const meta = dataCache.getMeta();
+    return res.status(200).json({ ...tables, _meta: meta });
+  } catch (err) {
+    console.error('[app-data] Error:', err);
+    return res.status(500).json({ error: errorMessage(err) });
+  }
+});
+
+// ROUTE: POST /api/cache/invalidate — Force cache refresh
+app.post('/api/cache/invalidate', (req, res) => {
+  dataCache.invalidate();
+  res.status(200).json({ message: 'Cache invalidated. Next request will re-fetch all tables.' });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ROUTE: MADHUKAR AI Copilot Chat
+// ═══════════════════════════════════════════════════════════════════════════
+app.post('/api/copilot/chat', async (req, res) => {
+  try {
+    const catalystApp = catalyst.initialize(req);
+    const { message, history = [] } = req.body;
+    if (!message || !message.trim()) {
+      return res.status(400).json({ error: 'message is required' });
+    }
+    // Sanitise history — keep last 10 turns to avoid huge payloads
+    const recentHistory = Array.isArray(history) ? history.slice(-10) : [];
+    const result = await handleCopilotChat(catalystApp, message.trim(), recentHistory);
+    return res.status(200).json(result);
+  } catch (err) {
+    console.error('[Copilot Route] Error:', err);
+    return res.status(500).json({ error: errorMessage(err) });
+  }
 });
 
 // ─── Express listener for Catalyst ────────────────────────────────────────

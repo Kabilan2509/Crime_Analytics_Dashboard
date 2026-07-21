@@ -1,0 +1,7 @@
+{
+  "quickml_endpoint_key": "994194298eace59ce000138d52aa79881ec3627b7d20883b0f8d54f12a97ae437ae764e2e0cf18a91b5dd44fd0781f02",
+  "quickml_endpoint_url": "https://api.catalyst.zoho.in/quickml/v1/project/56064000000013049/endpoints/predict",
+  "quickml_org_id": "60076926826",
+  "quickml_environment": "Development",
+  "_note": "QuickML endpoint for KSP Crime Severity binary classification. Target: GravityOffenceID."
+}

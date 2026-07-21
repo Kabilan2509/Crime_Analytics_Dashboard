@@ -10,7 +10,7 @@
  */
 
 import * as sampleData from '../data/sampleData';
-import { caseViews, employees, districts as schemaDistricts, hydrateCatalystSchema } from '../data/schemaSelectors';
+import { caseViews, hydrateCatalystSchema } from '../data/schemaSelectors';
 
 // ─── Data-source selection ─────────────────────────────────────────────
 // Catalyst's local server uses localhost, so hostname detection cannot reliably
@@ -60,46 +60,29 @@ let catalystTablesPromise;
 let catalystUnavailable = false;
 const caseViewsRequests = new Map();
 
-const CATALYST_TABLES = [
-  'CrimeHeadActSection', 'Section', 'Act', 'ArrestSurrender', 'Accused',
-  'Victim', 'ActSectionAssociation', 'ChargesheetDetails', 'GravityOffence',
-  'CaseCategory', 'Employee', 'Designation', 'Rank', 'UnitType',
-  'ComplainantDetails', 'Unit', 'State', 'District', 'Court',
-  'CaseStatusMaster', 'OccupationMaster', 'ReligionMaster', 'CasteMaster',
-  'CrimeSubHead', 'CrimeHead', 'CaseMaster',
-];
-
-async function fetchWholeTable(tableName) {
-  const rows = [];
-  const pageSize = 300;
-  let offset = 0;
-  let pageRows;
-  do {
-    const page = await apiFetch('/masters', { table: tableName, limit: pageSize, offset });
-    pageRows = page.data || [];
-    rows.push(...pageRows);
-    offset += pageRows.length;
-  } while (pageRows.length === pageSize);
-  return rows;
-}
-
+/**
+ * Fetch ALL tables in a SINGLE request from /api/app-data.
+ * The backend serves this from a 5-minute in-process cache (dataCache.js),
+ * so this request is instant after the first warm-up fetch.
+ * Replaces the previous 60+ individual /api/masters?table=X calls.
+ */
 function getCatalystTables() {
   if (!catalystTablesPromise) {
-    // CaseMaster is required for every view. Probe it first so a project whose
-    // Data Store has not been provisioned does not launch 25 doomed requests.
-    catalystTablesPromise = fetchWholeTable('CaseMaster').then(async caseRows => {
-      const remainingTables = CATALYST_TABLES.filter(table => table !== 'CaseMaster');
-      const tableEntries = await Promise.all(
-        remainingTables.map(async table => [table, await fetchWholeTable(table)])
-      );
-      return Object.fromEntries([['CaseMaster', caseRows], ...tableEntries]);
-    }).catch(error => {
-      catalystTablesPromise = null;
-      throw error;
-    });
+    catalystTablesPromise = apiFetch('/app-data')
+      .then(data => {
+        // Strip _meta field — the rest is { CaseMaster: [...], District: [...], ... }
+        const { _meta, ...tables } = data;
+        console.log('[dataService] app-data loaded:', _meta?.counts);
+        return tables;
+      })
+      .catch(error => {
+        catalystTablesPromise = null;
+        throw error;
+      });
   }
   return catalystTablesPromise;
 }
+
 
 function toMasters(tables) {
   const stateIndex = indexBy(tables.State, 'ROWID', 'StateID');
