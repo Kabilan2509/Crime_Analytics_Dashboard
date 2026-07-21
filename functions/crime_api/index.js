@@ -493,7 +493,7 @@ app.post('/api/copilot/chat', async (req, res) => {
     }
     // Sanitise history — keep last 10 turns to avoid huge payloads
     const recentHistory = Array.isArray(history) ? history.slice(-10) : [];
-    const result = await handleCopilotChat(catalystApp, message.trim(), recentHistory);
+    const result = await handleCopilotChat(catalystApp, req, message.trim(), recentHistory);
     return res.status(200).json(result);
   } catch (err) {
     console.error('[Copilot Route] Error:', err);

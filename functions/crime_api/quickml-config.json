@@ -3,5 +3,6 @@
   "quickml_endpoint_url": "https://api.catalyst.zoho.in/quickml/v1/project/56064000000013049/endpoints/predict",
   "quickml_org_id": "60076926826",
   "quickml_environment": "Development",
-  "_note": "QuickML endpoint for KSP Crime Severity binary classification. Target: GravityOffenceID."
+  "zoho_access_token": "1000.899bf36e37dd79fee9735d292a8e7dc1.9d28bf0fc42be277ba4328163257905e",
+  "_note": "QuickML endpoint for KSP Crime Severity binary classification. Target: GravityOffenceID. zoho_access_token is used for GLM-4.7-Flash LLM copilot."
 }

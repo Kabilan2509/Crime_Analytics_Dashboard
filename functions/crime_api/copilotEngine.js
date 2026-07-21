@@ -1,16 +1,21 @@
 /**
- * copilotEngine.js — MADHUKAR AI Copilot Intelligence Engine
+ * copilotEngine.js — MADHUKAR AI Copilot (GLM-4.7-Flash Powered)
  *
- * All data is sourced from dataCache.js (shared 5-minute in-process cache).
- * No direct ZCQL queries here — all filtering and aggregation is done in
- * Node.js memory using the tables fetched once by dataCache.fetchAll().
+ * Uses Catalyst GLM-4.7-Flash (30B MoE) as the intelligence layer.
+ * The LLM understands natural language queries and calls tools to fetch
+ * live crime data from the shared dataCache. Responses are intelligent
+ * prose, not templates.
+ *
+ * Flow:
+ *   User message → GLM (tool calling) → dataCache queries → GLM response
  */
 
 'use strict';
 
-const dataCache = require('./dataCache');
+const dataCache  = require('./dataCache');
+const glmClient  = require('./glmClient');
 
-// ─── Config ──────────────────────────────────────────────────────────────────
+// ─── QuickML config ──────────────────────────────────────────────────────────
 let _config = null;
 function getConfig() {
   if (!_config) {
@@ -19,578 +24,137 @@ function getConfig() {
   return _config;
 }
 
-// ─── Lookup Map Builder (from raw tables) ─────────────────────────────────────
+// ─── District / Crime keyword lists ──────────────────────────────────────────
+const DISTRICT_NAMES = [
+  'bagalkote','ballari','belagavi','bengaluru city','bengaluru district',
+  'bidar','chamarajanagara','chikkaballapura','chikkamagaluru','chitradurga',
+  'dakshina kannada','davanagere','dharwad','gadag','hassan','haveri',
+  'kalaburagi','kodagu','kolar','koppal','mandya','mysuru','raichur',
+  'ramanagara','shivamogga','tumakuru','udupi','uttara kannada','vijayapura','yadgir',
+];
+
+const CRIME_KEYWORDS = {
+  murder:     ['murder','homicide','killing'],
+  robbery:    ['robbery','rob','dacoity'],
+  theft:      ['theft','steal','stolen','burglary'],
+  assault:    ['assault','grievous hurt','hurt','attack'],
+  rape:       ['rape','sexual assault','pocso'],
+  fraud:      ['fraud','cheating','cybercrime','cyber'],
+  ndps:       ['ndps','drugs','narcotic','ganja'],
+  kidnapping: ['kidnap','abduction'],
+};
+
+// ─── Data Helpers ─────────────────────────────────────────────────────────────
 function buildMaps(tables) {
-  const districts = tables.District || [];
-  const units = tables.Unit || [];
-  const crimeHeads = tables.CrimeHead || [];
+  const districts    = tables.District        || [];
+  const units        = tables.Unit            || [];
   const gravityOffences = tables.GravityOffence || [];
-  const employees = tables.Employee || [];
+  const employees    = tables.Employee        || [];
   const caseStatuses = tables.CaseStatusMaster || [];
 
   const districtByName = {};
   const districtByRowId = {};
   districts.forEach(d => {
     districtByName[(d.DistrictName || '').toLowerCase().trim()] = d;
-    districtByRowId[d.ROWID] = d.DistrictName;
+    districtByRowId[String(d.ROWID)] = d.DistrictName;
   });
 
   const stationByRowId = {};
   const stationRowIdsByDistrictRowId = {};
   units.forEach(u => {
-    stationByRowId[u.ROWID] = u;
-    const dRowId = u.DistrictID;
-    if (dRowId) {
+    stationByRowId[String(u.ROWID)] = u;
+    const dRowId = String(u.DistrictID);
+    if (dRowId && dRowId !== 'undefined') {
       if (!stationRowIdsByDistrictRowId[dRowId]) stationRowIdsByDistrictRowId[dRowId] = new Set();
-      stationRowIdsByDistrictRowId[dRowId].add(u.ROWID);
+      stationRowIdsByDistrictRowId[dRowId].add(String(u.ROWID));
     }
   });
 
-  const crimeHeadByRowId = {};
-  crimeHeads.forEach(h => { crimeHeadByRowId[h.ROWID] = h; });
-
+  // Identify heinous ROWID (most records share one value)
+  const gravityCounts = {};
+  gravityOffences.forEach(g => { gravityCounts[String(g.ROWID)] = 0; });
   let heinousRowId = null;
-  let nonHeinousRowId = null;
   gravityOffences.forEach(g => {
-    const str = JSON.stringify(g).toLowerCase();
-    if (/heinous|grave|serious/.test(str) && !heinousRowId) heinousRowId = g.ROWID;
-    if (/non[- ]heinous|minor|petty/.test(str) && !nonHeinousRowId) nonHeinousRowId = g.ROWID;
+    const s = JSON.stringify(g).toLowerCase();
+    if (/heinous|grave|serious/.test(s) && !heinousRowId) heinousRowId = String(g.ROWID);
   });
-  if (!heinousRowId && gravityOffences.length > 0) heinousRowId = gravityOffences[0].ROWID;
-  if (!nonHeinousRowId && gravityOffences.length > 1) nonHeinousRowId = gravityOffences[1].ROWID;
+  if (!heinousRowId && gravityOffences.length > 0) heinousRowId = String(gravityOffences[0].ROWID);
 
   const employeeByRowId = {};
-  const employeeByEmpId = {};
-  employees.forEach(e => {
-    employeeByRowId[e.ROWID] = e;
-    if (e.EmployeeID) employeeByEmpId[String(e.EmployeeID)] = e;
-  });
+  employees.forEach(e => { employeeByRowId[String(e.ROWID)] = e; });
 
   const statusByRowId = {};
-  caseStatuses.forEach(s => { statusByRowId[s.ROWID] = s; });
+  caseStatuses.forEach(s => { statusByRowId[String(s.ROWID)] = s; });
 
   return {
     districtByName, districtByRowId,
     stationByRowId, stationRowIdsByDistrictRowId,
-    crimeHeadByRowId, heinousRowId, nonHeinousRowId,
-    employeeByRowId, employeeByEmpId, statusByRowId,
+    heinousRowId, employeeByRowId, statusByRowId,
   };
 }
 
-// ─── In-Memory Filters ────────────────────────────────────────────────────────
-function filterByDate(cases, dateRange) {
-  if (!dateRange) return cases;
-  const days = { '24h': 1, '7d': 7, '30d': 30, '90d': 90, '365d': 365 }[dateRange];
-  if (!days) return cases;
-  const cutoff = Date.now() - days * 86400000;
-  return cases.filter(c => c.CrimeRegisteredDate && new Date(c.CrimeRegisteredDate).getTime() >= cutoff);
+// Dataset uses historical dates — use max date in dataset as "now" reference
+function getDatasetMaxDate(cases) {
+  let max = 0;
+  for (const c of cases) {
+    if (c.CrimeRegisteredDate) {
+      const d = new Date(c.CrimeRegisteredDate).getTime();
+      if (!isNaN(d) && d > max) max = d;
+    }
+  }
+  return max || Date.now();
 }
 
-function getDistrictForCase(c, maps) {
-  const station = maps.stationByRowId[c.PoliceStationID];
-  if (!station) return null;
-  return maps.districtByRowId[station.DistrictID] || null;
+function filterByDate(cases, dateRange) {
+  if (!dateRange || dateRange === 'all') return cases;
+  const days = { '24h': 1, '7d': 7, '30d': 30, '90d': 90, '365d': 365 }[dateRange];
+  if (!days) return cases;
+  // Use dataset's most recent date as reference (handles historical data correctly)
+  const maxDate  = getDatasetMaxDate(cases);
+  const cutoff   = maxDate - days * 86400000;
+  const filtered = cases.filter(c => c.CrimeRegisteredDate &&
+    new Date(c.CrimeRegisteredDate).getTime() >= cutoff);
+  return filtered.length > 0 ? filtered : cases; // fallback: all data
 }
 
 function filterByDistrict(cases, districtName, maps) {
   if (!districtName) return cases;
   const lower = districtName.toLowerCase().trim();
-  const dist = maps.districtByName[lower] ||
-    Object.values(maps.districtByName).find(d => (d.DistrictName || '').toLowerCase().includes(lower));
-  if (!dist) return [];
-  const stationSet = maps.stationRowIdsByDistrictRowId[dist.ROWID] || new Set();
-  return cases.filter(c => stationSet.has(c.PoliceStationID));
-}
-
-function findCrimeHead(crimeType, tables) {
-  if (!crimeType) return null;
-  const lower = crimeType.toLowerCase();
-  const keywords = CRIME_HEAD_KEYWORDS[lower] || CRIME_KEYWORDS[lower] || [lower];
-  return (tables.CrimeHead || []).find(h =>
-    keywords.some(kw => (h.CrimeGroupName || '').toLowerCase().includes(kw))
-  ) || null;
-}
-
-function filterByCrimeType(cases, crimeType, tables) {
-  const head = findCrimeHead(crimeType, tables);
-  if (!head) return [];
-  return cases.filter(c => c.CrimeMajorHeadID === head.ROWID);
+  const dist  = maps.districtByName[lower] ||
+    Object.values(maps.districtByName).find(d =>
+      (d.DistrictName || '').toLowerCase().includes(lower));
+  if (!dist) return cases;
+  const stationSet = maps.stationRowIdsByDistrictRowId[String(dist.ROWID)] || new Set();
+  return cases.filter(c => stationSet.has(String(c.PoliceStationID)));
 }
 
 function filterHeinous(cases, maps) {
   if (!maps.heinousRowId) return cases;
-  return cases.filter(c => c.GravityOffenceID === maps.heinousRowId);
+  return cases.filter(c => String(c.GravityOffenceID) === maps.heinousRowId);
 }
 
-function filterByHour(cases, hour, relation) {
-  return cases.filter(c => {
-    const value = c.IncidentFromDate || c.InfoReceivedPSDate || c.CrimeRegisteredDate;
-    if (!value) return false;
-    const h = new Date(value.replace(' ', 'T')).getHours();
-    return relation === 'after' ? h >= hour : h <= hour;
-  });
+function filterByCrimeType(cases, crimeType, tables) {
+  if (!crimeType) return cases;
+  const lower = crimeType.toLowerCase();
+  const kws   = CRIME_KEYWORDS[lower] || [lower];
+  const head  = (tables.CrimeHead || []).find(h =>
+    kws.some(kw => (h.CrimeGroupName || '').toLowerCase().includes(kw)));
+  if (!head) return cases;
+  return cases.filter(c => String(c.CrimeMajorHeadID) === String(head.ROWID));
 }
 
-function incidentDate(c) {
-  const value = c.IncidentFromDate || c.InfoReceivedPSDate || c.CrimeRegisteredDate;
-  if (!value) return null;
-  const parsed = new Date(value.replace(' ', 'T'));
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
+function getDistrictForCase(c, maps) {
+  const station = maps.stationByRowId[String(c.PoliceStationID)];
+  if (!station) return null;
+  return maps.districtByRowId[String(station.DistrictID)] || null;
 }
 
-function filterTemporalWindow(cases, entities) {
-  return cases.filter(c => {
-    const date = incidentDate(c);
-    if (!date) return false;
-    if (entities.specificDate) {
-      const localDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-      if (localDate !== entities.specificDate) return false;
-    }
-    if (entities.weekendOnly && date.getDay() !== 0 && date.getDay() !== 6) return false;
-    if (entities.hourStart !== undefined) {
-      const hour = date.getHours();
-      const inWindow = entities.hourStart <= entities.hourEnd
-        ? hour >= entities.hourStart && hour <= entities.hourEnd
-        : hour >= entities.hourStart || hour <= entities.hourEnd;
-      if (!inWindow) return false;
-    }
-    return true;
-  });
-}
-
-function labelRange(r) {
-  return { '24h': 'today', '7d': 'this week', '30d': 'this month', '90d': 'last 3 months', '365d': 'this year' }[r] || 'all time';
-}
-
-// ─── Intent Classifier ───────────────────────────────────────────────────────
-const DISTRICT_NAMES = [
-  'bagalkot','ballari','belagavi','bengaluru urban','bengaluru rural',
-  'bidar','chamarajanagar','chikkaballapura','chikkamagaluru','chitradurga',
-  'dakshina kannada','davanagere','dharwad','gadag','hassan','haveri',
-  'kalaburagi','kodagu','kolar','koppal','mandya','mysuru','raichur',
-  'ramanagara','shivamogga','tumakuru','udupi','uttara kannada','vijayanagara','vijayapura','yadgir'
-];
-
-const DISTRICT_ALIASES = {
-  'bangalore': 'Bengaluru Urban', 'bangalore city': 'Bengaluru Urban',
-  'bengaluru city': 'Bengaluru Urban', 'bengaluru district': 'Bengaluru Rural',
-  'bagalkote': 'Bagalkot', 'chamarajanagara': 'Chamarajanagar',
-  'mysore': 'Mysuru', 'gulbarga': 'Kalaburagi', 'belgaum': 'Belagavi',
-  'bellary': 'Ballari', 'bijapur': 'Vijayapura', 'shimoga': 'Shivamogga',
-  'tumkur': 'Tumakuru', 'mangalore': 'Dakshina Kannada',
-};
-
-const CRIME_KEYWORDS = {
-  murder:     ['murder','homicide','killing'],
-  robbery:    ['robbery','rob','dacoity'],
-  theft:      ['theft','steal','stolen','burglary','pickpocket'],
-  assault:    ['assault','grievous hurt','hurt','attack'],
-  rape:       ['rape','sexual assault','pocso'],
-  fraud:      ['fraud','cheating','cybercrime','cyber'],
-  ndps:       ['ndps','drugs','narcotic','ganja'],
-  kidnapping: ['kidnap','abduction'],
-  arson:      ['arson'],
-};
-
-const CRIME_HEAD_KEYWORDS = {
-  murder: ['crimes against body'], robbery: ['crimes against property'],
-  theft: ['crimes against property'], assault: ['crimes against body'],
-  rape: ['crimes against women'], fraud: ['economic offences', 'cyber crimes'],
-  ndps: ['narcotics'], kidnapping: ['crimes against body'],
-  arson: ['crimes against property'],
-};
-
-function classifyIntent(q, history) {
-  const lower = q.toLowerCase();
-  if (/\b(who is|investigating officer|\bio\b|officer in charge|assigned officer)\b/.test(lower)) return 'OFFICER_QUERY';
-  if (/\b(predict|forecast|risk|projection|future crime)\b/.test(lower)) return 'RISK_PREDICTION';
-  if (/\b(briefing|brief|summary|daily report|intelligence summary|generate report)\b/.test(lower)) return 'DAILY_BRIEFING';
-  if (/\b(repeat offender|habitual|criminal history|previous cases|prior|known criminal)\b/.test(lower)) return 'REPEAT_OFFENDER';
-  if (/\b(cross.?ref|linked cases|same accused|same vehicle|related cases)\b/.test(lower)) return 'CROSS_REFERENCE';
-  if (/\b(similar|same modus|modus operandi)\b/.test(lower)) return 'SIMILAR_CASE';
-  if (/\b(workload|pending|backlog|open cases|station load)\b/.test(lower)) return 'STATION_WORKLOAD';
-  if (/\b(hotspot|most cases|top district|highest|worst district|most crime|ranking)\b/.test(lower)) return 'HOTSPOT';
-  if (/\b(after \d|before \d|midnight|night patrol|morning|afternoon|evening|weekends?|time of day|\d+ ?[ap]m)\b/.test(lower) ||
-      /\b20\d{2}-\d{1,2}-\d{1,2}\b/.test(lower) ||
-      /\b\d{1,2}[\/-]\d{1,2}[\/-]20\d{2}\b/.test(lower) ||
-      /\b\d{1,2}\s+(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+20\d{2}\b/.test(lower)) return 'TEMPORAL_PATTERN';
-  for (const [, keywords] of Object.entries(CRIME_KEYWORDS)) {
-    if (keywords.some(kw => lower.includes(kw))) return 'CRIME_TYPE';
-  }
-  if (/\b(how many|count|total|number of|firs|cases|registered|crimes)\b/.test(lower)) return 'CRIME_COUNT';
-  const isFollowUp = /\b(those|them|these|there|same|also|from those|of those|what about|how about|and in)\b/.test(lower);
-  if (isFollowUp) {
-    const lastAi = [...history].reverse().find(m => m.type === 'ai' && m.intent);
-    if (lastAi) return lastAi.intent;
-  }
-  return 'CRIME_COUNT';
-}
-
-function extractEntities(q, history) {
-  const lower = q.toLowerCase();
-  const entities = {};
-  const isFollowUp = /\b(those|them|these|there|same|also|from those|of those|what about|how about|and in)\b/.test(lower);
-
-  for (const d of DISTRICT_NAMES) {
-    if (lower.includes(d)) { entities.districtName = d.replace(/\b\w/g, c => c.toUpperCase()); break; }
-  }
-  if (!entities.districtName) {
-    const alias = Object.keys(DISTRICT_ALIASES).find(name => lower.includes(name));
-    if (alias) entities.districtName = DISTRICT_ALIASES[alias];
-  }
-  for (const [type, kws] of Object.entries(CRIME_KEYWORDS)) {
-    if (kws.some(kw => lower.includes(kw))) { entities.crimeType = type; break; }
-  }
-
-  const firMatch = lower.match(/\b(?:fir|case|no\.?|number)[\s#]+([a-z0-9\-\/]+)/i) || lower.match(/\b(\d{5,})\b/);
-  if (firMatch) entities.firNo = firMatch[1];
-
-  if (/\btoday\b/.test(lower)) entities.dateRange = '24h';
-  else if (/\bthis week\b|\blast 7 days?\b/.test(lower)) entities.dateRange = '7d';
-  else if (/\bthis month\b|\blast 30 days?\b/.test(lower)) entities.dateRange = '30d';
-  else if (/\blast 3 months?\b|\blast quarter\b/.test(lower)) entities.dateRange = '90d';
-  else if (/\bthis year\b|\blast year\b/.test(lower)) entities.dateRange = '365d';
-
-  const isoDate = lower.match(/\b(20\d{2})-(\d{1,2})-(\d{1,2})\b/);
-  const slashDate = lower.match(/\b(\d{1,2})[\/-](\d{1,2})[\/-](20\d{2})\b/);
-  const monthNames = { january: 1, february: 2, march: 3, april: 4, may: 5, june: 6, july: 7, august: 8, september: 9, october: 10, november: 11, december: 12 };
-  const namedDate = lower.match(/\b(\d{1,2})\s+(january|february|march|april|may|june|july|august|september|october|november|december)\s+(20\d{2})\b/);
-  const monthFirstDate = lower.match(/\b(january|february|march|april|may|june|july|august|september|october|november|december)[,\s]+(\d{1,2})(?:st|nd|rd|th)?[,]?\s+(20\d{2})\b/);
-  if (isoDate) entities.specificDate = `${isoDate[1]}-${isoDate[2].padStart(2, '0')}-${isoDate[3].padStart(2, '0')}`;
-  else if (slashDate) entities.specificDate = `${slashDate[3]}-${slashDate[2].padStart(2, '0')}-${slashDate[1].padStart(2, '0')}`;
-  else if (namedDate) entities.specificDate = `${namedDate[3]}-${String(monthNames[namedDate[2]]).padStart(2, '0')}-${namedDate[1].padStart(2, '0')}`;
-  else if (monthFirstDate) entities.specificDate = `${monthFirstDate[3]}-${String(monthNames[monthFirstDate[1]]).padStart(2, '0')}-${monthFirstDate[2].padStart(2, '0')}`;
-
-  const hourMatch = lower.match(/\b(after|before) (\d+)\s*(pm|am)\b/);
-  if (hourMatch) {
-    let h = parseInt(hourMatch[2]);
-    if (hourMatch[3] === 'pm' && h !== 12) h += 12;
-    if (hourMatch[3] === 'am' && h === 12) h = 0;
-    entities.hour = h; entities.hourRelation = hourMatch[1];
-  }
-  if (/\bmidnight\b/.test(lower)) { entities.hourStart = 0; entities.hourEnd = 3; }
-  else if (/\bmorning\b/.test(lower)) { entities.hourStart = 5; entities.hourEnd = 11; }
-  else if (/\bafternoon\b/.test(lower)) { entities.hourStart = 12; entities.hourEnd = 16; }
-  else if (/\bevening\b/.test(lower)) { entities.hourStart = 17; entities.hourEnd = 20; }
-  else if (/\bnight(?: patrol)?\b/.test(lower)) { entities.hourStart = 21; entities.hourEnd = 4; }
-  if (/\bweekends?\b/.test(lower)) entities.weekendOnly = true;
-  if (/\b(heinous|grave|serious|capital)\b/.test(lower)) entities.heinousOnly = true;
-
-  const lastAi = [...history].reverse().find(m => m.type === 'ai' && m.entities);
-  if (isFollowUp && lastAi) {
-    if (!entities.districtName && lastAi.entities?.districtName) { entities.districtName = lastAi.entities.districtName; entities._inherited = true; }
-    if (!entities.crimeType && lastAi.entities?.crimeType) { entities.crimeType = lastAi.entities.crimeType; entities._inherited = true; }
-    if (!entities.dateRange && lastAi.entities?.dateRange) { entities.dateRange = lastAi.entities.dateRange; }
-  }
-  return entities;
-}
-
-function makeSuggestions(intent, entities) {
-  const d = entities.districtName || 'Bengaluru City';
-  switch (intent) {
-    case 'CRIME_COUNT':      return [`Which districts have the most heinous crimes?`, `Show ${entities.crimeType || 'robbery'} cases in ${d}`, `Find repeat offenders in ${d}`];
-    case 'HOTSPOT':          return [`Show pending cases in the top district`, `Predict crime risk for ${d}`, `Find repeat offenders in ${d}`];
-    case 'CRIME_TYPE':       return [`Show temporal pattern for ${entities.crimeType || 'robbery'} cases`, `Who are repeat offenders for ${entities.crimeType || 'robbery'}?`, `Which station has the most ${entities.crimeType || 'robbery'} cases?`];
-    case 'REPEAT_OFFENDER':  return [`Cross-reference these accused with other districts`, `Show cases with same accused in different stations`, `Generate daily briefing`];
-    case 'TEMPORAL_PATTERN': return [`Which area is the hotspot for this time window?`, `Find crimes on weekends in ${d}`, `Show patrol allocation for peak hours`];
-    case 'STATION_WORKLOAD': return [`Show IO assignments for pending cases in ${d}`, `Compare workload across stations in ${d}`, `Generate daily briefing`];
-    case 'OFFICER_QUERY':    return [`Show all pending cases for this officer`, `Show workload by station in ${d}`, `Who are top IOs in ${d}?`];
-    case 'DAILY_BRIEFING':   return [`Show hotspots from today`, `Predict risk for top 3 districts`, `Find repeat offenders active this week`];
-    case 'RISK_PREDICTION':  return [`Show crime trend for ${d} this year`, `Find hotspot stations in ${d}`, `Generate intelligence briefing for ${d}`];
-    default:                 return [`Show heinous cases in ${d}`, `Find repeat offenders in ${d}`, `Generate daily intelligence briefing`];
-  }
-}
-
-// ─── Intent Handlers ─────────────────────────────────────────────────────────
-
-async function handleCrimeCount(app, entities) {
-  const tables = await dataCache.fetchAll(app);
-  const maps = buildMaps(tables);
-  let filtered = filterByDate(tables.CaseMaster, entities.dateRange);
-  if (entities.districtName) filtered = filterByDistrict(filtered, entities.districtName, maps);
-  if (entities.heinousOnly) filtered = filterHeinous(filtered, maps);
-  if (entities.crimeType) filtered = filterByCrimeType(filtered, entities.crimeType, tables);
-  const total = filtered.length;
-  const scope = entities.districtName || 'Karnataka';
-  const qualifier = entities.heinousOnly ? ' heinous' : '';
-  return {
-    answer: `There are **${total.toLocaleString()}**${qualifier} FIRs registered in **${scope}** for ${labelRange(entities.dateRange)}.`,
-    summary: `Total${qualifier} cases in ${scope} (${labelRange(entities.dateRange)}): ${total}`,
-    results: [],
-    chartData: [],
-    sources: [`CaseMaster × ${total} rows (filtered from ${tables.CaseMaster.length})`],
-  };
-}
-
-async function handleHotspot(app, entities) {
-  const tables = await dataCache.fetchAll(app);
-  const maps = buildMaps(tables);
-  let filtered = filterByDate(tables.CaseMaster, entities.dateRange);
-  if (entities.heinousOnly) filtered = filterHeinous(filtered, maps);
-
-  const distCounts = {};
-  filtered.forEach(c => {
-    const name = getDistrictForCase(c, maps) || 'Unknown';
-    distCounts[name] = (distCounts[name] || 0) + 1;
-  });
-  const ranked = Object.entries(distCounts)
-    .map(([name, count]) => ({ name, count }))
-    .sort((a, b) => b.count - a.count).slice(0, 10);
-
-  const top = ranked[0];
-  const qualifier = entities.heinousOnly ? 'heinous ' : '';
-  return {
-    answer: `**${top?.name || 'N/A'}** is the top ${qualifier}crime hotspot with **${top?.count?.toLocaleString() || 0}** FIRs (${labelRange(entities.dateRange)}).`,
-    summary: `Top 10 districts by ${qualifier}caseload (${labelRange(entities.dateRange)})`,
-    results: ranked.map((r, i) => ({ CrimeNo: `#${i + 1}`, policeStationName: r.name, crimeGroupName: `${r.count.toLocaleString()} FIRs` })),
-    chartData: ranked.slice(0, 6).map(r => ({ name: r.name.split(' ')[0], cases: r.count })),
-    sources: [`CaseMaster × ${filtered.length} rows grouped by district`],
-  };
-}
-
-async function handleCrimeType(app, entities) {
-  const tables = await dataCache.fetchAll(app);
-  const maps = buildMaps(tables);
-  const crimeHead = findCrimeHead(entities.crimeType, tables);
-
-  let filtered = filterByDate(tables.CaseMaster, entities.dateRange);
-  if (entities.districtName) filtered = filterByDistrict(filtered, entities.districtName, maps);
-  if (entities.heinousOnly) filtered = filterHeinous(filtered, maps);
-  if (entities.crimeType) filtered = filterByCrimeType(filtered, entities.crimeType, tables);
-
-  const monthly = {};
-  filtered.forEach(c => {
-    if (!c.CrimeRegisteredDate) return;
-    const m = c.CrimeRegisteredDate.substring(0, 7);
-    monthly[m] = (monthly[m] || 0) + 1;
-  });
-  const chartData = Object.entries(monthly).sort(([a],[b]) => a.localeCompare(b)).slice(-6)
-    .map(([k,v]) => ({ name: k.substring(5), cases: v }));
-
-  const scope = entities.districtName || 'Karnataka';
-  return {
-    answer: `Found **${filtered.length}** ${entities.crimeType || 'crime'} cases in **${scope}** (${labelRange(entities.dateRange)}).`,
-    summary: `${entities.crimeType || 'Crime'} in ${scope} (${labelRange(entities.dateRange)}): ${filtered.length} records`,
-    results: filtered.slice(0, 10).map(c => ({
-      CrimeNo: c.CrimeNo || c.CaseMasterID,
-      policeStationName: maps.stationByRowId[c.PoliceStationID]?.UnitName || '—',
-      crimeGroupName: crimeHead?.CrimeGroupName || entities.crimeType,
-    })),
-    chartData,
-    sources: [`CaseMaster × ${filtered.length} rows`, crimeHead ? `CrimeHead: ${crimeHead.CrimeGroupName}` : ''],
-  };
-}
-
-async function handleRepeatOffender(app, entities) {
-  const tables = await dataCache.fetchAll(app);
-  const maps = buildMaps(tables);
-  const accused = tables.Accused || [];
-
-  let filteredCases = tables.CaseMaster;
-  if (entities.districtName) filteredCases = filterByDistrict(filteredCases, entities.districtName, maps);
-  const caseRowIds = new Set(filteredCases.map(c => c.ROWID));
-
-  const nameMap = {};
-  accused.forEach(a => {
-    if (!a.AccusedName) return;
-    if (entities.districtName && !caseRowIds.has(a.CaseMasterID)) return;
-    const key = a.AccusedName.toLowerCase().trim();
-    if (!nameMap[key]) nameMap[key] = { name: a.AccusedName, alias: a.AccusedAliasName, count: 0 };
-    nameMap[key].count++;
-  });
-
-  const repeats = Object.values(nameMap).filter(r => r.count > 1)
-    .sort((a, b) => b.count - a.count).slice(0, 10);
-  const scope = entities.districtName || 'Karnataka';
-
-  return {
-    answer: `Identified **${repeats.length}** repeat offenders in **${scope}** with multiple FIRs on record.`,
-    summary: `Repeat offenders (${scope}): ${repeats.length} individuals with 2+ cases`,
-    results: repeats.map(r => ({ CrimeNo: `${r.count} FIRs`, policeStationName: r.name, crimeGroupName: r.alias ? `aka ${r.alias}` : 'No alias' })),
-    chartData: repeats.slice(0, 6).map(r => ({ name: (r.name || '?').split(' ')[0], cases: r.count })),
-    sources: [`Accused × ${accused.length} records cross-referenced`],
-  };
-}
-
-async function handleTemporalPattern(app, entities) {
-  const tables = await dataCache.fetchAll(app);
-  const maps = buildMaps(tables);
-
-  let filtered = filterByDate(tables.CaseMaster, entities.specificDate ? undefined : (entities.dateRange || '30d'));
-  if (entities.districtName) filtered = filterByDistrict(filtered, entities.districtName, maps);
-  if (entities.crimeType) filtered = filterByCrimeType(filtered, entities.crimeType, tables);
-  if (entities.hour !== undefined) filtered = filterByHour(filtered, entities.hour, entities.hourRelation);
-  filtered = filterTemporalWindow(filtered, entities);
-
-  const hourDist = {};
-  filtered.forEach(c => {
-    const date = incidentDate(c);
-    if (!date) return;
-    const h = date.getHours();
-    const label = `${h.toString().padStart(2,'0')}h`;
-    hourDist[label] = (hourDist[label] || 0) + 1;
-  });
-  const peakEntry = Object.entries(hourDist).sort(([,a],[,b]) => b-a)[0];
-  const chartData = Object.entries(hourDist).sort(([a],[b]) => a.localeCompare(b))
-    .map(([name, cases]) => ({ name, cases }));
-  const scope = entities.districtName || 'Karnataka';
-
-  return {
-    answer: `Analysed **${filtered.length}** cases in **${scope}**. Peak crime hour: **${peakEntry?.[0] || 'N/A'}** with **${peakEntry?.[1] || 0}** incidents.`,
-    summary: `Temporal pattern (${scope}): peak at ${peakEntry?.[0] || 'N/A'}`,
-    results: filtered.slice(0, 8).map(c => ({
-      CrimeNo: c.CrimeNo || c.CaseMasterID,
-      policeStationName: maps.stationByRowId[c.PoliceStationID]?.UnitName || '—',
-      crimeGroupName: incidentDate(c)?.toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }) || '—',
-    })),
-    chartData,
-    sources: [`CaseMaster × ${filtered.length} rows (time-filtered)`],
-  };
-}
-
-async function handleSimilarCase(app, entities) {
-  const tables = await dataCache.fetchAll(app);
-  const maps = buildMaps(tables);
-  const cases = tables.CaseMaster || [];
-
-  const baseCase = entities.firNo
-    ? cases.find(c => (c.CrimeNo || '').includes(entities.firNo) || (c.CaseMasterID || '').includes(entities.firNo))
-    : null;
-  const similar = baseCase
-    ? cases.filter(c => c.ROWID !== baseCase.ROWID && c.CrimeMajorHeadID === baseCase.CrimeMajorHeadID && c.PoliceStationID === baseCase.PoliceStationID).slice(0, 10)
-    : [...cases].sort((a, b) => (b.CrimeRegisteredDate || '').localeCompare(a.CrimeRegisteredDate || '')).slice(0, 10);
-
-  return {
-    answer: baseCase ? `Found **${similar.length}** cases similar to FIR **${baseCase.CrimeNo}**.` : `No FIR number detected. Showing **${similar.length}** most recent cases.`,
-    summary: `Similar case search: ${similar.length} matched records`,
-    results: similar.map(c => ({ CrimeNo: c.CrimeNo || c.CaseMasterID, policeStationName: maps.stationByRowId[c.PoliceStationID]?.UnitName || '—', crimeGroupName: (c.CrimeRegisteredDate || '').split('T')[0] })),
-    chartData: [],
-    sources: [`CaseMaster in-memory similarity match`],
-  };
-}
-
-async function handleStationWorkload(app, entities) {
-  const tables = await dataCache.fetchAll(app);
-  const maps = buildMaps(tables);
-
-  let filtered = filterByDate(tables.CaseMaster, entities.dateRange);
-  if (entities.districtName) filtered = filterByDistrict(filtered, entities.districtName, maps);
-
-  const stationCounts = {};
-  filtered.forEach(c => {
-    const sid = c.PoliceStationID;
-    if (!stationCounts[sid]) stationCounts[sid] = { total: 0, pending: 0 };
-    stationCounts[sid].total++;
-    const statusRow = maps.statusByRowId[c.CaseStatusID];
-    if (/pending|investigation|under/i.test(JSON.stringify(statusRow || {}))) stationCounts[sid].pending++;
-  });
-
-  const ranked = Object.entries(stationCounts)
-    .map(([sid, d]) => ({ name: maps.stationByRowId[sid]?.UnitName || `Station—`, total: d.total, pending: d.pending }))
-    .sort((a, b) => b.total - a.total).slice(0, 10);
-  const top = ranked[0];
-  const scope = entities.districtName || 'Karnataka';
-
-  return {
-    answer: `**${top?.name || 'N/A'}** has the highest caseload with **${top?.total || 0}** FIRs in **${scope}**.`,
-    summary: `Station workload (${scope}): top 10 stations`,
-    results: ranked.map(r => ({ CrimeNo: `${r.total} total`, policeStationName: r.name, crimeGroupName: `${r.pending} pending` })),
-    chartData: ranked.slice(0, 6).map(r => ({ name: r.name.split(' ')[0], cases: r.total })),
-    sources: [`CaseMaster × ${filtered.length} rows grouped by station`],
-  };
-}
-
-async function handleOfficerQuery(app, entities) {
-  const tables = await dataCache.fetchAll(app);
-  const maps = buildMaps(tables);
-  const cases = tables.CaseMaster || [];
-
-  const targetCase = entities.firNo
-    ? cases.find(c => (c.CrimeNo || '').includes(entities.firNo) || (c.CaseMasterID || '').includes(entities.firNo))
-    : null;
-
-  if (targetCase) {
-    const emp = maps.employeeByRowId[targetCase.PolicePersonID] || maps.employeeByEmpId[String(targetCase.PolicePersonID)] || null;
-    const name = emp ? `${emp.FirstName || ''} ${emp.LastName || ''}`.trim() : `ID ${targetCase.PolicePersonID}`;
-    return {
-      answer: `The Investigating Officer for FIR **${targetCase.CrimeNo}** is **${name}**.`,
-      summary: `IO for FIR ${targetCase.CrimeNo}: ${name}`,
-      results: [{ CrimeNo: targetCase.CrimeNo || targetCase.CaseMasterID, policeStationName: name, crimeGroupName: 'Investigating Officer' }],
-      chartData: [],
-      sources: [`CaseMaster + Employee lookup`],
-    };
-  }
-
-  let filteredCases = filterByDate(cases, entities.dateRange);
-  if (entities.districtName) filteredCases = filterByDistrict(filteredCases, entities.districtName, maps);
-  const officerCounts = {};
-  filteredCases.forEach(c => { if (c.PolicePersonID) officerCounts[c.PolicePersonID] = (officerCounts[c.PolicePersonID] || 0) + 1; });
-  const topOfficers = Object.entries(officerCounts).sort(([,a],[,b]) => b-a).slice(0, 5)
-    .map(([pid, cnt]) => {
-      const emp = maps.employeeByRowId[pid] || maps.employeeByEmpId[pid] || null;
-      const name = emp ? `${emp.FirstName || ''} ${emp.LastName || ''}`.trim() : `Officer ${pid}`;
-      return { CrimeNo: `${cnt} cases`, policeStationName: name, crimeGroupName: 'Investigating Officer' };
-    });
-
-  return {
-    answer: `Top Investigating Officers in **${entities.districtName || 'Karnataka'}** by caseload:`,
-    summary: `Officer workload — top 5 IOs`,
-    results: topOfficers,
-    chartData: [],
-    sources: [`CaseMaster + Employee tables`],
-  };
-}
-
-async function handleDailyBriefing(app, entities) {
-  const tables = await dataCache.fetchAll(app);
-  const maps = buildMaps(tables);
-
-  const isSpecificDate = Boolean(entities.specificDate);
-  let weekCases = isSpecificDate
-    ? filterTemporalWindow(tables.CaseMaster, entities)
-    : filterByDate(tables.CaseMaster, '7d');
-  let todayCases = isSpecificDate ? [...weekCases] : filterByDate(tables.CaseMaster, '24h');
-  if (entities.districtName) {
-    weekCases = filterByDistrict(weekCases, entities.districtName, maps);
-    todayCases = filterByDistrict(todayCases, entities.districtName, maps);
-  }
-  const heinousWeek = filterHeinous(weekCases, maps);
-
-  const distCounts = {};
-  weekCases.forEach(c => {
-    const name = getDistrictForCase(c, maps) || 'Unknown';
-    distCounts[name] = (distCounts[name] || 0) + 1;
-  });
-  const topDistricts = Object.entries(distCounts).sort(([,a],[,b]) => b-a).slice(0, 5);
-  const topDistrictName = topDistricts[0]?.[0] || entities.districtName || 'N/A';
-  const today = isSpecificDate
-    ? new Date(`${entities.specificDate}T00:00:00`).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
-    : new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-  const overviewLabel = isSpecificDate ? 'Selected Date Overview' : 'Week Overview (last 7 days)';
-  const periodLabel = isSpecificDate ? 'on selected date' : 'this week';
-  const todayLabel = isSpecificDate ? 'FIRs on selected date' : 'FIRs today';
-
-  return {
-    answer: `## KSP Intelligence Briefing — ${entities.districtName || 'Karnataka'} — ${today}\n\n**${overviewLabel}:**\n- Total FIRs registered: **${weekCases.length.toLocaleString()}**\n- Heinous/Grave offences: **${heinousWeek.length.toLocaleString()}**\n- ${todayLabel}: **${todayCases.length}**\n- Top hotspot: **${topDistrictName}** (${topDistricts[0]?.[1] || 0} FIRs ${periodLabel})\n\nAll data sourced live from Catalyst Data Store.`,
-    summary: `Briefing (${today}): ${weekCases.length} FIRs ${periodLabel}, ${heinousWeek.length} heinous. Hotspot: ${topDistrictName}.`,
-    results: topDistricts.map(([name, cnt]) => ({ CrimeNo: `${cnt} FIRs`, policeStationName: name, crimeGroupName: isSpecificDate ? 'Selected date' : 'This week' })),
-    chartData: topDistricts.map(([name, cnt]) => ({ name: name.split(' ')[0], cases: cnt })),
-    sources: [`CaseMaster × ${weekCases.length} rows (${isSpecificDate ? entities.specificDate : 'last 7 days'})`, `District + Unit reference`],
-  };
-}
-
+// ─── QuickML Risk Prediction ──────────────────────────────────────────────────
 async function callQuickML(cfg, featureData) {
   const https = require('https');
   return new Promise((resolve, reject) => {
-    const accessToken = process.env.QUICKML_ACCESS_TOKEN || cfg.quickml_access_token;
-    if (!accessToken) {
-      reject(new Error('QuickML OAuth token is missing (requires QuickML.deployment.READ)'));
-      return;
-    }
-
     const body = JSON.stringify({ data: featureData });
-    const url = new URL(cfg.quickml_endpoint_url);
-    url.searchParams.set('explainModel', 'true');
+    const url  = new URL(cfg.quickml_endpoint_url + '?explainModel=false');
     const options = {
       hostname: url.hostname,
       path: url.pathname + url.search,
@@ -599,167 +163,606 @@ async function callQuickML(cfg, featureData) {
         'Content-Type': 'application/json',
         'Content-Length': Buffer.byteLength(body),
         'X-QUICKML-ENDPOINT-KEY': cfg.quickml_endpoint_key,
-        'Authorization': `Zoho-oauthtoken ${accessToken}`,
         'CATALYST-ORG': String(cfg.quickml_org_id),
         'Environment': cfg.quickml_environment || 'Development',
       },
     };
     const req = https.request(options, (res) => {
       let data = '';
-      res.on('data', chunk => { data += chunk; });
+      res.on('data', ch => { data += ch; });
       res.on('end', () => {
-        if (res.statusCode < 200 || res.statusCode >= 300) {
-          reject(new Error(`QuickML HTTP ${res.statusCode}: ${data.slice(0, 300)}`));
-          return;
-        }
-        try {
-          const parsed = JSON.parse(data);
-          if (parsed?.code && parsed?.message && !parsed?.result) {
-            reject(new Error(`QuickML ${parsed.code}: ${parsed.message}`));
-            return;
-          }
-          resolve(parsed);
-        }
-        catch (e) { reject(new Error(`QuickML parse error: ${data.slice(0, 200)}`)); }
+        try { resolve(JSON.parse(data)); }
+        catch (e) { reject(new Error(`QuickML parse: ${data.slice(0, 200)}`)); }
       });
     });
     req.on('error', reject);
     req.setTimeout(10000, () => { req.destroy(); reject(new Error('QuickML timeout')); });
-    req.write(body);
-    req.end();
+    req.write(body); req.end();
   });
 }
 
-async function handleRiskPrediction(app, entities) {
-  const tables = await dataCache.fetchAll(app);
-  const maps = buildMaps(tables);
+// ─── Tool Definitions (for GLM) ───────────────────────────────────────────────
+const TOOL_DEFINITIONS = [
+  {
+    type: 'function',
+    function: {
+      name: 'count_crimes',
+      description: 'Count FIRs/crimes. Use for: "how many cases", "total FIRs", crime counts by area or type.',
+      parameters: {
+        type: 'object',
+        properties: {
+          district:    { type: 'string', description: 'District name, e.g. "Mysuru", "Bengaluru City"' },
+          crimeType:   { type: 'string', description: 'Crime keyword: murder, theft, robbery, assault, fraud, ndps, rape, kidnapping' },
+          dateRange:   { type: 'string', enum: ['7d','30d','90d','365d','all'], description: 'Time window. Use "all" for entire dataset.' },
+          heinousOnly: { type: 'boolean', description: 'Only count heinous/grave offences' },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_hotspots',
+      description: 'Rank districts by crime volume. Use for: "worst district", "most crime", "crime hotspot", "top districts".',
+      parameters: {
+        type: 'object',
+        properties: {
+          limit:       { type: 'number', description: 'How many districts to return (default 5)' },
+          dateRange:   { type: 'string', enum: ['7d','30d','90d','365d','all'] },
+          heinousOnly: { type: 'boolean' },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_repeat_offenders',
+      description: 'Find individuals with 2+ FIRs. Use for: "repeat offenders", "habitual criminals", "known criminals", "who appears in multiple cases".',
+      parameters: {
+        type: 'object',
+        properties: {
+          district: { type: 'string', description: 'Filter by district (optional)' },
+          limit:    { type: 'number', description: 'Top N results (default 10)' },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_temporal_pattern',
+      description: 'Analyse crime by hour of day. Use for: "when do crimes happen", "peak hour", "night crimes", "patrol scheduling".',
+      parameters: {
+        type: 'object',
+        properties: {
+          district:  { type: 'string' },
+          dateRange: { type: 'string', enum: ['7d','30d','90d','365d','all'] },
+          crimeType: { type: 'string' },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_station_workload',
+      description: 'Show caseload per police station in a district. Use for: "station workload", "pending cases by station", "busiest station".',
+      parameters: {
+        type: 'object',
+        properties: {
+          district: { type: 'string' },
+          limit:    { type: 'number', description: 'Top N stations (default 10)' },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'search_fir',
+      description: 'Find a specific FIR or its Investigating Officer. Use for: "who is IO for case X", "FIR details", "find case number".',
+      parameters: {
+        type: 'object',
+        properties: {
+          firNo:    { type: 'string', description: 'FIR/case number or partial ID' },
+          district: { type: 'string' },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'predict_risk',
+      description: 'ML-powered crime risk prediction for a district using QuickML Random Forest model trained on 1,501 FIRs.',
+      parameters: {
+        type: 'object',
+        properties: {
+          district: { type: 'string', description: 'District to assess risk for' },
+        },
+        required: ['district'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_daily_briefing',
+      description: 'Generate intelligence overview: recent FIRs, top hotspots, heinous crime count, key stats.',
+      parameters: { type: 'object', properties: {}, required: [] },
+    },
+  },
+];
 
-  let filtered = filterByDate(tables.CaseMaster, entities.dateRange || '30d');
-  if (entities.districtName) filtered = filterByDistrict(filtered, entities.districtName, maps);
-  const heinousFiltered = filterHeinous(filtered, maps);
+// ─── Tool Executor ────────────────────────────────────────────────────────────
+function makeExecuteTool(tables, maps) {
+  const allCases = tables.CaseMaster || [];
 
-  const total = filtered.length;
-  const heinousCount = heinousFiltered.length;
-  const scope = entities.districtName || 'Karnataka';
-  const period = labelRange(entities.dateRange || '30d');
-  const statScore = total > 0 ? Math.min(100, Math.round((heinousCount / total) * 100 * 1.5 + Math.log(total + 1) * 5)) : 0;
-  const riskLabel = statScore > 70 ? '🔴 HIGH' : statScore > 40 ? '🟡 MODERATE' : '🟢 LOW';
+  return async function executeTool(name, args) {
+    switch (name) {
 
-  const cfg = getConfig();
-  if (cfg.quickml_endpoint_key && cfg.quickml_endpoint_url && filtered.length > 0) {
-    try {
-      const sampleCases = [...filtered]
-        .sort((a, b) => (b.CrimeRegisteredDate || '').localeCompare(a.CrimeRegisteredDate || ''))
-        .slice(0, 5)
-        .filter(c => c.CrimeMajorHeadID && c.PoliceStationID && c.CaseStatusID && c.CaseCategoryID);
+      case 'count_crimes': {
+        let cases = filterByDate(allCases, args.dateRange);
+        if (args.district)    cases = filterByDistrict(cases, args.district, maps);
+        if (args.heinousOnly) cases = filterHeinous(cases, maps);
+        if (args.crimeType)   cases = filterByCrimeType(cases, args.crimeType, tables);
 
-      if (sampleCases.length === 0) throw new Error('No valid feature rows');
-
-      let heinousPredictions = 0, totalPredictions = 0, avgLikelihood = 0;
-      for (const c of sampleCases) {
-        const result = await callQuickML(cfg, {
-          CrimeMajorHeadID: c.CrimeMajorHeadID,
-          latitude: parseFloat(c.latitude) || 0,
-          CaseStatusID: c.CaseStatusID,
-          CaseCategoryID: c.CaseCategoryID,
-          PoliceStationID: c.PoliceStationID,
-          longitude: parseFloat(c.longitude) || 0,
+        const stCounts = {};
+        cases.forEach(c => {
+          const n = maps.stationByRowId[String(c.PoliceStationID)]?.UnitName || 'Unknown';
+          stCounts[n] = (stCounts[n] || 0) + 1;
         });
-        console.log(`[Copilot QuickML] Case ${c.CrimeNo} →`, JSON.stringify(result).slice(0, 120));
-        const predicted = result?.result?.[0];
-        const likelihood = parseFloat(result?.likelihood_score?.[0] || 0);
-        avgLikelihood += likelihood;
-        totalPredictions++;
-        if (String(predicted) === String(maps.heinousRowId)) heinousPredictions++;
+        const topStations = Object.entries(stCounts)
+          .sort(([,a],[,b]) => b-a).slice(0, 6)
+          .map(([name, count]) => ({ name, count }));
+
+        return {
+          glmResult: {
+            total: cases.length,
+            district: args.district || 'All Karnataka',
+            crimeType: args.crimeType || 'all types',
+            dateRange: args.dateRange || 'all available data',
+            heinousOnly: !!args.heinousOnly,
+            topStations,
+          },
+          uiData: {
+            results:   topStations.map(s => ({ CrimeNo: `${s.count} FIRs`, policeStationName: s.name, crimeGroupName: args.crimeType || 'All crimes' })),
+            chartData: topStations.map(s => ({ name: s.name.split(' ')[0], cases: s.count })),
+            sources:   [`CaseMaster × ${cases.length} rows (${args.district || 'Karnataka'}, ${args.dateRange || 'all data'})`],
+            predictions: [],
+          },
+        };
       }
 
-      const mlScore = Math.round((heinousPredictions / totalPredictions) * 100);
-      avgLikelihood = avgLikelihood / totalPredictions;
-      const mlLabel = mlScore > 70 ? '🔴 HIGH RISK' : mlScore > 40 ? '🟡 MODERATE RISK' : '🟢 LOW RISK';
+      case 'get_hotspots': {
+        let cases = filterByDate(allCases, args.dateRange);
+        if (args.heinousOnly) cases = filterHeinous(cases, maps);
 
-      return {
-        answer: `**🤖 QuickML Risk Assessment — ${scope}** (${period}):\n\n- Cases analysed: **${total.toLocaleString()}** | Heinous (actual): **${heinousCount}**\n- ML samples evaluated: **${totalPredictions}** recent FIRs\n- ML Predicted Heinous Rate: **${mlScore}%** — ${mlLabel}\n- Model Confidence: **${Math.round(avgLikelihood * 100)}%**\n\n*Powered by Catalyst QuickML (Random Forest, trained on 1501 FIRs)*`,
-        summary: `QuickML risk for ${scope}: ${mlScore}% predicted heinous rate (${mlLabel})`,
-        results: [],
-        predictions: [{ district: scope, score: mlScore, riskLabel: mlLabel, confidence: avgLikelihood }],
-        chartData: [{ name: 'Predicted Heinous', cases: mlScore }, { name: 'Predicted Safe', cases: 100 - mlScore }],
-        sources: [`CaseMaster × ${total} rows`, `Catalyst QuickML × ${totalPredictions} predictions`],
-      };
-    } catch (err) {
-      console.warn('[Copilot QuickML] Error:', err.message || err);
+        const distCounts = {};
+        cases.forEach(c => {
+          const n = getDistrictForCase(c, maps) || 'Unknown';
+          distCounts[n] = (distCounts[n] || 0) + 1;
+        });
+        const ranked = Object.entries(distCounts)
+          .sort(([,a],[,b]) => b-a).slice(0, args.limit || 5)
+          .map(([name, count]) => ({ name, count }));
+
+        return {
+          glmResult: {
+            hotspots: ranked,
+            total: cases.length,
+            dateRange: args.dateRange || 'all available data',
+            heinousOnly: !!args.heinousOnly,
+          },
+          uiData: {
+            results:   ranked.map((r,i) => ({ CrimeNo: `#${i+1} — ${r.count} FIRs`, policeStationName: r.name, crimeGroupName: args.heinousOnly ? 'Heinous crimes' : 'All FIRs' })),
+            chartData: ranked.map(r => ({ name: r.name.split(' ')[0], cases: r.count })),
+            sources:   [`CaseMaster × ${cases.length} rows grouped by district`],
+            predictions: [],
+          },
+        };
+      }
+
+      case 'get_repeat_offenders': {
+        const accused = tables.Accused || [];
+        let filteredCases = allCases;
+        if (args.district) filteredCases = filterByDistrict(allCases, args.district, maps);
+        const caseRowIds = new Set(filteredCases.map(c => String(c.ROWID)));
+
+        const nameMap = {};
+        accused.forEach(a => {
+          if (!a.AccusedName) return;
+          if (args.district && !caseRowIds.has(String(a.CaseMasterID))) return;
+          const key = (a.AccusedName || '').toLowerCase().trim();
+          if (!nameMap[key]) nameMap[key] = { name: a.AccusedName, alias: a.AccusedAliasName, count: 0 };
+          nameMap[key].count++;
+        });
+        const repeats = Object.values(nameMap).filter(r => r.count > 1)
+          .sort((a,b) => b.count - a.count).slice(0, args.limit || 10);
+
+        return {
+          glmResult: {
+            repeatOffenders: repeats.map(r => ({ name: r.name, alias: r.alias || null, caseCount: r.count })),
+            total: repeats.length,
+            district: args.district || 'All Karnataka',
+          },
+          uiData: {
+            results:   repeats.map(r => ({ CrimeNo: `${r.count} cases`, policeStationName: r.name, crimeGroupName: r.alias ? `aka ${r.alias}` : 'No alias on record' })),
+            chartData: repeats.slice(0,6).map(r => ({ name: (r.name||'?').split(' ')[0], cases: r.count })),
+            sources:   [`Accused × ${accused.length} records cross-referenced`],
+            predictions: [],
+          },
+        };
+      }
+
+      case 'get_temporal_pattern': {
+        let cases = filterByDate(allCases, args.dateRange);
+        if (args.district)  cases = filterByDistrict(cases, args.district, maps);
+        if (args.crimeType) cases = filterByCrimeType(cases, args.crimeType, tables);
+
+        const hourDist = {};
+        cases.forEach(c => {
+          if (!c.CrimeRegisteredDate) return;
+          const h = new Date(c.CrimeRegisteredDate).getHours();
+          const label = `${String(h).padStart(2,'0')}:00`;
+          hourDist[label] = (hourDist[label] || 0) + 1;
+        });
+        const sorted = Object.entries(hourDist).sort(([a],[b]) => a.localeCompare(b));
+        const peak = sorted.slice().sort(([,a],[,b]) => b-a)[0];
+
+        return {
+          glmResult: {
+            totalCases: cases.length,
+            peakHour: peak?.[0] || 'N/A',
+            peakCount: peak?.[1] || 0,
+            distribution: sorted.map(([hour, count]) => ({ hour, count })),
+            district: args.district || 'All Karnataka',
+          },
+          uiData: {
+            results:   sorted.slice(0,8).map(([hour,count]) => ({ CrimeNo: `${count} cases`, policeStationName: hour, crimeGroupName: 'Hour of day' })),
+            chartData: sorted.map(([hour,count]) => ({ name: hour, cases: count })),
+            sources:   [`CaseMaster × ${cases.length} rows — hourly distribution`],
+            predictions: [],
+          },
+        };
+      }
+
+      case 'get_station_workload': {
+        let cases = allCases;
+        if (args.district) cases = filterByDistrict(cases, args.district, maps);
+
+        const stCounts = {};
+        cases.forEach(c => {
+          const sid = String(c.PoliceStationID);
+          if (!stCounts[sid]) stCounts[sid] = { total: 0, pending: 0 };
+          stCounts[sid].total++;
+          const status = maps.statusByRowId[String(c.CaseStatusID)];
+          if (/pending|investigation|under/i.test(JSON.stringify(status || {}))) stCounts[sid].pending++;
+        });
+        const ranked = Object.entries(stCounts)
+          .map(([sid, d]) => ({ name: maps.stationByRowId[sid]?.UnitName || `Station ${sid}`, ...d }))
+          .sort((a,b) => b.total - a.total).slice(0, args.limit || 10);
+
+        return {
+          glmResult: {
+            stations: ranked,
+            district: args.district || 'All Karnataka',
+            total: cases.length,
+          },
+          uiData: {
+            results:   ranked.map(r => ({ CrimeNo: `${r.total} total`, policeStationName: r.name, crimeGroupName: `${r.pending} pending` })),
+            chartData: ranked.slice(0,6).map(r => ({ name: r.name.split(' ')[0], cases: r.total })),
+            sources:   [`CaseMaster × ${cases.length} rows by station (${args.district || 'Karnataka'})`],
+            predictions: [],
+          },
+        };
+      }
+
+      case 'search_fir': {
+        const found = allCases.find(c =>
+          (c.CrimeNo || '').includes(args.firNo || '') ||
+          (c.CaseMasterID || '').includes(args.firNo || '') ||
+          (c.ROWID || '').includes(args.firNo || ''));
+
+        if (!found) {
+          return {
+            glmResult: { found: false, firNo: args.firNo, message: 'FIR not found in dataset' },
+            uiData: { results: [], chartData: [], sources: ['CaseMaster search'], predictions: [] },
+          };
+        }
+
+        const emp = maps.employeeByRowId[String(found.PolicePersonID)];
+        const station = maps.stationByRowId[String(found.PoliceStationID)];
+        const io = emp ? `${emp.FirstName || ''} ${emp.LastName || ''}`.trim() : `ID ${found.PolicePersonID}`;
+
+        return {
+          glmResult: {
+            found: true,
+            firNo: found.CrimeNo || found.CaseMasterID,
+            station: station?.UnitName || 'Unknown',
+            investigatingOfficer: io,
+            officerKGID: emp?.KGID || null,
+            registeredDate: found.CrimeRegisteredDate,
+            district: getDistrictForCase(found, maps) || 'Unknown',
+          },
+          uiData: {
+            results: [{ CrimeNo: found.CrimeNo || found.CaseMasterID, policeStationName: io, crimeGroupName: 'Investigating Officer' }],
+            chartData: [],
+            sources: ['CaseMaster + Employee lookup'],
+            predictions: [],
+          },
+        };
+      }
+
+      case 'predict_risk': {
+        const cfg = getConfig();
+        let distCases = filterByDistrict(allCases, args.district, maps);
+        const heinousCases = filterHeinous(distCases, maps);
+        const statScore = distCases.length > 0
+          ? Math.min(100, Math.round((heinousCases.length / distCases.length) * 100 * 1.5 + Math.log(distCases.length + 1) * 5))
+          : 0;
+
+        if (cfg.quickml_endpoint_key && cfg.quickml_endpoint_url && distCases.length > 0) {
+          try {
+            const samples = [...distCases]
+              .sort((a,b) => (b.CrimeRegisteredDate||'').localeCompare(a.CrimeRegisteredDate||''))
+              .slice(0, 5)
+              .filter(c => c.CrimeMajorHeadID && c.PoliceStationID && c.CaseStatusID && c.CaseCategoryID);
+
+            let heinousPred = 0, total = 0, avgLike = 0;
+            for (const c of samples) {
+              const result = await callQuickML(cfg, {
+                CrimeMajorHeadID: c.CrimeMajorHeadID, latitude: parseFloat(c.latitude)||0,
+                CaseStatusID: c.CaseStatusID, CaseCategoryID: c.CaseCategoryID,
+                PoliceStationID: c.PoliceStationID, longitude: parseFloat(c.longitude)||0,
+              });
+              const predicted = result?.result?.[0];
+              const likelihood = parseFloat(result?.likelihood_score?.[0] || 0);
+              avgLike += likelihood; total++;
+              if (String(predicted) === String(maps.heinousRowId)) heinousPred++;
+            }
+
+            if (total > 0) {
+              const mlScore = Math.round((heinousPred / total) * 100);
+              avgLike = avgLike / total;
+              const riskLabel = mlScore > 70 ? 'HIGH RISK' : mlScore > 40 ? 'MODERATE RISK' : 'LOW RISK';
+              return {
+                glmResult: {
+                  district: args.district,
+                  method: 'QuickML Random Forest',
+                  mlPredictedHeinousRate: mlScore,
+                  confidence: Math.round(avgLike * 100),
+                  riskLevel: riskLabel,
+                  totalCases: distCases.length,
+                  actualHeinous: heinousCases.length,
+                  samplesEvaluated: total,
+                },
+                uiData: {
+                  results: [],
+                  chartData: [{ name: 'Predicted Heinous', cases: mlScore }, { name: 'Predicted Safe', cases: 100 - mlScore }],
+                  sources: [`QuickML × ${total} predictions`, `CaseMaster × ${distCases.length} rows (${args.district})`],
+                  predictions: [{ district: args.district, score: mlScore, riskLabel, confidence: avgLike }],
+                },
+              };
+            }
+          } catch (err) {
+            console.warn('[Tool predict_risk] QuickML error:', err.message);
+          }
+        }
+
+        // Statistical fallback
+        const riskLabel = statScore > 70 ? 'HIGH RISK' : statScore > 40 ? 'MODERATE RISK' : 'LOW RISK';
+        return {
+          glmResult: {
+            district: args.district,
+            method: 'Statistical model',
+            riskScore: statScore,
+            riskLevel: riskLabel,
+            totalCases: distCases.length,
+            actualHeinous: heinousCases.length,
+          },
+          uiData: {
+            results: [],
+            chartData: [],
+            sources: [`CaseMaster × ${distCases.length} rows (statistical model)`],
+            predictions: [{ district: args.district, score: statScore, riskLabel }],
+          },
+        };
+      }
+
+      case 'get_daily_briefing': {
+        const maxDate   = getDatasetMaxDate(allCases);
+        const weekCases = filterByDate(allCases, '7d');
+        const heinous   = filterHeinous(weekCases, maps);
+
+        const distCounts = {};
+        weekCases.forEach(c => {
+          const n = getDistrictForCase(c, maps) || 'Unknown';
+          distCounts[n] = (distCounts[n] || 0) + 1;
+        });
+        const topDistricts = Object.entries(distCounts)
+          .sort(([,a],[,b]) => b-a).slice(0, 5)
+          .map(([name, count]) => ({ name, count }));
+
+        const dataDate = new Date(maxDate).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
+
+        return {
+          glmResult: {
+            reportDate: dataDate,
+            period: 'Last 7 days of available data',
+            totalFIRs: weekCases.length,
+            heinousOffences: heinous.length,
+            heinousRate: weekCases.length > 0 ? Math.round((heinous.length / weekCases.length) * 100) : 0,
+            totalDatasetSize: allCases.length,
+            topHotspots: topDistricts,
+          },
+          uiData: {
+            results:   topDistricts.map(r => ({ CrimeNo: `${r.count} FIRs`, policeStationName: r.name, crimeGroupName: 'Last 7 days' })),
+            chartData: topDistricts.map(r => ({ name: r.name.split(' ')[0], cases: r.count })),
+            sources:   [`CaseMaster × ${weekCases.length} rows (last 7 days of dataset)`],
+            predictions: [],
+          },
+        };
+      }
+
+      default:
+        return {
+          glmResult: { error: `Unknown tool: ${name}` },
+          uiData: { results: [], chartData: [], sources: [], predictions: [] },
+        };
     }
-  }
-
-  return {
-    answer: `**Statistical Risk Assessment — ${scope}** (${period}):\n- Total FIRs: **${total.toLocaleString()}**\n- Heinous offences: **${heinousCount.toLocaleString()}** (${total > 0 ? Math.round(heinousCount/total*100) : 0}%)\n- Risk Index: **${statScore}/100** — ${riskLabel}`,
-    summary: `Risk index for ${scope}: ${statScore}/100 (${riskLabel})`,
-    results: [],
-    predictions: [{ district: scope, score: statScore, riskLabel }],
-    chartData: [],
-    sources: [`CaseMaster × ${total} rows (statistical model)`],
   };
 }
 
-async function handleCrossReference(app, entities) {
-  const tables = await dataCache.fetchAll(app);
-  const maps = buildMaps(tables);
-  const cases = tables.CaseMaster || [];
-  const accused = tables.Accused || [];
+// ─── System Prompt ────────────────────────────────────────────────────────────
+function buildSystemPrompt(tables) {
+  const caseCount     = tables.CaseMaster?.length || 0;
+  const districtCount = tables.District?.length || 0;
+  const stationCount  = tables.Unit?.length || 0;
+  const accusedCount  = tables.Accused?.length || 0;
+  const victimCount   = tables.Victim?.length || 0;
 
-  const targetCase = entities.firNo
-    ? cases.find(c => (c.CrimeNo || '').includes(entities.firNo) || (c.CaseMasterID || '').includes(entities.firNo))
-    : null;
-  const targetAccused = targetCase ? accused.filter(a => a.CaseMasterID === targetCase.ROWID) : [];
-  const nameSet = new Set(targetAccused.map(a => (a.AccusedName || '').toLowerCase().trim()).filter(Boolean));
-  const linkedIds = new Set();
-  if (nameSet.size > 0) {
-    accused.forEach(a => {
-      if (nameSet.has((a.AccusedName || '').toLowerCase().trim()) && a.CaseMasterID !== targetCase?.ROWID) linkedIds.add(a.CaseMasterID);
-    });
+  const districtList = (tables.District || [])
+    .map(d => d.DistrictName).filter(Boolean).join(', ');
+
+  return `You are MADHUKAR, the AI Intelligence Copilot for Karnataka State Police (KSP) and the State Crime Records Bureau (SCRB). You assist senior police officers and analysts with evidence-based crime intelligence.
+
+LIVE CRIME DATA AVAILABLE (via tools):
+- FIR Records: ${caseCount.toLocaleString()} cases (CaseMaster)
+- Districts: ${districtCount} Karnataka districts — ${districtList}
+- Police Stations: ${stationCount} units
+- Accused records: ${accusedCount.toLocaleString()}
+- Victim records: ${victimCount.toLocaleString()}
+- NOTE: This is a historical dataset. "Recent" means the most recent data in the dataset.
+
+INSTRUCTIONS:
+1. ALWAYS call one or more tools before answering — never respond from memory alone
+2. Use markdown formatting with **bold** numbers for key statistics
+3. Be concise and actionable — officers need quick, clear intelligence
+4. For any district or crime query, call count_crimes or get_hotspots first
+5. For risk assessment, use predict_risk which invokes a trained ML model
+6. Cite data sources in every response
+7. If asked about something not covered by tools, say so clearly`;
+}
+
+// ─── Fallback: Rule-based for common queries ──────────────────────────────────
+function quickFallback(message, tables, maps) {
+  const lower = message.toLowerCase();
+  const allCases = tables.CaseMaster || [];
+
+  // Most common query: overall count
+  if (/how many|total|count/.test(lower) && !/district|station/.test(lower)) {
+    return {
+      intent: 'CRIME_COUNT', entities: {},
+      answer: `The dataset contains **${allCases.length.toLocaleString()} FIRs** across **${(tables.District||[]).length} Karnataka districts** and **${(tables.Unit||[]).length} police stations**.\n\nAsk me about specific districts, crime types, hotspots, or risk predictions!`,
+      summary: `Total: ${allCases.length} FIRs`, results: [], chartData: [],
+      sources: [`CaseMaster × ${allCases.length} rows`], predictions: [],
+      suggestions: ['Which district has the most crimes?', 'Show repeat offenders in Bengaluru City', 'Predict risk for Mysuru'],
+    };
   }
-
-  return {
-    answer: targetCase
-      ? `Cross-reference for FIR **${entities.firNo}**: Found **${targetAccused.length}** accused linked to **${linkedIds.size}** other case files.`
-      : `Provide a FIR number to cross-reference. Example: *"Cross-reference FIR 100230"*`,
-    summary: `Cross-reference: ${targetAccused.length} accused → ${linkedIds.size} linked cases`,
-    results: targetAccused.slice(0, 8).map(a => ({ CrimeNo: a.AccusedID || '—', policeStationName: a.AccusedName || 'Unknown', crimeGroupName: `Alias: ${a.AccusedAliasName || 'None'}` })),
-    chartData: [],
-    sources: [`Accused × ${accused.length} records cross-referenced`],
-  };
+  return null;
 }
 
 // ─── Main Export ─────────────────────────────────────────────────────────────
-async function handleCopilotChat(app, message, history = []) {
-  const intent = classifyIntent(message, history);
-  const entities = extractEntities(message, history);
-  console.log(`[Copilot Engine] intent=${intent} entities=${JSON.stringify(entities)}`);
+async function handleCopilotChat(app, httpReq, message, history = []) {
+  console.log(`[Copilot] Message: "${message.slice(0, 80)}"`);
 
-  let response;
+  // Pre-fetch all data (from shared 5-min cache)
+  const tables = await dataCache.fetchAll(app);
+  const maps   = buildMaps(tables);
+
+  // Quick fallback for trivially simple queries (no GLM needed)
+  const quick = quickFallback(message, tables, maps);
+  if (quick) return quick;
+
+  // Build conversation messages
+  const systemPrompt = buildSystemPrompt(tables);
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    // Include recent conversation history
+    ...history.slice(-8).map(h => ({
+      role: h.type === 'user' ? 'user' : 'assistant',
+      content: h.text || h.content || '',
+    })),
+    { role: 'user', content: message },
+  ];
+
+  // Create tool executor bound to this request's data
+  const executeTool = makeExecuteTool(tables, maps);
+
   try {
-    switch (intent) {
-      case 'CRIME_COUNT':      response = await handleCrimeCount(app, entities); break;
-      case 'HOTSPOT':          response = await handleHotspot(app, entities); break;
-      case 'CRIME_TYPE':       response = await handleCrimeType(app, entities); break;
-      case 'REPEAT_OFFENDER':  response = await handleRepeatOffender(app, entities); break;
-      case 'TEMPORAL_PATTERN': response = await handleTemporalPattern(app, entities); break;
-      case 'SIMILAR_CASE':     response = await handleSimilarCase(app, entities); break;
-      case 'CROSS_REFERENCE':  response = await handleCrossReference(app, entities); break;
-      case 'STATION_WORKLOAD': response = await handleStationWorkload(app, entities); break;
-      case 'OFFICER_QUERY':    response = await handleOfficerQuery(app, entities); break;
-      case 'DAILY_BRIEFING':   response = await handleDailyBriefing(app, entities); break;
-      case 'RISK_PREDICTION':  response = await handleRiskPrediction(app, entities); break;
-      default:                 response = await handleCrimeCount(app, entities);
+    const { text, uiAccumulator, toolCalls } = await glmClient.runConversation(
+      app, httpReq, messages, TOOL_DEFINITIONS, executeTool
+    );
+
+    console.log(`[Copilot] GLM done. Tools used: ${toolCalls.map(t => t.name).join(', ') || 'none'}`);
+
+    // Generate contextual suggestions based on what tools were called
+    const usedTools = new Set(toolCalls.map(t => t.name));
+    const suggestions = [];
+    if (!usedTools.has('predict_risk') && toolCalls.length > 0) {
+      const distArg = toolCalls.find(t => t.args?.district)?.args?.district;
+      if (distArg) suggestions.push(`Predict crime risk for ${distArg}`);
     }
-  } catch (err) {
-    console.error('[Copilot Engine] Handler error:', err.message || err);
-    response = {
-      answer: `I encountered an error. Please try again.\n\nError: ${(err.message || '').slice(0, 100)}`,
-      summary: 'Query failed', results: [], chartData: [], sources: [],
+    if (!usedTools.has('get_repeat_offenders')) suggestions.push('Find repeat offenders in this area');
+    if (!usedTools.has('get_daily_briefing'))   suggestions.push('Generate daily intelligence briefing');
+    if (suggestions.length < 2) suggestions.push('Show crime hotspot rankings', 'Analyse temporal crime patterns');
+
+    return {
+      intent: toolCalls[0]?.name || 'GLM_RESPONSE',
+      entities: toolCalls[0]?.args || {},
+      answer:  text,
+      summary: text.split('\n')[0].replace(/\*\*/g, '').slice(0, 120),
+      results: uiAccumulator.results,
+      chartData: uiAccumulator.chartData,
+      sources: uiAccumulator.sources,
+      predictions: uiAccumulator.predictions,
+      suggestions: suggestions.slice(0, 3),
+      timestamp: new Date().toISOString(),
+      _powered_by: 'GLM-4.7-Flash',
+    };
+
+  } catch (glmErr) {
+    // GLM failed (likely auth issue) → graceful fallback message
+    console.error('[Copilot] GLM error:', glmErr.message);
+
+    // Try rule-based fallback for basic queries
+    const lower = message.toLowerCase();
+    let fallbackAnswer;
+
+    if (/hotspot|most crime|worst district/.test(lower)) {
+      const distCounts = {};
+      (tables.CaseMaster||[]).forEach(c => {
+        const n = getDistrictForCase(c, maps) || 'Unknown';
+        distCounts[n] = (distCounts[n]||0) + 1;
+      });
+      const top = Object.entries(distCounts).sort(([,a],[,b])=>b-a).slice(0,5);
+      fallbackAnswer = `**Top 5 Crime Hotspots (Karnataka):**\n${top.map((r,i)=>`${i+1}. **${r[0]}** — ${r[1]} FIRs`).join('\n')}\n\n*Note: GLM AI temporarily unavailable (${glmErr.message?.slice(0,60)}). Showing statistical results.*`;
+    } else {
+      const total = (tables.CaseMaster||[]).length;
+      fallbackAnswer = `I have access to **${total.toLocaleString()} FIRs** across Karnataka.\n\n⚠️ The AI engine (GLM) is temporarily unavailable: *${glmErr.message?.slice(0,100)}*\n\nPlease check the \`ZOHO_ACCESS_TOKEN\` configuration in the Catalyst Function environment variables.`;
+    }
+
+    return {
+      intent: 'FALLBACK',
+      entities: {},
+      answer: fallbackAnswer,
+      summary: 'GLM unavailable — statistical fallback',
+      results: [], chartData: [], sources: [`CaseMaster × ${tables.CaseMaster?.length} rows`],
+      predictions: [],
+      suggestions: ['Show crime hotspots', 'Count crimes in Mysuru', 'Find repeat offenders'],
+      timestamp: new Date().toISOString(),
+      _powered_by: 'statistical-fallback',
+      _glm_error: glmErr.message,
     };
   }
-
-  return { intent, entities, ...response, suggestions: makeSuggestions(intent, entities), timestamp: new Date().toISOString() };
 }
 
 module.exports = { handleCopilotChat };

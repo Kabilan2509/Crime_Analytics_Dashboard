@@ -3346,32 +3346,54 @@ font-weight: 700;
 .network-page {
   display: flex;
   gap: 16px;
-  height: calc(100vh - 200px);
+  height: calc(100vh - 210px);
+  min-height: 560px;
 }
 
 .network-canvas {
   flex: 1;
-  background: var(--bg-panel);
-  border: 1px solid var(--border-color);
-  border-radius: 16px;
+  background: #07101c;
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 14px;
   position: relative;
   overflow: hidden;
 }
 
 .network-controls {
-  width: 280px;
+  width: 300px;
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
+  overflow-y: auto;
+  max-height: 100%;
+  padding-right: 2px;
 }
+
+/* Thin scrollbar for the controls panel */
+.network-controls::-webkit-scrollbar { width: 4px; }
+.network-controls::-webkit-scrollbar-track { background: transparent; }
+.network-controls::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
 
 .node-detail-panel {
   background: var(--bg-panel);
   border: 1px solid var(--border-color);
-  border-radius: 16px;
-  padding: 20px;
-  animation: slideIn 0.3s forwards;
+  border-radius: 12px;
+  padding: 14px;
+  animation: slideIn 0.25s forwards;
 }
+
+@media (max-width: 900px) {
+  .network-page {
+    flex-direction: column;
+    height: auto;
+  }
+  .network-controls {
+    width: 100%;
+    max-height: 400px;
+  }
+}
+
 
 /* ─── Case Priorities ────────────────────────────────────────────── */
 .priority-queue {
