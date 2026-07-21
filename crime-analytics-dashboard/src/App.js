@@ -97,6 +97,14 @@ function App() {
     return () => { active = false; };
   }, []);
 
+  useEffect(() => {
+    const handleThemeChange = (e) => {
+      setTheme(e.detail);
+    };
+    window.addEventListener('ksp-theme-change', handleThemeChange);
+    return () => window.removeEventListener('ksp-theme-change', handleThemeChange);
+  }, []);
+
   const toggleTheme = () => setTheme(t => (t === 'light' ? 'dark' : 'light'));
 
   const filterProps = {

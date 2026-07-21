@@ -432,9 +432,8 @@ function SuspectTimeline() {
   return (
     <div className="page-content suspect-timeline-page text-inverse">
       <style>{`
-        /* Style configurations matching Command Center design guidelines */
         .suspect-timeline-page {
-          font-family: 'Consolas', 'Courier New', Courier, monospace !important;
+          font-family: 'Public Sans', sans-serif !important;
         }
         .suspect-timeline-page input,
         .suspect-timeline-page button,
@@ -442,8 +441,8 @@ function SuspectTimeline() {
         .suspect-timeline-page strong,
         .suspect-timeline-page span,
         .suspect-timeline-page div {
-          font-family: 'Consolas', 'Courier New', Courier, monospace !important;
-          border-radius: 0px !important;
+          font-family: 'Public Sans', sans-serif !important;
+          border-radius: 4px !important;
         }
         .flat-section {
           background: var(--bg-app) !important;

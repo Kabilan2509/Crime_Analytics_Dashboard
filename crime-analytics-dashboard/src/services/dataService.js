@@ -18,6 +18,7 @@ import { caseViews, employees, districts as schemaDistricts, hydrateCatalystSche
 const IS_CATALYST = process.env.REACT_APP_DATA_SOURCE !== 'sample';
 
 const API_BASE = '/server/crime_api/api';
+const API_TIMEOUT_MS = 15000;
 
 // ─── Generic fetch wrapper ────────────────────────────────────────────────
 async function apiFetch(endpoint, params = {}) {
@@ -25,7 +26,19 @@ async function apiFetch(endpoint, params = {}) {
   Object.entries(params).forEach(([k, v]) => {
     if (v !== undefined && v !== null && v !== 'all') url.searchParams.set(k, v);
   });
-  const res = await fetch(url.toString());
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+  let res;
+  try {
+    res = await fetch(url.toString(), { signal: controller.signal });
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      throw new Error(`Catalyst API timed out after ${API_TIMEOUT_MS / 1000}s (${endpoint})`);
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
   if (!res.ok) {
     const body = await res.text();
     let detail = body;
@@ -44,6 +57,7 @@ async function apiFetch(endpoint, params = {}) {
 
 let masterDataPromise;
 let catalystTablesPromise;
+let catalystUnavailable = false;
 const caseViewsRequests = new Map();
 
 const CATALYST_TABLES = [
@@ -71,9 +85,15 @@ async function fetchWholeTable(tableName) {
 
 function getCatalystTables() {
   if (!catalystTablesPromise) {
-    catalystTablesPromise = Promise.all(
-      CATALYST_TABLES.map(async table => [table, await fetchWholeTable(table)])
-    ).then(Object.fromEntries).catch(error => {
+    // CaseMaster is required for every view. Probe it first so a project whose
+    // Data Store has not been provisioned does not launch 25 doomed requests.
+    catalystTablesPromise = fetchWholeTable('CaseMaster').then(async caseRows => {
+      const remainingTables = CATALYST_TABLES.filter(table => table !== 'CaseMaster');
+      const tableEntries = await Promise.all(
+        remainingTables.map(async table => [table, await fetchWholeTable(table)])
+      );
+      return Object.fromEntries([['CaseMaster', caseRows], ...tableEntries]);
+    }).catch(error => {
       catalystTablesPromise = null;
       throw error;
     });
@@ -282,12 +302,14 @@ async function fetchCatalystCaseViews(filters) {
 }
 
 export async function getCaseViews(filters = {}) {
-  if (IS_CATALYST) {
+  if (IS_CATALYST && !catalystUnavailable) {
     const requestKey = JSON.stringify(filters);
     if (!caseViewsRequests.has(requestKey)) {
       const request = fetchCatalystCaseViews(filters).catch(error => {
         caseViewsRequests.delete(requestKey);
-        throw error;
+        catalystUnavailable = true;
+        console.warn('Catalyst Data Store unavailable; using bundled dashboard data.', error);
+        return caseViews;
       });
       caseViewsRequests.set(requestKey, request);
     }

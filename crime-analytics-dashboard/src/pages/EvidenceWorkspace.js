@@ -611,9 +611,8 @@ function EvidenceWorkspace() {
   return (
     <div className="page-content evidence-workspace text-inverse">
       <style>{`
-        /* Visual constraints matching Command Center flat style */
         .evidence-workspace {
-          font-family: 'Consolas', 'Courier New', Courier, monospace !important;
+          font-family: 'Public Sans', sans-serif !important;
         }
         .evidence-workspace input,
         .evidence-workspace button,
@@ -623,8 +622,8 @@ function EvidenceWorkspace() {
         .evidence-workspace div,
         .evidence-workspace th,
         .evidence-workspace td {
-          font-family: 'Consolas', 'Courier New', Courier, monospace !important;
-          border-radius: 0px !important; /* Sharp corners everywhere */
+          font-family: 'Public Sans', sans-serif !important;
+          border-radius: 4px !important;
         }
         .flat-section {
           background: var(--bg-app) !important;
