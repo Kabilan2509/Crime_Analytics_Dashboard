@@ -1,0 +1,9 @@
+{
+	"name": "ksp_crime_analytics_function",
+	"version": "1.0.0",
+	"main": "index.js",
+	"author": "Slytherin",
+	"dependencies": {
+		"zcatalyst-sdk-node": "latest"
+	}
+}

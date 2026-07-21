@@ -1,0 +1,13 @@
+{
+  "functions": {
+    "targets": [
+      "crime_api"
+    ],
+    "ignore": [],
+    "source": "functions"
+  },
+  "client": {
+    "source": "crime-analytics-dashboard",
+    "plugin": "zcatalyst-cli-plugin-react"
+  }
+}
