@@ -28,6 +28,15 @@ function AccessibilityToolbar() {
     };
   }, [expanded]);
 
+  useEffect(() => {
+    if (!expanded) return undefined;
+    const closeOnEscape = event => {
+      if (event.key === 'Escape') setExpanded(false);
+    };
+    document.addEventListener('keydown', closeOnEscape);
+    return () => document.removeEventListener('keydown', closeOnEscape);
+  }, [expanded]);
+
   const toggleContrast = () => {
     const next = !highContrast;
     setHighContrast(next);
@@ -55,12 +64,14 @@ function AccessibilityToolbar() {
         onClick={() => setExpanded(prev => !prev)}
         title="Accessibility Options"
         aria-label="Toggle accessibility toolbar"
+        aria-expanded={expanded}
+        aria-controls="accessibility-options"
       >
         <MdAccessibility size={18} />
       </button>
 
       {expanded && (
-        <div className="a11y-panel">
+        <div id="accessibility-options" className="a11y-panel" role="region" aria-label="Accessibility options">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
             <div className="a11y-title" style={{ margin: 0 }}>Accessibility</div>
             <button

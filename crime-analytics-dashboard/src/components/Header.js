@@ -17,7 +17,7 @@ import { useSecurity } from '../context/SecurityContext';
  */
 
 const PAGE_TITLES = {
-  '/':          { title: 'State Crime Analytics Command Center', subtitle: 'Statewide crime intelligence and incident command desk' },
+  '/':          { title: 'MADHUKAR Dashboard', subtitle: 'Modern Analytics and Data Hub for User Friendly Karnataka Anti Crime Response Dashboard' },
   '/map':       { title: 'Spatial Heatmap & GIS', subtitle: 'Crime concentration mapping and risk forecast layers' },
   '/statistics':{ title: 'Statistical Analytics Suite', subtitle: 'Pattern analysis, temporal distributions, and rankings' },
   '/reports':   { title: 'Briefing & Report Generator', subtitle: 'Intelligence summaries and briefing exports' },

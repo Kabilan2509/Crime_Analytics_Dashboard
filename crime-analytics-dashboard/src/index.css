@@ -3602,3 +3602,215 @@ font-weight: 700;
 .graduated-symbol-marker {
   filter: drop-shadow(0px 2px 5px rgba(0, 0, 0, 0.45));
 }
+
+/* ==================================================================
+   MADHUKAR shared layout and WCAG interaction baseline
+   ================================================================== */
+:root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --content-gutter: clamp(16px, 2.2vw, 32px);
+  --focus-ring: #1677c8;
+  --control-height: 44px;
+}
+
+html[data-theme='dark'] {
+  --focus-ring: #79c7ff;
+}
+
+.skip-link {
+  position: fixed;
+  top: 8px;
+  left: 50%;
+  z-index: 100000;
+  transform: translate(-50%, -160%);
+  padding: 10px 16px;
+  border: 2px solid currentColor;
+  border-radius: 6px;
+  background: var(--bg-panel);
+  color: var(--text-primary);
+  font-weight: 800;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .28);
+  transition: transform 120ms ease;
+}
+
+.skip-link:focus {
+  transform: translate(-50%, 0);
+}
+
+#main-content:focus {
+  outline: none;
+}
+
+:where(a, button, input, select, textarea, summary, [role='button'], [tabindex]):focus-visible {
+  outline: 3px solid var(--focus-ring) !important;
+  outline-offset: 3px !important;
+  box-shadow: 0 0 0 1px var(--bg-panel) !important;
+}
+
+:where(button, input, select, textarea):disabled,
+:where([aria-disabled='true']) {
+  cursor: not-allowed !important;
+  opacity: .58;
+}
+
+:where(input, select, textarea) {
+  max-width: 100%;
+  color: var(--text-primary);
+}
+
+:where(input:not([type='checkbox']):not([type='radio']):not([type='range']), select, textarea) {
+  min-height: var(--control-height);
+  padding-inline: 12px;
+}
+
+:where(input[type='checkbox'], input[type='radio']) {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  accent-color: var(--accent-primary);
+}
+
+:where(label, .form-label) {
+  line-height: 1.35;
+}
+
+:where(h1, h2, h3, h4, h5, h6) {
+  margin-top: 0;
+  line-height: 1.25;
+  text-wrap: balance;
+}
+
+:where(p, li, td, th, label) {
+  overflow-wrap: anywhere;
+}
+
+.main-content {
+  padding: var(--space-5) var(--content-gutter) var(--space-8);
+}
+
+.page-content {
+  width: 100%;
+}
+
+:where(.dashboard-page, .statistics-page, .reports-page, .briefing-page, .case-overview-page,
+  .evidence-workspace-page, .suspect-timeline-page, .predictions-page, .settings-page,
+  .user-management-page, .copilot-page) {
+  min-width: 0;
+}
+
+:where(.card, .stat-card, .brief-card, .glass-card, .panel) {
+  min-width: 0;
+}
+
+:where(.card-header, .page-header, .header-row, .panel-head, .action-row, .page-actions) {
+  gap: var(--space-3);
+}
+
+:where(.grid-2, .grid-3, .grid-4, .grid-5, .grid-6, .brief-grid, .kpi-grid) > * {
+  min-width: 0;
+}
+
+:where(.table-wrap, .data-table-wrap, .responsive-table, [class*='table-container']) {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-gutter: stable;
+}
+
+table {
+  border-spacing: 0;
+}
+
+th {
+  text-align: left;
+  line-height: 1.3;
+}
+
+td,
+th {
+  vertical-align: middle;
+}
+
+.sr-only,
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+@media (max-width: 1080px) {
+  .main-content {
+    padding-inline: clamp(14px, 2.5vw, 24px);
+  }
+
+  :where(.page-actions, .header-row, .card-header, .panel-head) {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 720px) {
+  :root {
+    --content-gutter: 14px;
+  }
+
+  .main-content {
+    padding: 14px var(--content-gutter) 24px;
+  }
+
+  .page-content {
+    padding: 0;
+  }
+
+  :where(.card, .stat-card, .brief-card, .glass-card) {
+    padding: clamp(14px, 4vw, 18px);
+  }
+
+  :where(.page-actions, .action-row) {
+    width: 100%;
+  }
+
+  :where(.page-actions, .action-row) > button {
+    flex: 1 1 auto;
+  }
+
+  table {
+    font-size: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+  }
+}
+
+@media (forced-colors: active) {
+  :where(button, input, select, textarea, .card, .stat-card) {
+    border: 1px solid CanvasText;
+  }
+
+  :where(a, button, input, select, textarea):focus-visible {
+    outline: 3px solid Highlight !important;
+  }
+}

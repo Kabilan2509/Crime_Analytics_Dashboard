@@ -43,7 +43,8 @@ function PageLoader({ compact = false }) {
       <div className="government-loader-heading">
         <span className="government-loader-kicker">Government of Karnataka</span>
         <strong>Karnataka State Police</strong>
-        <span>Crime Analytics &amp; Intelligence Dashboard</span>
+        <span>MADHUKAR Dashboard</span>
+        <span>Modern Analytics and Data Hub for User Friendly Karnataka Anti Crime Response Dashboard</span>
       </div>
       <div className="government-loader-progress" aria-hidden="true"><span /></div>
       <span className="government-loader-status">Securely loading operational data</span>
@@ -63,7 +64,7 @@ function MainContentWrapper({ children }) {
   const location = useLocation();
   const isMapRoute = location.pathname.startsWith('/map');
   return (
-    <main className={isMapRoute ? "main-content-map" : "main-content"}>
+    <main id="main-content" tabIndex="-1" className={isMapRoute ? "main-content-map" : "main-content"}>
       {children}
     </main>
   );
@@ -125,6 +126,7 @@ function App() {
       <DateFilterProvider>
         <Router basename="/app">
           <div className={`app-shell theme-${theme}`}>
+            <a className="skip-link" href="#main-content">Skip to main content</a>
             <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
             <div className="app-main">
               <EmergencyTicker />

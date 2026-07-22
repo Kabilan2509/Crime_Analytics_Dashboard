@@ -73,8 +73,8 @@ function Sidebar({ isOpen, onClose }) {
           </div>
           <div className="brand-copy">
             <div className="brand-eyebrow">Karnataka State Police</div>
-            <div className="brand-title">AI Command Suite</div>
-            <div className="brand-subtitle">MADHUKAR Intelligence Platform</div>
+            <div className="brand-title">MADHUKAR</div>
+            <div className="brand-subtitle" title="Modern Analytics and Data Hub for User Friendly Karnataka Anti Crime Response Dashboard">Modern Analytics &amp; Data Hub</div>
           </div>
           <button type="button" className="sidebar-close-btn" onClick={onClose} aria-label="Close menu">
             <MdClose size={20} />

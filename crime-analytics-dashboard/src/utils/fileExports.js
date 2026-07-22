@@ -1,3 +1,5 @@
+import { jsPDF } from 'jspdf';
+
 const triggerDownload = (filename, blob) => {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
@@ -59,7 +61,7 @@ export const downloadPdf = (filename, title, lines = []) => {
     pdf.text('KARNATAKA STATE POLICE', margin, 10);
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(7.5);
-    pdf.text('CRIME ANALYTICS AND INTELLIGENCE SYSTEM', margin, 16);
+    pdf.text('MADHUKAR - MODERN ANALYTICS AND DATA HUB', margin, 16);
     pdf.text('OFFICIAL USE', pageWidth - margin, 13, { align: 'right' });
   };
 
@@ -105,7 +107,7 @@ export const downloadPdf = (filename, title, lines = []) => {
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(7.5);
     pdf.setTextColor(100, 108, 116);
-    pdf.text('KSP Crime Analytics Dashboard | Confidential - Official Use Only', margin, pageHeight - 8);
+    pdf.text('KSP MADHUKAR Dashboard | Confidential - Official Use Only', margin, pageHeight - 8);
     pdf.text(`Page ${page} of ${totalPages}`, pageWidth - margin, pageHeight - 8, { align: 'right' });
   }
   pdf.save(filename);
@@ -127,4 +129,3 @@ export const downloadJpegSummary = (filename, title, lines = []) => {
     if (blob) triggerDownload(filename, blob);
   }, 'image/jpeg', 0.92);
 };
-import { jsPDF } from 'jspdf';

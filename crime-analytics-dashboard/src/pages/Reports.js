@@ -689,7 +689,7 @@ function Reports() {
         pdf.text('KARNATAKA STATE POLICE', margin, 10);
         pdf.setFontSize(8);
         pdf.setFont('helvetica', 'normal');
-        pdf.text('CRIME ANALYTICS & INTELLIGENCE REPORTING SYSTEM', margin, 16);
+        pdf.text('MADHUKAR - MODERN ANALYTICS AND DATA HUB', margin, 16);
         pdf.text('OFFICIAL USE', pageWidth - margin, 13, { align: 'right' });
       };
 
@@ -781,7 +781,7 @@ function Reports() {
         pdf.setFont('helvetica', 'normal');
         pdf.setFontSize(7.5);
         pdf.setTextColor(100, 108, 116);
-        pdf.text('KSP Crime Analytics Dashboard | Confidential - Official Use Only', margin, pageHeight - 7);
+        pdf.text('KSP MADHUKAR Dashboard | Confidential - Official Use Only', margin, pageHeight - 7);
         pdf.text(`Page ${page} of ${totalPages}`, pageWidth - margin, pageHeight - 7, { align: 'right' });
       }
       pdf.save(`KSP_${activeTemplate.toUpperCase()}_${activeTab.toUpperCase()}_${new Date().toISOString().split('T')[0]}.pdf`);
