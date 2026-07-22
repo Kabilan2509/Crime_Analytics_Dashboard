@@ -2,45 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { MdFilterList, MdClose, MdSearch, MdExpandMore, MdExpandLess, MdSettingsBackupRestore } from 'react-icons/md';
 import { districts, units, crimeHeads } from '../../../data/schemaSelectors';
 import { rangeDistricts } from '../statisticsApi';
-import { useSecurity } from '../../../context/SecurityContext';
 
 function GlobalFiltersBar({ filters, setFilters, onReset }) {
-  const { session } = useSecurity();
   const [showMore, setShowMore] = useState(false);
   const [catSearch, setCatSearch] = useState('');
   const [catDropdownOpen, setCatDropdownOpen] = useState(false);
   const catRef = useRef(null);
 
   const [mobileOpen, setMobileOpen] = useState(false);
-
-  // Check role restriction
-  useEffect(() => {
-    if (session && session.unitName && session.unitName !== 'State Control Room' && session.unitName !== 'command center' && session.unitName !== '') {
-      const officerUnit = session.unitName.toLowerCase().trim();
-      
-      // Try to find if it's a station
-      const matchedStation = units.find(u => u.UnitName.toLowerCase().includes(officerUnit));
-      if (matchedStation) {
-        setFilters(prev => ({
-          ...prev,
-          jurisdictionLevel: 'station',
-          selectedStation: String(matchedStation.UnitID),
-          selectedDistrict: String(matchedStation.DistrictID)
-        }));
-        return;
-      }
-
-      // Try to find if it's a district
-      const matchedDistrict = districts.find(d => d.DistrictName.toLowerCase().includes(officerUnit));
-      if (matchedDistrict) {
-        setFilters(prev => ({
-          ...prev,
-          jurisdictionLevel: 'district',
-          selectedDistrict: String(matchedDistrict.DistrictID)
-        }));
-      }
-    }
-  }, [session, setFilters]);
 
   // Handle click outside category dropdown
   useEffect(() => {
@@ -52,9 +21,6 @@ function GlobalFiltersBar({ filters, setFilters, onReset }) {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
-  // Check if role locks jurisdiction dropdown
-  const isLocked = session && session.unitName && session.unitName !== 'State Control Room' && session.unitName !== 'command center' && session.unitName !== '';
 
   const handleFilterChange = (key, value) => {
     setFilters(prev => {
@@ -109,7 +75,7 @@ function GlobalFiltersBar({ filters, setFilters, onReset }) {
     const chips = [];
     
     // Date Range Chip
-    if (filters.dateRange !== 'last_year') {
+    if (filters.dateRange !== 'all') {
       const label = {
         'all': 'All Time',
         '7d': 'Last 7 Days',
@@ -118,7 +84,7 @@ function GlobalFiltersBar({ filters, setFilters, onReset }) {
         'this_year': 'This Year',
         'custom': `Custom: ${filters.startDate || ''} to ${filters.endDate || ''}`
       }[filters.dateRange] || filters.dateRange;
-      chips.push({ key: 'dateRange', label: `Date: ${label}`, resetValue: 'last_year' });
+      chips.push({ key: 'dateRange', label: `Date: ${label}`, resetValue: 'all' });
     }
 
     // Jurisdiction Chip
@@ -133,9 +99,7 @@ function GlobalFiltersBar({ filters, setFilters, onReset }) {
       } else if (filters.jurisdictionLevel === 'range' && filters.selectedRange !== 'all') {
         label = `Range: ${filters.selectedRange}`;
       }
-      if (!isLocked) {
-        chips.push({ key: 'jurisdictionLevel', label, resetValue: 'all' });
-      }
+      chips.push({ key: 'jurisdictionLevel', label, resetValue: 'all' });
     }
 
     // Category Chips
@@ -265,6 +229,7 @@ function GlobalFiltersBar({ filters, setFilters, onReset }) {
           <option value="this_month">This Month</option>
           <option value="this_year">This Year</option>
           <option value="last_year">Last Year</option>
+          <option value="all">All Records</option>
           <option value="custom">Custom Range...</option>
         </select>
 
@@ -291,7 +256,6 @@ function GlobalFiltersBar({ filters, setFilters, onReset }) {
         <select
           value={filters.jurisdictionLevel}
           onChange={e => handleFilterChange('jurisdictionLevel', e.target.value)}
-          disabled={isLocked}
           style={selectStyle}
         >
           <option value="all">All Karnataka</option>
@@ -305,7 +269,6 @@ function GlobalFiltersBar({ filters, setFilters, onReset }) {
           <select
             value={filters.selectedRange}
             onChange={e => handleFilterChange('selectedRange', e.target.value)}
-            disabled={isLocked}
             style={selectStyle}
           >
             <option value="all">Select Range...</option>
@@ -319,7 +282,6 @@ function GlobalFiltersBar({ filters, setFilters, onReset }) {
           <select
             value={filters.selectedDistrict}
             onChange={e => handleFilterChange('selectedDistrict', e.target.value)}
-            disabled={isLocked}
             style={selectStyle}
           >
             <option value="all">Select District...</option>
@@ -334,7 +296,6 @@ function GlobalFiltersBar({ filters, setFilters, onReset }) {
             <select
               value={filters.selectedDistrict}
               onChange={e => handleFilterChange('selectedDistrict', e.target.value)}
-              disabled={isLocked}
               style={selectStyle}
             >
               <option value="all">Select District...</option>
@@ -345,7 +306,7 @@ function GlobalFiltersBar({ filters, setFilters, onReset }) {
             <select
               value={filters.selectedStation}
               onChange={e => handleFilterChange('selectedStation', e.target.value)}
-              disabled={isLocked}
+              disabled={filters.selectedDistrict === 'all'}
               style={selectStyle}
             >
               <option value="all">Select Station...</option>
@@ -444,7 +405,6 @@ function GlobalFiltersBar({ filters, setFilters, onReset }) {
                       <input
                         type="checkbox"
                         checked={filters.crimeCategory.includes(sId)}
-                        disabled={filters.crimeCategory.includes('all')}
                         onChange={() => handleCategoryToggle(sId)}
                         style={{ minHeight: 'auto', minWidth: 'auto', width: '16px', height: '16px', margin: 0 }}
                       />

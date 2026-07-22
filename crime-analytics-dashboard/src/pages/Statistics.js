@@ -10,7 +10,7 @@ function Statistics({ selectedDistrict = 'all', selectedCrimeType = 'all', dateR
     <StatisticsPage
       defaultDistrict={selectedDistrict}
       defaultCrimeType={selectedCrimeType}
-      defaultDateRange={dateRange === 'all' ? 'last_year' : dateRange}
+      defaultDateRange={dateRange}
     />
   );
 }

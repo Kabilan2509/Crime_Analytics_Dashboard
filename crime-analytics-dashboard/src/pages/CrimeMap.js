@@ -11,7 +11,6 @@ import { caseViews as cases, districts, districtCenters } from '../data/schemaSe
 import { useSecurity } from '../context/SecurityContext';
 
 /* Feature components */
-import MapFilters from '../features/crimeMap/MapFilters';
 import DistrictDrawer from '../features/crimeMap/DistrictDrawer';
 import TimelineControls from '../features/crimeMap/TimelineControls';
 
@@ -56,6 +55,20 @@ function useDebounce(value, delay) {
     return () => clearTimeout(handler);
   }, [value, delay]);
   return debouncedValue;
+}
+
+function MapInteractionController({ enabled }) {
+  const map = useMap();
+  useEffect(() => {
+    const handlers = [map.dragging, map.scrollWheelZoom, map.doubleClickZoom, map.boxZoom, map.keyboard, map.touchZoom];
+    handlers.forEach(handler => {
+      if (!handler) return;
+      if (enabled) handler.enable();
+      else handler.disable();
+    });
+    if (!enabled) map.setView(KARNATAKA_CENTER, KARNATAKA_ZOOM, { animate: true });
+  }, [map, enabled]);
+  return null;
 }
 
 /* ---- Leaflet sub-components ---- */
@@ -642,6 +655,7 @@ function CrimeMap({ selectedDistrict: globalDistrict, selectedCrimeType: globalC
   const [mapCenter, setMapCenter] = useState(KARNATAKA_CENTER);
   const [mapZoom, setMapZoom] = useState(KARNATAKA_ZOOM);
   const [liveMapZoom, setLiveMapZoom] = useState(KARNATAKA_ZOOM);
+  const [mapInteractive, setMapInteractive] = useState(false);
 
   /* Visualization Mode checkboxes (Choropleth and Graduated are disabled by default) */
   const [activeVisLayers, setActiveVisLayers] = useState({
@@ -663,6 +677,18 @@ function CrimeMap({ selectedDistrict: globalDistrict, selectedCrimeType: globalC
 
   const [isPlaying, setIsPlaying] = useState(false);
   const timerRef = useRef(null);
+
+  useEffect(() => {
+    const handleEscape = event => {
+      if (event.key === 'Escape') {
+        setMapInteractive(false);
+        setMapCenter(KARNATAKA_CENTER);
+        setMapZoom(KARNATAKA_ZOOM);
+      }
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, []);
 
   useEffect(() => {
     if (globalDistrict !== 'all') setLocalDistrict(globalDistrict);
@@ -712,6 +738,14 @@ function CrimeMap({ selectedDistrict: globalDistrict, selectedCrimeType: globalC
     if (localCrimeTypes.includes('all')) return baseFilteredCases;
     return baseFilteredCases.filter(c => localCrimeTypes.includes(String(c.CrimeMajorHeadID)));
   }, [baseFilteredCases, localCrimeTypes]);
+
+  const timelineBounds = useMemo(() => {
+    const times = cases.map(c => new Date(String(c.CrimeRegisteredDate).replace(' ', 'T')).getTime()).filter(Number.isFinite);
+    return {
+      min: times.length ? new Date(Math.min(...times)) : new Date(),
+      max: times.length ? new Date(Math.max(...times)) : new Date(),
+    };
+  }, []);
 
   // Extract total monthly counts for timeline sparkline
   const timelineHistogram = useMemo(() => {
@@ -836,23 +870,13 @@ function CrimeMap({ selectedDistrict: globalDistrict, selectedCrimeType: globalC
         margin: '0'
       }}
     >
-      {/* 1. Flush Attached Local Filters row sitting in layout flow */}
-      <MapFilters
-        localDistrict={localDistrict} setLocalDistrict={setLocalDistrict}
-        localCrimeTypes={localCrimeTypes} setLocalCrimeTypes={setLocalCrimeTypes}
-        severityFilter={severityFilter} setSeverityFilter={setSeverityFilter}
-        statusFilter={statusFilter} setStatusFilter={setStatusFilter}
-        timeOfDayFilter={timeOfDayFilter} setTimeOfDayFilter={setTimeOfDayFilter}
-        activeCount={filteredCases.length}
-      />
-
       {/* Spatiotemporal Trends Box repositioned to top-right below filters bar */}
       {emergingTrends.length > 0 && (
         <div style={{
           padding: '6px 12px', background: overlayBg,
           border: overlayBorder, borderRadius: '4px',
           display: 'flex', flexDirection: 'column', gap: '2px',
-          position: 'absolute', top: '75px', right: '70px', zIndex: 1005,
+          position: 'absolute', top: '16px', right: '70px', zIndex: 1005,
           boxShadow: '0 4px 12px rgba(0,0,0,0.15)', backdropFilter: 'blur(4px)',
           width: '240px', pointerEvents: 'auto', color: 'var(--text-primary)'
         }}>
@@ -910,7 +934,52 @@ function CrimeMap({ selectedDistrict: globalDistrict, selectedCrimeType: globalC
             isPlaying={isPlaying} setIsPlaying={setIsPlaying}
             histogram={timelineHistogram}
             theme={theme}
+            minDate={timelineBounds.min}
+            maxDate={timelineBounds.max}
+            visibleCount={filteredCases.length}
           />
+
+          {!mapInteractive ? (
+            <button
+              type="button"
+              className="map-interaction-gate"
+              onClick={() => setMapInteractive(true)}
+              aria-label="Activate map navigation"
+              style={{
+                position: 'absolute', inset: 0, zIndex: 900, border: 'none',
+                background: 'transparent', cursor: 'pointer', padding: 0,
+              }}
+            >
+              <span style={{
+                position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
+                padding: '11px 18px', borderRadius: 9, background: overlayBg,
+                border: overlayBorder, boxShadow: '0 8px 24px rgba(0,0,0,.28)',
+                color: 'var(--text-primary)', backdropFilter: 'blur(8px)',
+              }}>
+                <strong style={{ fontSize: 12, letterSpacing: '.04em' }}>Click to explore the map</strong>
+                <small style={{ fontSize: 9, color: 'var(--text-muted)' }}>Page scrolling is currently enabled</small>
+              </span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setMapInteractive(false);
+                setMapCenter(KARNATAKA_CENTER);
+                setMapZoom(KARNATAKA_ZOOM);
+              }}
+              style={{
+                position: 'absolute', top: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 1008,
+                padding: '7px 12px', borderRadius: 7, background: overlayBg, border: overlayBorder,
+                color: 'var(--text-primary)', boxShadow: '0 5px 16px rgba(0,0,0,.24)',
+                fontSize: 10, fontWeight: 700, cursor: 'pointer',
+              }}
+              title="Press Escape to exit map navigation"
+            >
+              Exit map navigation (Esc)
+            </button>
+          )}
 
           {/* Leaflet Map container with custom zoom overlays */}
           <MapContainer 
@@ -918,6 +987,12 @@ function CrimeMap({ selectedDistrict: globalDistrict, selectedCrimeType: globalC
             zoom={KARNATAKA_ZOOM} 
             style={{ height: '100%', width: '100%', zIndex: 1 }} 
             zoomControl={false}
+            dragging={false}
+            scrollWheelZoom={false}
+            doubleClickZoom={false}
+            touchZoom={false}
+            boxZoom={false}
+            keyboard={false}
           >
             <TileLayer
               key={theme}
@@ -927,6 +1002,7 @@ function CrimeMap({ selectedDistrict: globalDistrict, selectedCrimeType: globalC
               attribution='&copy; CARTO'
             />
             <MapController center={mapCenter} zoom={mapZoom} />
+            <MapInteractionController enabled={mapInteractive} />
             <MapZoomTracker setZoom={setLiveMapZoom} />
             <MapInvalidator />
             <ZoomControlOverlay overlayBg={overlayBg} overlayBorder={overlayBorder} />

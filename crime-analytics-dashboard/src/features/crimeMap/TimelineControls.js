@@ -1,541 +1,217 @@
 import React, { useMemo, useState } from 'react';
-import { MdPlayArrow, MdPause, MdSkipNext, MdSkipPrevious } from 'react-icons/md';
+import {
+  MdCalendarMonth, MdPause, MdPlayArrow, MdRestartAlt,
+  MdSkipNext, MdSkipPrevious, MdTimeline, MdExpandLess, MdExpandMore,
+} from 'react-icons/md';
 
-/**
- * TimelineControls — Dual-handle timeline range slider with centered circle knobs,
- * 1:1 precision drag, keyboard navigation, live drag date badges, and separated playback.
- */
+const MAX_INDEX = 30;
+
 function TimelineControls({
-  startIndex,
-  setStartIndex,
-  endIndex,
-  setEndIndex,
-  isPlaying,
-  setIsPlaying,
-  histogram = [],
-  theme
+  startIndex, setStartIndex, endIndex, setEndIndex,
+  isPlaying, setIsPlaying, histogram = [], theme,
+  minDate, maxDate, visibleCount = 0,
 }) {
-  const [activePreset, setActivePreset] = useState('custom');
+  const [activePreset, setActivePreset] = useState('all');
   const [hoverInfo, setHoverInfo] = useState(null);
-  const [isDraggingStart, setIsDraggingStart] = useState(false);
-  const [isDraggingEnd, setIsDraggingEnd] = useState(false);
-
-  const getMonthLabel = (index) => {
-    const start = new Date('2024-01-01');
-    start.setMonth(start.getMonth() + index);
-    return start.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
-  };
-
-  const startLabel = useMemo(() => getMonthLabel(startIndex), [startIndex]);
-  const endLabel = useMemo(() => getMonthLabel(endIndex), [endIndex]);
-
-  const maxCount = useMemo(() => {
-    return histogram.length ? Math.max(...histogram, 1) : 1;
-  }, [histogram]);
-
-  const startPct = (startIndex / 30) * 100;
-  const endPct = (endIndex / 30) * 100;
-
-  const handlePrev = () => {
-    if (startIndex > 0) {
-      setStartIndex(startIndex - 1);
-      setEndIndex(endIndex - 1);
-      setActivePreset('custom');
-    }
-  };
-
-  const handleNext = () => {
-    if (endIndex < 30) {
-      setStartIndex(startIndex + 1);
-      setEndIndex(endIndex + 1);
-      setActivePreset('custom');
-    }
-  };
-
-  const applyPreset = (presetKey) => {
-    setActivePreset(presetKey);
-    switch (presetKey) {
-      case 'today':
-        setStartIndex(30);
-        setEndIndex(30);
-        break;
-      case 'last7':
-        setStartIndex(29);
-        setEndIndex(30);
-        break;
-      case 'last30':
-        setStartIndex(28);
-        setEndIndex(30);
-        break;
-      case 'quarter':
-        setStartIndex(27);
-        setEndIndex(30);
-        break;
-      case 'custom':
-      default:
-        setStartIndex(0);
-        setEndIndex(30);
-        break;
-    }
-  };
-
-  const handleTrackMouseMove = (e) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    if (!rect.width) return;
-    const x = e.clientX - rect.left;
-    const pct = Math.max(0, Math.min(100, (x / rect.width) * 100));
-    const idx = Math.min(30, Math.max(0, Math.round((x / rect.width) * 30)));
-    setHoverInfo({ xPct: pct, label: getMonthLabel(idx) });
-  };
-
-  const handleStartKeyDown = (e) => {
-    if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
-      e.preventDefault();
-      const step = e.shiftKey ? 3 : 1;
-      setStartIndex(prev => Math.max(0, prev - step));
-      setActivePreset('custom');
-    } else if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
-      e.preventDefault();
-      const step = e.shiftKey ? 3 : 1;
-      setStartIndex(prev => Math.min(endIndex, prev + step));
-      setActivePreset('custom');
-    }
-  };
-
-  const handleEndKeyDown = (e) => {
-    if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
-      e.preventDefault();
-      const step = e.shiftKey ? 3 : 1;
-      setEndIndex(prev => Math.max(startIndex, prev - step));
-      setActivePreset('custom');
-    } else if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
-      e.preventDefault();
-      const step = e.shiftKey ? 3 : 1;
-      setEndIndex(prev => Math.min(30, prev + step));
-      setActivePreset('custom');
-    }
-  };
-
-  // Theme-sensitive styling parameters
+  const [collapsed, setCollapsed] = useState(true);
   const isDark = theme === 'dark';
-  const overlayBg = isDark ? 'rgba(20, 33, 50, 0.95)' : 'rgba(255, 255, 255, 0.97)';
-  const overlayBorder = isDark ? '1px solid rgba(173, 193, 214, 0.18)' : '1px solid rgba(15, 23, 42, 0.14)';
-  const btnBg = isDark ? 'rgba(30, 41, 59, 0.85)' : 'rgba(241, 245, 249, 0.95)';
+
+  const minTime = minDate ? new Date(minDate).getTime() : new Date('2024-01-01').getTime();
+  const maxTime = maxDate ? new Date(maxDate).getTime() : new Date('2026-07-01').getTime();
+  const span = Math.max(1, maxTime - minTime);
+  const dateAt = index => new Date(minTime + span * (index / MAX_INDEX));
+  const formatDate = (index, long = false) => dateAt(index).toLocaleDateString('en-IN', long
+    ? { day: '2-digit', month: 'short', year: 'numeric' }
+    : { month: 'short', year: '2-digit' });
+
+  const startLabel = formatDate(startIndex, true);
+  const endLabel = formatDate(endIndex, true);
+  const maxCount = Math.max(1, ...histogram);
+  const selectedCount = useMemo(
+    () => histogram.reduce((sum, count, index) => index >= startIndex && index <= endIndex ? sum + count : sum, 0),
+    [histogram, startIndex, endIndex],
+  );
+  const startPct = (startIndex / MAX_INDEX) * 100;
+  const endPct = (endIndex / MAX_INDEX) * 100;
+
+  const setRange = (start, end, preset = 'custom') => {
+    setStartIndex(Math.max(0, Math.min(start, MAX_INDEX)));
+    setEndIndex(Math.max(0, Math.min(end, MAX_INDEX)));
+    setActivePreset(preset);
+    setIsPlaying(false);
+  };
 
   const presets = [
-    { key: 'today', label: 'Today' },
-    { key: 'last7', label: 'Last 7 Days' },
-    { key: 'last30', label: 'Last 30 Days' },
-    { key: 'quarter', label: 'This Quarter' },
-    { key: 'custom', label: 'Custom Range' },
+    { key: 'latest', label: 'Latest month', start: 30, end: 30 },
+    { key: '3m', label: 'Last 3 months', start: 28, end: 30 },
+    { key: '6m', label: 'Last 6 months', start: 25, end: 30 },
+    { key: '12m', label: 'Last 12 months', start: 19, end: 30 },
+    { key: 'all', label: 'All records', start: 0, end: 30 },
   ];
 
+  const shiftWindow = direction => {
+    const width = endIndex - startIndex;
+    if (direction < 0 && startIndex > 0) setRange(startIndex - 1, endIndex - 1);
+    if (direction > 0 && endIndex < MAX_INDEX) setRange(startIndex + 1, startIndex + 1 + width);
+  };
+
+  const togglePlayback = () => {
+    if (isPlaying) {
+      setIsPlaying(false);
+      return;
+    }
+    if (endIndex === MAX_INDEX) {
+      const width = startIndex === 0 ? 3 : endIndex - startIndex;
+      setStartIndex(0);
+      setEndIndex(Math.min(MAX_INDEX, width));
+      setActivePreset('custom');
+    }
+    setIsPlaying(true);
+  };
+
+  const handleHover = event => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    if (!rect.width) return;
+    const pct = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+    const index = Math.round(pct * MAX_INDEX);
+    setHoverInfo({ left: pct * 100, index, count: histogram[index] || 0 });
+  };
+
+  const handleKey = (target, event) => {
+    if (!['ArrowLeft', 'ArrowDown', 'ArrowRight', 'ArrowUp'].includes(event.key)) return;
+    event.preventDefault();
+    const delta = ['ArrowLeft', 'ArrowDown'].includes(event.key) ? -1 : 1;
+    const step = event.shiftKey ? 3 : 1;
+    if (target === 'start') setStartIndex(value => Math.max(0, Math.min(endIndex, value + delta * step)));
+    else setEndIndex(value => Math.max(startIndex, Math.min(MAX_INDEX, value + delta * step)));
+    setActivePreset('custom');
+    setIsPlaying(false);
+  };
+
+  const panelBg = isDark ? 'rgba(10, 20, 34, 0.96)' : 'rgba(255, 255, 255, 0.97)';
+  const subtleBg = isDark ? 'rgba(255,255,255,0.055)' : 'rgba(15,23,42,0.045)';
+  const border = isDark ? 'rgba(148, 177, 207, 0.23)' : 'rgba(15, 23, 42, 0.16)';
+
+  if (collapsed) {
+    return (
+      <section aria-label="Collapsed GIS timeline" style={{
+        position: 'absolute', left: '50%', bottom: 14, transform: 'translateX(-50%)', zIndex: 1010,
+        display: 'flex', alignItems: 'center', gap: 6, maxWidth: 'calc(100% - 32px)',
+        padding: '7px 9px', borderRadius: 10, background: panelBg, border: `1px solid ${border}`,
+        boxShadow: '0 8px 28px rgba(0,0,0,.32)', backdropFilter: 'blur(12px)',
+        color: 'var(--text-primary)', fontFamily: 'Consolas, monospace',
+      }}>
+        <span style={{ display: 'grid', placeItems: 'center', width: 28, height: 28, borderRadius: 7, color: '#60a5fa', background: 'rgba(59,130,246,.14)' }}>
+          <MdTimeline size={17} />
+        </span>
+        <button type="button" className="compact-timeline-btn" onClick={() => shiftWindow(-1)} disabled={startIndex === 0} title="Previous time window"><MdSkipPrevious /></button>
+        <button type="button" className="compact-timeline-btn compact-primary" onClick={togglePlayback} title={isPlaying ? 'Pause timeline' : 'Play timeline'}>
+          {isPlaying ? <MdPause /> : <MdPlayArrow />}<span>{isPlaying ? 'Pause' : 'Play'}</span>
+        </button>
+        <button type="button" className="compact-timeline-btn" onClick={() => shiftWindow(1)} disabled={endIndex === MAX_INDEX} title="Next time window"><MdSkipNext /></button>
+        <button type="button" className="compact-timeline-btn" onClick={() => setRange(0, 30, 'all')} title="Reset timeline"><MdRestartAlt /></button>
+        <div style={{ minWidth: 150, padding: '0 7px', borderLeft: `1px solid ${border}`, borderRight: `1px solid ${border}` }}>
+          <div style={{ fontSize: 9, fontWeight: 800, whiteSpace: 'nowrap' }}>{formatDate(startIndex)} - {formatDate(endIndex)}</div>
+          <div style={{ marginTop: 2, fontSize: 8, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{visibleCount.toLocaleString()} visible cases</div>
+        </div>
+        <button type="button" className="compact-timeline-btn compact-expand" onClick={() => setCollapsed(false)} title="Expand timeline">
+          <MdExpandLess /><span>Timeline</span>
+        </button>
+        <style>{`
+          .compact-timeline-btn{display:flex;align-items:center;justify-content:center;gap:3px;height:28px;min-width:28px;padding:0 6px;border:1px solid ${border};border-radius:6px;background:${subtleBg};color:var(--text-primary);cursor:pointer}.compact-timeline-btn:disabled{opacity:.3;cursor:not-allowed}.compact-timeline-btn span{font:700 9px Consolas,monospace}.compact-primary{padding:0 10px;background:#2563eb;border-color:#3b82f6;color:#fff}.compact-expand{color:#93c5fd}
+          @media(max-width:620px){.compact-timeline-btn span,.compact-timeline-btn.compact-expand span{display:none}.compact-timeline-btn{padding:0 5px}.compact-timeline-btn+div{min-width:108px!important}.compact-timeline-btn+div div{max-width:108px;overflow:hidden;text-overflow:ellipsis}}
+        `}</style>
+      </section>
+    );
+  }
+
   return (
-    <div 
-      className="map-timeline"
-      style={{
-        position: 'absolute',
-        bottom: '12px',
-        left: '15px',
-        right: '15px',
-        zIndex: 1010,
-        background: overlayBg,
-        backdropFilter: 'blur(8px)',
-        border: overlayBorder,
-        boxShadow: '0 4px 24px rgba(0,0,0,0.25)',
-        borderRadius: '8px',
-        padding: '8px 14px 10px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '6px',
-        boxSizing: 'border-box',
-        color: 'var(--text-primary)',
-        fontFamily: 'monospace'
-      }}
-    >
-      {/* Header Row: Presets & Highly Visible Filter Window Badge */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
-        {/* Preset Chips */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span style={{ fontSize: '9px', fontWeight: 'bold', color: 'var(--text-muted)', textTransform: 'uppercase', marginRight: '2px' }}>
-            Presets:
-          </span>
-          {presets.map(p => {
-            const isSelected = activePreset === p.key;
-            return (
-              <button
-                key={p.key}
-                type="button"
-                onClick={() => applyPreset(p.key)}
-                style={{
-                  padding: '3px 10px',
-                  borderRadius: '12px',
-                  fontSize: '10px',
-                  fontFamily: 'monospace',
-                  fontWeight: 'bold',
-                  border: isSelected ? '1px solid var(--accent-primary, #3b82f6)' : '1px solid var(--border-color)',
-                  background: isSelected ? 'var(--accent-primary, #3b82f6)' : btnBg,
-                  color: isSelected ? '#ffffff' : 'var(--text-secondary)',
-                  cursor: 'pointer',
-                  outline: 'none',
-                  transition: 'all 120ms'
-                }}
-              >
-                {p.label}
-              </button>
-            );
-          })}
+    <section className="gis-timeline" aria-label="GIS intelligence timeline" style={{
+      position: 'absolute', left: 16, right: 16, bottom: 14, zIndex: 1010,
+      color: 'var(--text-primary)', background: panelBg, border: `1px solid ${border}`,
+      borderRadius: 12, boxShadow: '0 12px 36px rgba(0,0,0,0.32)', backdropFilter: 'blur(12px)',
+      padding: '12px 16px 14px', fontFamily: 'Consolas, monospace', boxSizing: 'border-box',
+    }}>
+      <div className="gis-timeline-head">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+          <span className="gis-timeline-icon"><MdTimeline size={18} /></span>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase' }}>Temporal Intelligence</div>
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>Drag either handle to refine the GIS incident window</div>
+          </div>
         </div>
-
-        {/* Highly Visible & Boxy Selected Window Summary Badge */}
-        <div 
-          style={{ 
-            background: isDark ? 'rgba(15, 23, 42, 0.94)' : '#ffffff',
-            border: isDark ? '1.5px solid var(--accent-primary, #3b82f6)' : '1.5px solid var(--accent-primary, #2563eb)',
-            borderRadius: '4px',
-            padding: '5px 14px',
-            fontSize: '13px',
-            fontWeight: '800',
-            color: isDark ? '#ffffff' : '#0f172a',
-            letterSpacing: '0.6px',
-            whiteSpace: 'nowrap',
-            boxShadow: isDark ? '0 3px 10px rgba(0,0,0,0.4)' : '0 3px 10px rgba(0,0,0,0.12)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px'
-          }}
-        >
-          <span style={{ color: isDark ? 'var(--accent-primary, #3b82f6)' : '#2563eb', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.8px', fontWeight: 'bold' }}>
-            FILTER WINDOW:
-          </span>
-          <span style={{ color: isDark ? '#ffffff' : '#0f172a', fontSize: '13px', fontWeight: '800' }}>
-            {startLabel} – {endLabel}
-          </span>
+        <div className="gis-timeline-summary">
+          <div><span>Selected window</span><strong>{startLabel} - {endLabel}</strong></div>
+          <div><span>Visible cases</span><strong>{visibleCount.toLocaleString()}</strong></div>
+          <div><span>Window incidents</span><strong>{selectedCount.toLocaleString()}</strong></div>
+          <span className={`gis-play-state ${isPlaying ? 'active' : ''}`}>{isPlaying ? 'Playing' : 'Paused'}</span>
+          <button type="button" onClick={() => setCollapsed(true)} title="Collapse timeline" style={{
+            display: 'flex', alignItems: 'center', gap: 4, height: 28, padding: '0 8px',
+            border: `1px solid ${border}`, borderRadius: 6, background: subtleBg,
+            color: 'var(--text-primary)', font: '700 9px Consolas, monospace', cursor: 'pointer',
+          }}><MdExpandMore size={16} /> Collapse</button>
         </div>
       </div>
 
-      {/* Histogram Sparkline with Month Tooltips */}
-      <div 
-        onMouseMove={handleTrackMouseMove}
-        onMouseLeave={() => setHoverInfo(null)}
-        style={{ 
-          display: 'flex', 
-          alignItems: 'flex-end', 
-          height: '12px', 
-          gap: '1px', 
-          padding: '0 8px', 
-          boxSizing: 'border-box',
-          width: '100%',
-          marginTop: '2px',
-          cursor: 'pointer',
-          position: 'relative'
-        }}
-      >
-        {histogram.map((count, i) => {
-          const heightPct = (count / maxCount) * 100;
-          const inRange = i >= startIndex && i <= endIndex;
-          const label = getMonthLabel(i);
-          return (
-            <div
-              key={i}
-              title={`${label}: ${count} incidents`}
-              style={{
-                flex: 1,
-                height: `${heightPct}%`,
-                background: inRange ? 'var(--accent-primary, #3b82f6)' : 'rgba(148, 163, 184, 0.22)',
-                transition: 'background 120ms',
-                borderRadius: '1px'
-              }}
-            />
-          );
-        })}
+      <div className="gis-presets" aria-label="Timeline presets">
+        <MdCalendarMonth size={14} />
+        {presets.map(preset => (
+          <button key={preset.key} type="button" className={activePreset === preset.key ? 'active' : ''}
+            onClick={() => setRange(preset.start, preset.end, preset.key)}>{preset.label}</button>
+        ))}
       </div>
 
-      {/* Main Track & Playback Section */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', position: 'relative' }}>
-        {/* Visually Separated Playback Controls Box (Left) */}
-        <div 
-          style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '4px',
-            background: 'rgba(15, 23, 42, 0.3)',
-            border: '1px solid var(--border-color)',
-            borderRadius: '6px',
-            padding: '3px 5px',
-            flexShrink: 0
-          }}
-        >
-          <button
-            type="button"
-            onClick={handlePrev}
-            disabled={startIndex === 0}
-            style={{ 
-              background: btnBg, 
-              border: '1px solid var(--border-color)', 
-              borderRadius: '4px',
-              color: 'var(--text-primary)',
-              padding: '3px',
-              cursor: 'pointer',
-              opacity: startIndex === 0 ? 0.4 : 1,
-              minHeight: '24px',
-              minWidth: '24px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              outline: 'none'
-            }}
-            title="Step Backward"
-          >
-            <MdSkipPrevious size={14} />
+      <div className="gis-timeline-main">
+        <div className="gis-playback" style={{ background: subtleBg, borderColor: border }}>
+          <button type="button" onClick={() => shiftWindow(-1)} disabled={startIndex === 0} title="Move window backward"><MdSkipPrevious /></button>
+          <button type="button" className="primary" onClick={togglePlayback} title={isPlaying ? 'Pause timeline' : 'Play timeline'}>
+            {isPlaying ? <MdPause /> : <MdPlayArrow />}<span>{isPlaying ? 'Pause' : 'Play'}</span>
           </button>
-          
-          <button
-            type="button"
-            onClick={() => setIsPlaying(!isPlaying)}
-            style={{ 
-              background: 'var(--accent-primary, #3b82f6)', 
-              border: 'none', 
-              borderRadius: '4px',
-              color: '#ffffff',
-              padding: '3px 8px',
-              cursor: 'pointer',
-              minHeight: '24px',
-              minWidth: '32px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              outline: 'none'
-            }}
-            title={isPlaying ? "Pause Playback" : "Play Timeline Animation"}
-          >
-            {isPlaying ? <MdPause size={14} /> : <MdPlayArrow size={14} />}
-          </button>
-          
-          <button
-            type="button"
-            onClick={handleNext}
-            disabled={endIndex === 30}
-            style={{ 
-              background: btnBg, 
-              border: '1px solid var(--border-color)', 
-              borderRadius: '4px',
-              color: 'var(--text-primary)',
-              padding: '3px',
-              cursor: 'pointer',
-              opacity: endIndex === 30 ? 0.4 : 1,
-              minHeight: '24px',
-              minWidth: '24px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              outline: 'none'
-            }}
-            title="Step Forward"
-          >
-            <MdSkipNext size={14} />
-          </button>
+          <button type="button" onClick={() => shiftWindow(1)} disabled={endIndex === MAX_INDEX} title="Move window forward"><MdSkipNext /></button>
+          <button type="button" onClick={() => setRange(0, 30, 'all')} title="Reset timeline"><MdRestartAlt /></button>
         </div>
 
-        {/* Dual-Handle Slider Track Container (Center/Right) */}
-        <div 
-          onMouseMove={handleTrackMouseMove}
-          onMouseLeave={() => setHoverInfo(null)}
-          style={{ flex: 1, position: 'relative', height: '32px', marginTop: '2px' }}
-        >
-          {/* Precise Live Hover Cursor Tooltip directly tracking mouse position */}
+        <div className="gis-track-area" onMouseMove={handleHover} onMouseLeave={() => setHoverInfo(null)}>
           {hoverInfo && (
-            <div 
-              style={{ 
-                position: 'absolute', 
-                left: `${hoverInfo.xPct}%`, 
-                top: '-24px', 
-                transform: 'translateX(-50%)',
-                background: '#0f1729',
-                border: '1px solid var(--accent-primary, #3b82f6)',
-                color: '#ffffff',
-                fontSize: '10px',
-                fontWeight: 'bold',
-                padding: '2px 8px',
-                borderRadius: '4px',
-                pointerEvents: 'none',
-                whiteSpace: 'nowrap',
-                boxShadow: '0 4px 14px rgba(0,0,0,0.5)',
-                zIndex: 30
-              }}
-            >
-              📅 {hoverInfo.label}
+            <div className="gis-hover" style={{ left: `${hoverInfo.left}%` }}>
+              <strong>{formatDate(hoverInfo.index)}</strong><span>{hoverInfo.count} cases</span>
             </div>
           )}
-
-          {/* Real-time Live Date Labels Directly Above Handles (Highlights on drag) */}
-          <div 
-            style={{ 
-              position: 'absolute', 
-              left: `${startPct}%`, 
-              top: '-12px', 
-              transform: 'translateX(-50%)',
-              background: isDraggingStart ? '#00e676' : 'var(--accent-primary, #3b82f6)',
-              color: '#ffffff',
-              fontSize: '9px',
-              fontWeight: 'bold',
-              padding: '1px 5px',
-              borderRadius: '4px',
-              pointerEvents: 'none',
-              whiteSpace: 'nowrap',
-              boxShadow: '0 2px 5px rgba(0,0,0,0.3)',
-              zIndex: 10,
-              transition: 'background 120ms'
-            }}
-          >
-            {startLabel}
+          <div className="gis-histogram" aria-hidden="true">
+            {histogram.map((count, index) => {
+              const selected = index >= startIndex && index <= endIndex;
+              return <div key={index} className={selected ? 'selected' : ''} style={{ height: `${Math.max(6, (count / maxCount) * 100)}%` }} />;
+            })}
           </div>
-
-          <div 
-            style={{ 
-              position: 'absolute', 
-              left: `${endPct}%`, 
-              top: '-12px', 
-              transform: 'translateX(-50%)',
-              background: isDraggingEnd ? '#00e676' : 'var(--accent-primary, #3b82f6)',
-              color: '#ffffff',
-              fontSize: '9px',
-              fontWeight: 'bold',
-              padding: '1px 5px',
-              borderRadius: '4px',
-              pointerEvents: 'none',
-              whiteSpace: 'nowrap',
-              boxShadow: '0 2px 5px rgba(0,0,0,0.3)',
-              zIndex: 10,
-              transition: 'background 120ms'
-            }}
-          >
-            {endLabel}
+          <div className="gis-track">
+            <div className="gis-track-selection" style={{ left: `${startPct}%`, width: `${endPct - startPct}%` }} />
           </div>
-
-          {/* Underlay Track Bar Line */}
-          <div style={{ position: 'absolute', left: 0, right: 0, top: '12px', height: '5px', backgroundColor: 'rgba(148, 163, 184, 0.25)', borderRadius: '3px' }}>
-            <div 
-              style={{ 
-                position: 'absolute', 
-                left: `${startPct}%`, 
-                width: `${endPct - startPct}%`, 
-                height: '100%', 
-                backgroundColor: 'var(--accent-primary, #3b82f6)', 
-                borderRadius: '3px' 
-              }} 
-            />
-          </div>
-
-          {/* Double Range Sliders Overlay with Circular Thumbs Centered Directly ON Track Line */}
-          <input 
-            type="range" 
-            min="0" 
-            max="30" 
-            step="1"
-            value={startIndex} 
-            onMouseDown={() => setIsDraggingStart(true)}
-            onMouseUp={() => setIsDraggingStart(false)}
-            onTouchStart={() => setIsDraggingStart(true)}
-            onTouchEnd={() => setIsDraggingStart(false)}
-            onKeyDown={handleStartKeyDown}
-            aria-label="Select timeline start date (Use left/right arrows to nudge)"
-            onChange={e => {
-              const val = Math.min(Number(e.target.value), endIndex);
-              setStartIndex(val);
-              setActivePreset('custom');
-            }}
-            style={{
-              position: 'absolute',
-              width: '100%',
-              pointerEvents: 'none',
-              background: 'none',
-              appearance: 'none',
-              zIndex: startIndex > 15 ? 8 : 7,
-              outline: 'none',
-              margin: 0,
-              top: '5px'
-            }}
-          />
-          <input 
-            type="range" 
-            min="0" 
-            max="30" 
-            step="1"
-            value={endIndex} 
-            onMouseDown={() => setIsDraggingEnd(true)}
-            onMouseUp={() => setIsDraggingEnd(false)}
-            onTouchStart={() => setIsDraggingEnd(true)}
-            onTouchEnd={() => setIsDraggingEnd(false)}
-            onKeyDown={handleEndKeyDown}
-            aria-label="Select timeline end date (Use left/right arrows to nudge)"
-            onChange={e => {
-              const val = Math.max(Number(e.target.value), startIndex);
-              setEndIndex(val);
-              setActivePreset('custom');
-            }}
-            style={{
-              position: 'absolute',
-              width: '100%',
-              pointerEvents: 'none',
-              background: 'none',
-              appearance: 'none',
-              zIndex: startIndex > 15 ? 7 : 8,
-              outline: 'none',
-              margin: 0,
-              top: '5px'
-            }}
-          />
-
-          {/* Year Markers directly under track line */}
-          <div style={{ position: 'absolute', left: 0, right: 0, bottom: '0px', display: 'flex', justifyContent: 'space-between', fontSize: '8px', color: 'var(--text-muted)' }}>
-            <span>2024</span>
-            <span style={{ marginLeft: `${(12/30)*100}%`, transform: 'translateX(-50%)' }}>2025</span>
-            <span style={{ marginLeft: `${(24/30)*100}%`, transform: 'translateX(-50%)' }}>2026</span>
-          </div>
-
-          {/* Circular Knobs Styling Centered Directly ON Track Line with Generous Touch Target */}
-          <style>{`
-            input[type="range"]::-webkit-slider-thumb {
-              pointer-events: auto;
-              appearance: none;
-              width: 20px;
-              height: 20px;
-              border-radius: 50%;
-              background: #ffffff;
-              border: 3px solid var(--accent-primary, #3b82f6);
-              cursor: grab;
-              box-shadow: 0 2px 6px rgba(0,0,0,0.45);
-              transition: transform 100ms, border-color 120ms;
-            }
-            input[type="range"]::-webkit-slider-thumb:active {
-              cursor: grabbing;
-              transform: scale(1.25);
-              border-color: #00e676;
-            }
-            input[type="range"]::-webkit-slider-thumb:focus {
-              box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.4);
-            }
-            input[type="range"]::-moz-range-thumb {
-              pointer-events: auto;
-              width: 20px;
-              height: 20px;
-              border-radius: 50%;
-              background: #ffffff;
-              border: 3px solid var(--accent-primary, #3b82f6);
-              cursor: grab;
-              box-shadow: 0 2px 6px rgba(0,0,0,0.45);
-              transition: transform 100ms, border-color 120ms;
-            }
-            input[type="range"]::-moz-range-thumb:active {
-              cursor: grabbing;
-              transform: scale(1.25);
-              border-color: #00e676;
-            }
-          `}</style>
+          <div className="gis-handle-label" style={{ left: `${startPct}%` }}>{formatDate(startIndex)}</div>
+          <div className="gis-handle-label" style={{ left: `${endPct}%` }}>{formatDate(endIndex)}</div>
+          <input className="gis-range" type="range" min="0" max="30" value={startIndex}
+            aria-label="Timeline start month" onKeyDown={event => handleKey('start', event)}
+            onChange={event => { setStartIndex(Math.min(Number(event.target.value), endIndex)); setActivePreset('custom'); setIsPlaying(false); }} />
+          <input className="gis-range" type="range" min="0" max="30" value={endIndex}
+            aria-label="Timeline end month" onKeyDown={event => handleKey('end', event)}
+            onChange={event => { setEndIndex(Math.max(Number(event.target.value), startIndex)); setActivePreset('custom'); setIsPlaying(false); }} />
+          <div className="gis-axis"><span>{formatDate(0)}</span><span>{formatDate(10)}</span><span>{formatDate(20)}</span><span>{formatDate(30)}</span></div>
         </div>
       </div>
-    </div>
+
+      <style>{`
+        .gis-timeline-head,.gis-timeline-summary,.gis-presets,.gis-timeline-main,.gis-playback{display:flex;align-items:center}
+        .gis-timeline-head{justify-content:space-between;gap:16px;margin-bottom:9px}.gis-timeline-icon{display:grid;place-items:center;width:32px;height:32px;border-radius:8px;background:rgba(59,130,246,.14);color:#60a5fa}
+        .gis-timeline-summary{gap:16px}.gis-timeline-summary>div{display:flex;flex-direction:column;gap:2px}.gis-timeline-summary span{font-size:8px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em}.gis-timeline-summary strong{font-size:10px;white-space:nowrap}.gis-play-state{padding:4px 8px;border-radius:99px;background:rgba(148,163,184,.14)}.gis-play-state.active{color:#86efac;background:rgba(34,197,94,.16)}
+        .gis-presets{gap:6px;margin-bottom:8px;color:var(--text-muted)}.gis-presets button{border:1px solid ${border};background:${subtleBg};color:var(--text-secondary);padding:4px 9px;border-radius:99px;font:600 9px Consolas,monospace;cursor:pointer}.gis-presets button:hover,.gis-presets button.active{border-color:#3b82f6;color:#fff;background:#2563eb}
+        .gis-timeline-main{gap:14px}.gis-playback{gap:5px;border:1px solid;padding:5px;border-radius:8px;flex-shrink:0}.gis-playback button{display:flex;align-items:center;justify-content:center;gap:3px;min-width:28px;height:28px;border:1px solid ${border};border-radius:6px;background:${subtleBg};color:var(--text-primary);cursor:pointer}.gis-playback button:disabled{opacity:.3;cursor:not-allowed}.gis-playback button.primary{padding:0 10px;background:#2563eb;border-color:#3b82f6;color:#fff}.gis-playback button span{font:700 9px Consolas,monospace}
+        .gis-track-area{position:relative;flex:1;height:67px;min-width:180px}.gis-histogram{position:absolute;left:0;right:0;top:0;height:34px;display:flex;align-items:flex-end;gap:2px}.gis-histogram div{flex:1;background:rgba(148,163,184,.2);border-radius:2px 2px 0 0;transition:height .2s,background .15s}.gis-histogram div.selected{background:linear-gradient(#60a5fa,#2563eb)}
+        .gis-track{position:absolute;left:0;right:0;top:38px;height:6px;border-radius:4px;background:rgba(148,163,184,.25)}.gis-track-selection{position:absolute;height:100%;border-radius:4px;background:#3b82f6;box-shadow:0 0 12px rgba(59,130,246,.45)}.gis-handle-label{position:absolute;top:22px;transform:translateX(-50%);z-index:4;padding:2px 5px;border-radius:4px;background:#1d4ed8;color:#fff;font-size:8px;white-space:nowrap;pointer-events:none}
+        .gis-range{position:absolute;left:0;right:0;top:29px;width:100%;height:24px;margin:0;appearance:none;background:transparent;pointer-events:none;z-index:5}.gis-range::-webkit-slider-thumb{appearance:none;pointer-events:auto;width:18px;height:18px;border-radius:50%;background:#fff;border:3px solid #2563eb;box-shadow:0 2px 8px rgba(0,0,0,.45);cursor:grab}.gis-range::-moz-range-thumb{pointer-events:auto;width:14px;height:14px;border-radius:50%;background:#fff;border:3px solid #2563eb;box-shadow:0 2px 8px rgba(0,0,0,.45);cursor:grab}.gis-range:focus-visible::-webkit-slider-thumb{outline:3px solid rgba(96,165,250,.45)}
+        .gis-axis{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:space-between;color:var(--text-muted);font-size:8px}.gis-hover{position:absolute;top:-31px;transform:translateX(-50%);z-index:20;display:flex;flex-direction:column;padding:4px 7px;border:1px solid #3b82f6;border-radius:5px;background:#0f172a;color:#fff;pointer-events:none;white-space:nowrap}.gis-hover strong{font-size:9px}.gis-hover span{font-size:8px;color:#bfdbfe}
+        @media(max-width:900px){.gis-timeline-summary>div:nth-child(3){display:none}.gis-timeline-head{align-items:flex-start}.gis-timeline-main{align-items:flex-start;flex-direction:column}.gis-playback{align-self:stretch;justify-content:center}.gis-track-area{width:100%}.gis-presets{overflow-x:auto;padding-bottom:2px}.gis-presets button{white-space:nowrap}}
+        @media(max-width:600px){.gis-timeline{left:8px!important;right:8px!important;bottom:8px!important;padding:10px!important}.gis-timeline-summary>div:first-child{display:none}.gis-timeline-head>div:first-child>div>div:last-child{display:none}}
+      `}</style>
+    </section>
   );
 }
 

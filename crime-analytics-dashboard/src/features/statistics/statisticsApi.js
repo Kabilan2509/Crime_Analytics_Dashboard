@@ -52,10 +52,24 @@ export const districtPopulations = {
 };
 
 const STATE_POPULATION = Object.values(districtPopulations).reduce((a, b) => a + b, 0);
+const idsMatch = (left, right) => left != null && right != null && String(left) === String(right);
+
+function getRangeDistrictIdSet(rangeName) {
+  const logicalIds = new Set((rangeDistricts[rangeName] || []).map(String));
+  return new Set(districts
+    .filter((district, index) => logicalIds.has(String(district.SourceDistrictID ?? district.DistrictID)) || logicalIds.has(String(index + 1)))
+    .map(district => String(district.DistrictID)));
+}
+
+function getStatusName(caseItem) {
+  return caseStatusMaster.find(status => idsMatch(status.CaseStatusID, caseItem.CaseStatusID))?.CaseStatusName
+    || caseItem.statusName || '';
+}
 
 // Helper: parse date filter
 function parseDateRange(range, customStart, customEnd) {
-  const now = new Date("2026-07-18T23:59:59"); // Fixed reference time matching the environment
+  const latestCaseTime = Math.max(0, ...caseViews.map(item => item.registeredDateObj?.getTime() || 0));
+  const now = new Date(Math.max(Date.now(), latestCaseTime));
   let start = null;
   let end = now;
 
@@ -111,12 +125,11 @@ function getFilteredDataset(filters) {
 
     // 2. Jurisdiction Level
     if (jurisdictionLevel === 'district' && selectedDistrict !== 'all') {
-      if (item.districtID !== Number(selectedDistrict)) return false;
+      if (!idsMatch(item.districtID, selectedDistrict)) return false;
     } else if (jurisdictionLevel === 'station' && selectedStation !== 'all') {
-      if (item.PoliceStationID !== Number(selectedStation)) return false;
+      if (!idsMatch(item.PoliceStationID, selectedStation)) return false;
     } else if (jurisdictionLevel === 'range' && selectedRange !== 'all') {
-      const allowedDistricts = rangeDistricts[selectedRange] || [];
-      if (!allowedDistricts.includes(item.districtID)) return false;
+      if (!getRangeDistrictIdSet(selectedRange).has(String(item.districtID))) return false;
     }
 
     // 3. Crime Category (multi-select supports array or 'all' or string)
@@ -130,8 +143,7 @@ function getFilteredDataset(filters) {
 
     // 4. Case Status
     if (caseStatus !== 'all') {
-      const s = caseStatusMaster.find(st => st.CaseStatusID === item.CaseStatusID);
-      const name = s ? s.CaseStatusName : '';
+      const name = getStatusName(item);
       if (caseStatus === 'Open' && name !== 'Under Investigation') return false;
       if (caseStatus === 'Chargesheeted' && name !== 'Charge Sheet Filed') return false;
       if (caseStatus === 'Closed' && !['Closed', 'Convicted', 'Acquitted'].includes(name)) return false;
@@ -172,8 +184,7 @@ function computeClearanceRate(cases) {
   if (cases.length === 0) return 0;
   let cleared = 0;
   cases.forEach(c => {
-    const s = caseStatusMaster.find(st => st.CaseStatusID === c.CaseStatusID);
-    const name = s ? s.CaseStatusName : '';
+    const name = getStatusName(c);
     if (['Closed', 'Convicted', 'Acquitted', 'Charge Sheet Filed'].includes(name)) {
       cleared += 1;
     }
@@ -204,7 +215,8 @@ export const statisticsApi = {
     // Dynamic Population based on selection
     let activePopulation = STATE_POPULATION;
     if (filters.jurisdictionLevel === 'district' && filters.selectedDistrict !== 'all') {
-      activePopulation = districtPopulations[Number(filters.selectedDistrict)] || 1500000;
+      const districtIndex = districts.findIndex(district => idsMatch(district.DistrictID, filters.selectedDistrict));
+      activePopulation = districtPopulations[districtIndex + 1] || 1500000;
     } else if (filters.jurisdictionLevel === 'range' && filters.selectedRange !== 'all') {
       const rangeDist = rangeDistricts[filters.selectedRange] || [];
       activePopulation = rangeDist.reduce((sum, d) => sum + (districtPopulations[d] || 1500000), 0);
@@ -232,8 +244,7 @@ export const statisticsApi = {
 
     // Pending Chargesheets
     const pendingChargesheets = currentDataset.filter(c => {
-      const s = caseStatusMaster.find(st => st.CaseStatusID === c.CaseStatusID);
-      return s ? s.CaseStatusName === 'Under Investigation' : false;
+      return getStatusName(c) === 'Under Investigation';
     }).length;
 
     // Risk Index
@@ -279,8 +290,9 @@ export const statisticsApi = {
     };
 
     const getGroup = (cId) => {
+      const logicalCrimeHeadId = crimeHeads.findIndex(head => idsMatch(head.CrimeHeadID, cId)) + 1;
       for (const [group, ids] of Object.entries(catMap)) {
-        if (ids.includes(Number(cId))) return group;
+        if (ids.includes(logicalCrimeHeadId)) return group;
       }
       return 'Other';
     };
@@ -357,9 +369,9 @@ export const statisticsApi = {
       // Apply filters other than date
       let matchesFilters = true;
       if (filters.jurisdictionLevel === 'district' && filters.selectedDistrict !== 'all') {
-        if (c.districtID !== Number(filters.selectedDistrict)) matchesFilters = false;
+        if (!idsMatch(c.districtID, filters.selectedDistrict)) matchesFilters = false;
       } else if (filters.jurisdictionLevel === 'station' && filters.selectedStation !== 'all') {
-        if (c.PoliceStationID !== Number(filters.selectedStation)) matchesFilters = false;
+        if (!idsMatch(c.PoliceStationID, filters.selectedStation)) matchesFilters = false;
       }
       if (filters.crimeCategory !== 'all') {
         const cat = Array.isArray(filters.crimeCategory) ? filters.crimeCategory : [filters.crimeCategory];
@@ -420,7 +432,8 @@ export const statisticsApi = {
 
     return delay({
       districts: mapData,
-      points: points.slice(0, 400) // cap points for Leaflet performance
+      points: points.slice(0, 400), // cap points for Leaflet performance
+      filteredCases: dataset
     });
   },
 
@@ -555,14 +568,12 @@ export const statisticsApi = {
     
     // Check chargesheeted status
     const chargesheeted = dataset.filter(c => {
-      const s = caseStatusMaster.find(st => st.CaseStatusID === c.CaseStatusID);
-      return s ? s.CaseStatusName === 'Charge Sheet Filed' : false;
+      return getStatusName(c) === 'Charge Sheet Filed';
     }).length;
 
     // Check convicted status
     const convicted = dataset.filter(c => {
-      const s = caseStatusMaster.find(st => st.CaseStatusID === c.CaseStatusID);
-      return s ? s.CaseStatusName === 'Convicted' : false;
+      return getStatusName(c) === 'Convicted';
     }).length;
 
     const funnelData = [
@@ -574,7 +585,7 @@ export const statisticsApi = {
 
     // District clearance performance bar
     const districtPerformance = districts.map(d => {
-      const districtCases = dataset.filter(c => c.districtID === d.DistrictID);
+      const districtCases = dataset.filter(c => idsMatch(c.districtID, d.DistrictID));
       const rate = computeClearanceRate(districtCases);
       
       let band = 'red'; // below 60%
@@ -629,7 +640,8 @@ export const statisticsApi = {
     // AI generated bullets based on filtered aggregates
     const heinous = dataset.filter(c => c.isHeinous).length;
     const ratio = total > 0 ? Math.round((heinous / total) * 100) : 0;
-    const cyberCount = dataset.filter(c => c.CrimeMajorHeadID === 8).length;
+    const cyberHead = crimeHeads.find(head => /cyber|information technology/i.test(head.CrimeGroupName || ''));
+    const cyberCount = dataset.filter(c => cyberHead && idsMatch(c.CrimeMajorHeadID, cyberHead.CrimeHeadID)).length;
 
     const bullets = [
       `Spatiotemporal modeling detects a ${total > 100 ? '14.2%' : '8.6%'} consolidation of property crimes under late-night hours (11 PM - 3 AM).`,
@@ -659,7 +671,7 @@ export const statisticsApi = {
 
     // 1. Districts by crime rate
     const districtScores = districts.map(d => {
-      const dCases = dataset.filter(c => c.districtID === d.DistrictID);
+      const dCases = dataset.filter(c => idsMatch(c.districtID, d.DistrictID));
       const count = dCases.length;
       const pop = districtPopulations[d.DistrictID] || 1500000;
       const rate = parseFloat(((count / pop) * 100000).toFixed(1));
@@ -681,7 +693,7 @@ export const statisticsApi = {
 
     const stationScores = units.map(u => {
       const count = stationCounts[u.UnitID] || 0;
-      const uCases = dataset.filter(c => c.PoliceStationID === u.UnitID);
+      const uCases = dataset.filter(c => idsMatch(c.PoliceStationID, u.UnitID));
       const clearance = computeClearanceRate(uCases);
       
       let auditScore = 80;

@@ -11,10 +11,9 @@ import AiInsightsPanel from './AiInsightsPanel';
 import ComparisonsRankingsSection from './ComparisonsRankingsSection';
 import ExportFooter from './ExportFooter';
 import { statisticsApi } from '../statisticsApi';
-import { useSecurity } from '../../../context/SecurityContext';
 
 const initialFilters = {
-  dateRange: 'last_year',
+  dateRange: 'all',
   startDate: '',
   endDate: '',
   jurisdictionLevel: 'all',
@@ -28,8 +27,7 @@ const initialFilters = {
   ageGroup: 'all'
 };
 
-function StatisticsPage({ defaultDistrict = 'all', defaultCrimeType = 'all', defaultDateRange = 'last_year' }) {
-  const { session } = useSecurity();
+function StatisticsPage({ defaultDistrict = 'all', defaultCrimeType = 'all', defaultDateRange = 'all' }) {
   const [filters, setFilters] = useState(() => ({
     ...initialFilters,
     selectedDistrict: defaultDistrict,
@@ -91,7 +89,7 @@ function StatisticsPage({ defaultDistrict = 'all', defaultCrimeType = 'all', def
           performance,
           insights,
           rankings,
-          filteredList: spatial.points || [] // raw cases list for CSV exporter
+          filteredList: spatial.filteredCases || []
         });
         setLoading(false);
       })
@@ -108,18 +106,7 @@ function StatisticsPage({ defaultDistrict = 'all', defaultCrimeType = 'all', def
   }, [filters]);
 
   const handleResetFilters = () => {
-    // Keep lock if user restricted
-    const isLocked = session && session.unitName && session.unitName !== 'State Control Room' && session.unitName !== 'command center' && session.unitName !== '';
-    if (isLocked) {
-      setFilters(prev => ({
-        ...initialFilters,
-        jurisdictionLevel: prev.jurisdictionLevel,
-        selectedDistrict: prev.selectedDistrict,
-        selectedStation: prev.selectedStation
-      }));
-    } else {
-      setFilters(initialFilters);
-    }
+    setFilters(initialFilters);
   };
 
   const handleDistrictDrillDown = (districtID) => {
@@ -199,6 +186,13 @@ function StatisticsPage({ defaultDistrict = 'all', defaultCrimeType = 'all', def
         onReset={handleResetFilters}
       />
 
+      {!loading && !error && (
+        <ExportFooter
+          filteredCases={pageData.filteredList}
+          filterSummary={getActiveFilterSummary()}
+        />
+      )}
+
       {loading ? (
         <div style={{
           display: 'flex',
@@ -277,8 +271,6 @@ function StatisticsPage({ defaultDistrict = 'all', defaultCrimeType = 'all', def
           {/* Custom ranks and comparison charts */}
           <ComparisonsRankingsSection rankingsData={pageData.rankings} />
           
-          {/* Actions drawer */}
-          <ExportFooter filteredCases={pageData.filteredList} />
         </div>
       )}
 
