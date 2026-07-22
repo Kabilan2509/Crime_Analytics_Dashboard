@@ -23,11 +23,32 @@ export function buildNetworkData(cases, accused, victims, districts, stations) {
     .sort((a, b) => (b.isHeinous ? 1 : 0) - (a.isHeinous ? 1 : 0))
     .slice(0, 40);
 
-  const activeCaseIds = new Set(activeCases.map(c => c.CaseMasterID));
+  // Catalyst child tables reference CaseMaster.ROWID, while the normalized case
+  // view can expose the logical CaseMasterID. Resolve both forms to one graph node.
+  const caseKeyToId = new Map();
+  activeCases.forEach(c => {
+    const canonicalId = String(c.ROWID || c.CaseMasterID);
+    [c.ROWID, c.CaseMasterID, c.SourceCaseMasterID]
+      .filter(value => value !== undefined && value !== null)
+      .forEach(value => caseKeyToId.set(String(value), canonicalId));
+  });
+
+  const relationRows = (globalRows, property, idFields) => {
+    const rows = [...(globalRows || []), ...activeCases.flatMap(c => c[property] || [])];
+    const seen = new Set();
+    return rows.filter((row, index) => {
+      const identity = idFields.map(field => row[field]).find(value => value !== undefined && value !== null);
+      const key = identity == null ? `${property}_${index}` : String(identity);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  };
 
   // 1. FIR Case nodes
   activeCases.forEach(c => {
-    const nodeId = `case_${c.CaseMasterID}`;
+    const caseId = String(c.ROWID || c.CaseMasterID);
+    const nodeId = `case_${caseId}`;
     if (nodeSet.has(nodeId)) return;
     nodes.push({
       id: nodeId, type: 'case',
@@ -66,13 +87,16 @@ export function buildNetworkData(cases, accused, victims, districts, stations) {
 
   // 4. Accused nodes + co-accused edges
   const accusedByCaseId = {};  // caseId → [criminalNodeId]
-  (accused || []).forEach((acc, idx) => {
-    if (!activeCaseIds.has(acc.CaseMasterID)) return;
-    const caseNodeId    = `case_${acc.CaseMasterID}`;
-    const criminalId    = `accused_${acc.AccusedID || idx}`;
-    const displayName   = acc.AccusedName
-      ? acc.AccusedName.trim().split(' ').slice(0, 2).join(' ')
-      : `Accused #${acc.AccusedID || idx + 101}`;
+  relationRows(accused, 'accused', ['ROWID', 'AccusedMasterID', 'AccusedID']).forEach((acc, idx) => {
+    const resolvedCaseId = caseKeyToId.get(String(acc.CaseMasterID ?? acc.CaseID));
+    if (!resolvedCaseId) return;
+    const caseNodeId = `case_${resolvedCaseId}`;
+    const accusedId = acc.ROWID || acc.AccusedMasterID || acc.AccusedID || idx;
+    const criminalId = `accused_${accusedId}`;
+    const fullName = acc.AccusedName || acc.Name || acc.FullName || acc.FirstName;
+    const displayName = fullName
+      ? String(fullName).trim().split(/\s+/).slice(0, 2).join(' ')
+      : `Accused #${accusedId || idx + 101}`;
 
     if (!nodeSet.has(criminalId)) {
       nodes.push({
@@ -86,8 +110,8 @@ export function buildNetworkData(cases, accused, victims, districts, stations) {
     edges.push({ source: criminalId, target: caseNodeId, type: 'accused_in', strength: 0.8 });
 
     // Track accused per case for co-accused edges
-    if (!accusedByCaseId[acc.CaseMasterID]) accusedByCaseId[acc.CaseMasterID] = [];
-    accusedByCaseId[acc.CaseMasterID].push(criminalId);
+    if (!accusedByCaseId[resolvedCaseId]) accusedByCaseId[resolvedCaseId] = [];
+    accusedByCaseId[resolvedCaseId].push(criminalId);
   });
 
   // Co-accused edges (accused who share the same case)
@@ -101,13 +125,16 @@ export function buildNetworkData(cases, accused, victims, districts, stations) {
   });
 
   // 5. Victim nodes
-  (victims || []).forEach((vic, idx) => {
-    if (!activeCaseIds.has(vic.CaseMasterID)) return;
-    const caseNodeId = `case_${vic.CaseMasterID}`;
-    const victimId   = `victim_${vic.VictimID || idx}`;
-    const displayName = vic.VictimName
-      ? vic.VictimName.trim().split(' ').slice(0, 2).join(' ')
-      : `Victim #${vic.VictimID || idx + 201}`;
+  relationRows(victims, 'victims', ['ROWID', 'VictimID']).forEach((vic, idx) => {
+    const resolvedCaseId = caseKeyToId.get(String(vic.CaseMasterID ?? vic.CaseID));
+    if (!resolvedCaseId) return;
+    const caseNodeId = `case_${resolvedCaseId}`;
+    const victimRecordId = vic.ROWID || vic.VictimID || idx;
+    const victimId = `victim_${victimRecordId}`;
+    const fullName = vic.VictimName || vic.Name || vic.FullName || vic.FirstName;
+    const displayName = fullName
+      ? String(fullName).trim().split(/\s+/).slice(0, 2).join(' ')
+      : `Victim #${victimRecordId || idx + 201}`;
 
     if (!nodeSet.has(victimId)) {
       nodes.push({

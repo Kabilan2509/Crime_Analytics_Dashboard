@@ -13,6 +13,7 @@ import UpcomingEventsInterAgencySection from './UpcomingEventsInterAgencySection
 import BriefingFooter from './BriefingFooter';
 import { briefingApi } from '../briefingApi';
 import { useSecurity } from '../../../context/SecurityContext';
+import { downloadPdf } from '../../../utils/fileExports';
 
 const initialFilters = {
   dateRange: 'last_7_days',
@@ -169,7 +170,9 @@ function BriefingPage() {
   };
 
   const handleExportPDF = () => {
-    window.print();
+    const pageText = document.querySelector('.briefing-page')?.innerText || 'No briefing content available.';
+    const date = new Date().toISOString().slice(0, 10);
+    downloadPdf(`ksp-intelligence-briefing-${date}.pdf`, 'KSP Intelligence Briefing', pageText.split('\n'));
   };
 
   return (

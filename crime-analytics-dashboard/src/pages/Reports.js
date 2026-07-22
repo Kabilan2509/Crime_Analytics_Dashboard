@@ -1,4 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import {
   ResponsiveContainer,
   LineChart,
@@ -36,6 +39,7 @@ import {
 } from '../data/schemaSelectors';
 import { useSecurity } from '../context/SecurityContext';
 import { maskText, maskNarrative, downloadBlob, toCsv } from '../security/securityUtils';
+import { downloadExcel, downloadPdf, sanitizePdfText } from '../utils/fileExports';
 
 // Helper function to dynamically load external scripts from CDN
 function loadScript(src) {
@@ -102,6 +106,7 @@ const DISTRICT_CENTERS = {
 };
 
 const DEFAULT_CENTER = [14.65, 75.9]; // Karnataka Center
+const idsMatch = (left, right) => left != null && right != null && String(left) === String(right);
 
 function ChartTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
@@ -168,7 +173,7 @@ function Reports() {
   // Filter sections based on selected act
   const filteredSections = useMemo(() => {
     if (selectedAct === 'all') return [];
-    return sections.filter(s => s.ActCode === selectedAct);
+    return sections.filter(s => idsMatch(s.ActCode, selectedAct));
   }, [selectedAct]);
 
   // Initialize pills with DateRange, Geography, and Offense to help guide the user
@@ -200,8 +205,10 @@ function Reports() {
 
     // 2. Geography
     if (selectedDistrict !== 'all') {
-      const distName = districts.find(d => d.DistrictID === Number(selectedDistrict))?.DistrictName || '';
-      const stationName = selectedStation !== 'all' ? `, PS: ${units.find(u => u.UnitID === Number(selectedStation))?.UnitName}` : '';
+      const district = districts.find(d => idsMatch(d.DistrictID, selectedDistrict));
+      const station = selectedStation !== 'all' ? units.find(u => idsMatch(u.UnitID, selectedStation)) : null;
+      const distName = district?.DistrictName || `District ${selectedDistrict}`;
+      const stationName = selectedStation !== 'all' ? `, PS: ${station?.UnitName || `Station ${selectedStation}`}` : '';
       const geoId = `filter_geo_${selectedDistrict}_${selectedStation}`;
       if (!newPills.some(p => p.id === geoId)) {
         newPills.push({
@@ -215,8 +222,14 @@ function Reports() {
 
     // 3. Crime Category
     if (selectedCrimeHead !== 'all') {
-      const headName = crimeHeads.find(h => h.CrimeHeadID === Number(selectedCrimeHead))?.CrimeGroupName || '';
-      const subHeadName = selectedCrimeSubHead !== 'all' ? `, Type: ${crimeSubHeads.find(s => s.CrimeSubHeadID === Number(selectedCrimeSubHead))?.CrimeHeadName}` : '';
+      const crimeHead = crimeHeads.find(h => idsMatch(h.CrimeHeadID, selectedCrimeHead));
+      const crimeSubHead = selectedCrimeSubHead !== 'all'
+        ? crimeSubHeads.find(s => idsMatch(s.CrimeSubHeadID, selectedCrimeSubHead))
+        : null;
+      const headName = crimeHead?.CrimeGroupName || `Crime Head ${selectedCrimeHead}`;
+      const subHeadName = selectedCrimeSubHead !== 'all'
+        ? `, Type: ${crimeSubHead?.CrimeHeadName || `Crime Type ${selectedCrimeSubHead}`}`
+        : '';
       const crimeId = `filter_crime_${selectedCrimeHead}_${selectedCrimeSubHead}`;
       if (!newPills.some(p => p.id === crimeId)) {
         newPills.push({
@@ -230,7 +243,7 @@ function Reports() {
 
     // 4. Case Category (FIR / UDR)
     if (selectedCaseCategory !== 'all') {
-      const catName = caseCategories.find(c => c.CaseCategoryID === Number(selectedCaseCategory))?.LookupValue || '';
+      const catName = caseCategories.find(c => idsMatch(c.CaseCategoryID, selectedCaseCategory))?.LookupValue || `Category ${selectedCaseCategory}`;
       const catId = `filter_cat_${selectedCaseCategory}`;
       if (!newPills.some(p => p.id === catId)) {
         newPills.push({
@@ -257,7 +270,7 @@ function Reports() {
 
     // 6. Case Status
     if (selectedCaseStatus !== 'all') {
-      const statName = caseStatusMaster.find(s => s.CaseStatusID === Number(selectedCaseStatus))?.CaseStatusName || '';
+      const statName = caseStatusMaster.find(s => idsMatch(s.CaseStatusID, selectedCaseStatus))?.CaseStatusName || `Status ${selectedCaseStatus}`;
       const statId = `filter_status_${selectedCaseStatus}`;
       if (!newPills.some(p => p.id === statId)) {
         newPills.push({
@@ -271,7 +284,7 @@ function Reports() {
 
     // 7. Advanced: Act & Section
     if (selectedAct !== 'all') {
-      const actName = acts.find(a => a.ActCode === selectedAct)?.ActName || selectedAct;
+      const actName = acts.find(a => idsMatch(a.ActCode, selectedAct))?.ActName || selectedAct;
       const sectionName = selectedSection ? ` Sec ${selectedSection}` : '';
       const actId = `filter_act_${selectedAct}_${selectedSection}`;
       if (!newPills.some(p => p.id === actId)) {
@@ -538,8 +551,8 @@ function Reports() {
     // Group changes by district
     const distData = [];
     districts.forEach(d => {
-      const currDistCount = filteredCases.filter(c => c.districtID === d.DistrictID).length;
-      const baseDistCount = baselineCases.filter(c => c.districtID === d.DistrictID).length;
+      const currDistCount = filteredCases.filter(c => idsMatch(c.districtID, d.DistrictID)).length;
+      const baseDistCount = baselineCases.filter(c => idsMatch(c.districtID, d.DistrictID)).length;
       const dDiff = currDistCount - baseDistCount;
       const dChange = baseDistCount > 0 ? Math.round((dDiff / baseDistCount) * 100) : (currDistCount > 0 ? 100 : 0);
 
@@ -638,44 +651,146 @@ function Reports() {
       setExporting(false);
     } catch (err) {
       console.error('XLSX export failed:', err);
-      alert('Excel export failed: ' + err.message);
+      const headers = ['Case ID', 'FIR Number', 'Crime Group', 'Crime Type', 'District', 'Station', 'Officer', 'Date Registered', 'Status', 'Severity'];
+      const rows = filteredCases.map(c => [
+        c.CaseMasterID, isCommandMode ? c.FIRNo : maskText(c.FIRNo || `FIR-${c.CaseMasterID}`, 6, 4),
+        c.majorHeadName, c.minorHeadName, c.districtName, c.policeStationName,
+        isCommandMode ? c.officerName : maskText(c.officerName || 'Officer', 3, 3),
+        String(c.CrimeRegisteredDate).split(' ')[0], c.statusName, c.gravityLabel
+      ]);
+      downloadExcel(`KSP_Briefing_${activeTemplate}_Report_${new Date().toISOString().split('T')[0]}.xls`, 'Case Records', headers, rows);
       setExporting(false);
     }
   };
 
   const exportPDF = async () => {
+    const element = document.getElementById('report-export-content');
+    if (!element) {
+      alert('Generate a report before exporting the PDF.');
+      return;
+    }
     try {
       setExporting(true);
-      await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
-      await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+      const orientation = activeTab === 'table' ? 'landscape' : 'portrait';
+      const pdf = new jsPDF({ orientation, unit: 'mm', format: 'a4', compress: true });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 14;
+      const reportTitle = sanitizePdfText(`KSP ${activeTemplate.replace(/_/g, ' ').toUpperCase()} REPORT`);
+      const generatedAt = new Date().toLocaleString('en-IN');
+      const filtersText = sanitizePdfText(getAppliedFiltersText());
 
-      const element = document.getElementById('report-briefing-pdf');
-      const canvas = await window.html2canvas(element, { scale: 1.5, useCORS: true, allowTaint: true });
-      const imgData = canvas.toDataURL('image/png');
+      const drawHeader = () => {
+        pdf.setFillColor(20, 55, 92);
+        pdf.rect(0, 0, pageWidth, 24, 'F');
+        pdf.setTextColor(255, 255, 255);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(14);
+        pdf.text('KARNATAKA STATE POLICE', margin, 10);
+        pdf.setFontSize(8);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text('CRIME ANALYTICS & INTELLIGENCE REPORTING SYSTEM', margin, 16);
+        pdf.text('OFFICIAL USE', pageWidth - margin, 13, { align: 'right' });
+      };
 
-      const { jsPDF } = window.jspdf;
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const imgWidth = 210;
-      const pageHeight = 295;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
-      let position = 0;
+      const drawTitleBlock = () => {
+        drawHeader();
+        pdf.setTextColor(25, 35, 45);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(15);
+        pdf.text(reportTitle, margin, 35);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(8.5);
+        pdf.setTextColor(85, 95, 105);
+        pdf.text(`View: ${activeTab.toUpperCase()}   |   Generated: ${generatedAt}   |   Records: ${filteredCases.length}`, margin, 42);
+        const filterLines = pdf.splitTextToSize(`Applied filters: ${filtersText}`, pageWidth - margin * 2);
+        pdf.text(filterLines, margin, 48);
+        pdf.setDrawColor(200, 208, 216);
+        pdf.line(margin, 55, pageWidth - margin, 55);
+      };
 
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
+      drawTitleBlock();
 
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
+      if (activeTab === 'table') {
+        autoTable(pdf, {
+          startY: 61,
+          margin: { left: margin, right: margin, top: 30, bottom: 16 },
+          head: [['Case ID', 'FIR Number', 'Crime Group', 'Crime Type', 'District', 'Station', 'Registered', 'Status', 'Severity']],
+          body: filteredCases.map(c => [
+            c.CaseMasterID,
+            isCommandMode ? c.FIRNo : maskText(c.FIRNo || `FIR-${c.CaseMasterID}`, 6, 4),
+            c.majorHeadName, c.minorHeadName, c.districtName, c.policeStationName,
+            String(c.CrimeRegisteredDate).split(' ')[0], c.statusName, c.gravityLabel
+          ].map(sanitizePdfText)),
+          theme: 'grid',
+          styles: { font: 'helvetica', fontSize: 7, cellPadding: 2, overflow: 'linebreak', valign: 'middle' },
+          headStyles: { fillColor: [20, 55, 92], textColor: 255, fontStyle: 'bold', halign: 'left' },
+          alternateRowStyles: { fillColor: [244, 247, 250] },
+          columnStyles: { 0: { cellWidth: 22 }, 1: { cellWidth: 28 }, 6: { cellWidth: 21 }, 7: { cellWidth: 18 }, 8: { cellWidth: 18 } },
+          didParseCell: data => {
+            if (Array.isArray(data.cell.text)) data.cell.text = data.cell.text.map(sanitizePdfText);
+          },
+          didDrawPage: data => { if (data.pageNumber > 1) drawHeader(); }
+        });
+      } else if (activeTab === 'charts') {
+        const chartElement = document.getElementById('report-chart-content');
+        if (!chartElement) throw new Error('Chart content is not available.');
+        await new Promise(resolve => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)));
+        const chartCanvas = await html2canvas(chartElement, {
+          scale: 2, useCORS: true, backgroundColor: theme === 'dark' ? '#101820' : '#ffffff', logging: false
+        });
+        const maxWidth = pageWidth - margin * 2;
+        const maxHeight = pageHeight - 82;
+        const ratio = Math.min(maxWidth / chartCanvas.width, maxHeight / chartCanvas.height);
+        const chartWidth = chartCanvas.width * ratio;
+        const chartHeight = chartCanvas.height * ratio;
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(11);
+        pdf.setTextColor(25, 35, 45);
+        pdf.text('FIR Registration Progression Trend', margin, 64);
+        pdf.addImage(chartCanvas.toDataURL('image/png'), 'PNG', margin, 70, chartWidth, chartHeight, undefined, 'FAST');
+        pdf.setFont('helvetica', 'italic');
+        pdf.setFontSize(8);
+        pdf.setTextColor(90, 100, 110);
+        pdf.text('Figure generated from the currently submitted report query.', margin, Math.min(pageHeight - 17, 75 + chartHeight));
+      } else {
+        const contentText = element.innerText.split('\n').map(sanitizePdfText).filter(Boolean);
+        let y = 63;
+        contentText.forEach((line, index) => {
+          const isHeading = line.length < 75 && (line === line.toUpperCase() || index === 0);
+          pdf.setFont('helvetica', isHeading ? 'bold' : 'normal');
+          pdf.setFontSize(isHeading ? 10.5 : 8.5);
+          pdf.setTextColor(isHeading ? 20 : 55, isHeading ? 55 : 65, isHeading ? 92 : 75);
+          const wrapped = pdf.splitTextToSize(line, pageWidth - margin * 2);
+          const requiredHeight = wrapped.length * (isHeading ? 5 : 4.2) + (isHeading ? 2 : 0);
+          if (y + requiredHeight > pageHeight - 18) {
+            pdf.addPage();
+            drawHeader();
+            y = 34;
+          }
+          pdf.text(wrapped, margin, y);
+          y += requiredHeight;
+        });
       }
 
-      pdf.save(`KSP_${activeTemplate.toUpperCase()}_Briefing_${new Date().toISOString().split('T')[0]}.pdf`);
-      setExporting(false);
+      const totalPages = pdf.getNumberOfPages();
+      for (let page = 1; page <= totalPages; page += 1) {
+        pdf.setPage(page);
+        pdf.setDrawColor(210, 215, 220);
+        pdf.line(margin, pageHeight - 12, pageWidth - margin, pageHeight - 12);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(7.5);
+        pdf.setTextColor(100, 108, 116);
+        pdf.text('KSP Crime Analytics Dashboard | Confidential - Official Use Only', margin, pageHeight - 7);
+        pdf.text(`Page ${page} of ${totalPages}`, pageWidth - margin, pageHeight - 7, { align: 'right' });
+      }
+      pdf.save(`KSP_${activeTemplate.toUpperCase()}_${activeTab.toUpperCase()}_${new Date().toISOString().split('T')[0]}.pdf`);
     } catch (err) {
       console.error('PDF export failed:', err);
-      alert('PDF export failed: ' + err.message);
+      const reportText = element.innerText || 'No report content available.';
+      downloadPdf(`KSP_${activeTemplate.toUpperCase()}_Briefing_${new Date().toISOString().split('T')[0]}.pdf`,
+        `KSP ${activeTemplate.toUpperCase()} Briefing`, reportText.split('\n'));
+    } finally {
       setExporting(false);
     }
   };
@@ -875,10 +990,10 @@ function Reports() {
     // Find escalations
     const escalationCategory = [];
     crimeHeads.forEach(ch => {
-      const curr = filteredCases.filter(c => c.CrimeMajorHeadID === ch.CrimeHeadID).length;
+      const curr = filteredCases.filter(c => idsMatch(c.CrimeMajorHeadID, ch.CrimeHeadID)).length;
       // Get baseline count
       const baselineStart = new Date(new Date().getTime() - 86400000 * 30); // estimate 30 days
-      const base = caseViews.filter(c => c.CrimeMajorHeadID === ch.CrimeHeadID && c.registeredDateObj < baselineStart).length;
+      const base = caseViews.filter(c => idsMatch(c.CrimeMajorHeadID, ch.CrimeHeadID) && c.registeredDateObj < baselineStart).length;
       const diff = curr - base;
       const pct = base > 0 ? Math.round((diff / base) * 100) : (curr > 0 ? 100 : 0);
       if (pct > 15) {
@@ -1105,7 +1220,7 @@ function Reports() {
       const row = { name: d.DistrictName };
       let total = 0;
       heads.forEach(h => {
-        const cnt = filteredCases.filter(c => c.districtID === d.DistrictID && c.CrimeMajorHeadID === h.CrimeHeadID).length;
+        const cnt = filteredCases.filter(c => idsMatch(c.districtID, d.DistrictID) && idsMatch(c.CrimeMajorHeadID, h.CrimeHeadID)).length;
         row[h.CrimeGroupName] = cnt;
         total += cnt;
       });
@@ -1113,7 +1228,7 @@ function Reports() {
       
       // MoM estimation
       const baselineStart = new Date(new Date().getTime() - 86400000 * 30);
-      const prevTotal = caseViews.filter(c => c.districtID === d.DistrictID && c.registeredDateObj < baselineStart).length;
+      const prevTotal = caseViews.filter(c => idsMatch(c.districtID, d.DistrictID) && c.registeredDateObj < baselineStart).length;
       const diff = total - prevTotal;
       row.Change = prevTotal > 0 ? Math.round((diff / prevTotal) * 100) : (total > 0 ? 100 : 0);
       return row;
@@ -1121,9 +1236,9 @@ function Reports() {
 
     // Rising/Falling counts
     const crimeHeadTrends = crimeHeads.map(ch => {
-      const curr = filteredCases.filter(c => c.CrimeMajorHeadID === ch.CrimeHeadID).length;
+      const curr = filteredCases.filter(c => idsMatch(c.CrimeMajorHeadID, ch.CrimeHeadID)).length;
       const baselineStart = new Date(new Date().getTime() - 86400000 * 30);
-      const prev = caseViews.filter(c => c.CrimeMajorHeadID === ch.CrimeHeadID && c.registeredDateObj < baselineStart).length;
+      const prev = caseViews.filter(c => idsMatch(c.CrimeMajorHeadID, ch.CrimeHeadID) && c.registeredDateObj < baselineStart).length;
       const diff = curr - prev;
       const pct = prev > 0 ? Math.round((diff / prev) * 100) : (curr > 0 ? 100 : 0);
       return { name: ch.CrimeGroupName, change: pct, current: curr };
@@ -1386,7 +1501,7 @@ function Reports() {
   const renderHotspotReport = () => {
     // Group counts by district
     const hotspotData = districts.map(d => {
-      const cnt = filteredCases.filter(c => c.districtID === d.DistrictID).length;
+      const cnt = filteredCases.filter(c => idsMatch(c.districtID, d.DistrictID)).length;
       return {
         id: d.DistrictID,
         name: d.DistrictName,
@@ -1400,7 +1515,7 @@ function Reports() {
     const compositionData = districts.slice(0, 5).map(d => {
       const row = { name: d.DistrictName.slice(0, 10) };
       crimeHeads.slice(0, 3).forEach(h => {
-        row[h.CrimeGroupName.replace('Crimes Against ', '')] = filteredCases.filter(c => c.districtID === d.DistrictID && c.CrimeMajorHeadID === h.CrimeHeadID).length;
+        row[h.CrimeGroupName.replace('Crimes Against ', '')] = filteredCases.filter(c => idsMatch(c.districtID, d.DistrictID) && idsMatch(c.CrimeMajorHeadID, h.CrimeHeadID)).length;
       });
       return row;
     });
@@ -1540,12 +1655,12 @@ function Reports() {
       );
     }
 
-    const stationObj = units.find(u => u.UnitID === Number(stationId));
+    const stationObj = units.find(u => idsMatch(u.UnitID, stationId));
     const stationName = stationObj?.UnitName || `Station #${stationId}`;
 
     // Crime Head counts
     const headCounts = crimeHeads.map(h => {
-      const cnt = filteredCases.filter(c => c.CrimeMajorHeadID === h.CrimeHeadID).length;
+      const cnt = filteredCases.filter(c => idsMatch(c.CrimeMajorHeadID, h.CrimeHeadID)).length;
       return { name: h.CrimeGroupName, count: cnt };
     }).filter(h => h.count > 0);
 
@@ -1728,18 +1843,18 @@ function Reports() {
       );
     }
 
-    const districtObj = districts.find(d => d.DistrictID === Number(districtId));
+    const districtObj = districts.find(d => idsMatch(d.DistrictID, districtId));
     const districtName = districtObj?.DistrictName || `District #${districtId}`;
 
     // Crime Head counts
     const headCounts = crimeHeads.map(h => {
-      const cnt = filteredCases.filter(c => c.CrimeMajorHeadID === h.CrimeHeadID).length;
+      const cnt = filteredCases.filter(c => idsMatch(c.CrimeMajorHeadID, h.CrimeHeadID)).length;
       return { name: h.CrimeGroupName, count: cnt };
     }).filter(h => h.count > 0);
 
     // PS ranking
-    const psData = units.filter(u => u.DistrictID === Number(districtId)).map(u => {
-      const cnt = filteredCases.filter(c => c.PoliceStationID === u.UnitID).length;
+    const psData = units.filter(u => idsMatch(u.DistrictID, districtId)).map(u => {
+      const cnt = filteredCases.filter(c => idsMatch(c.PoliceStationID, u.UnitID)).length;
       return { name: u.UnitName, count: cnt };
     }).sort((a, b) => b.count - a.count);
 
@@ -1770,7 +1885,7 @@ function Reports() {
           </div>
           <div style={{ display: 'flex', gap: '24px', fontSize: '11px' }}>
             <div>
-              <strong>Stations Count:</strong> {units.filter(u => u.DistrictID === Number(districtId)).length} stations
+              <strong>Stations Count:</strong> {units.filter(u => idsMatch(u.DistrictID, districtId)).length} stations
             </div>
             <div>
               <strong>Active Beats:</strong> 64 Beats
@@ -1885,7 +2000,7 @@ function Reports() {
     const yoyRows = multiYearComparisonData;
 
     const districtRankings = districts.map(d => {
-      const cnt = filteredCases.filter(c => c.districtID === d.DistrictID).length;
+      const cnt = filteredCases.filter(c => idsMatch(c.districtID, d.DistrictID)).length;
       return { name: d.DistrictName, count: cnt };
     }).sort((a, b) => b.count - a.count);
 
@@ -2059,7 +2174,7 @@ function Reports() {
     const ch10 = getChapterCases(['state', 'sedition', 'national security', 'unlawful']);
 
     const districtComparison = districts.map(d => {
-      const cnt = filteredCases.filter(c => c.districtID === d.DistrictID).length;
+      const cnt = filteredCases.filter(c => idsMatch(c.districtID, d.DistrictID)).length;
       return { name: d.DistrictName, count: cnt };
     }).sort((a, b) => b.count - a.count);
 
@@ -2751,13 +2866,13 @@ function Reports() {
           </div>
 
           {/* Results Area */}
-          <article className="card" style={{ padding: 20 }}>
+          <article id="report-export-content" className="card" style={{ padding: 20 }}>
             {activeTab === 'briefing' ? (
               <div id="report-briefing-pdf" style={{ padding: '10px 15px', backgroundColor: '#ffffff', color: '#1a1a1a' }}>
                 {renderTemplateContent()}
               </div>
             ) : activeTab === 'charts' ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div id="report-chart-content" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div style={{ borderBottom: `1px solid ${activeThemeColors.border}`, paddingBottom: 8 }}>
                   <span className="section-eyebrow">Time Series Visualizer</span>
                   <h4 style={{ margin: 0, textTransform: 'uppercase', fontSize: 13, fontWeight: 700, color: activeThemeColors.textColor }}>

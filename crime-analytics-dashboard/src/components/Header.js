@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   MdMenu, MdOutlineLightMode, MdOutlineDarkMode,
   MdNotificationsNone, MdSearch, MdShield,
@@ -27,12 +27,32 @@ const PAGE_TITLES = {
 
 function Header({ theme, onToggleTheme, onOpenSidebar }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const page = PAGE_TITLES[location.pathname] || PAGE_TITLES['/'];
   const { session, isCommandMode, startSecureSession, lockSession } = useSecurity();
 
   const [showNotifications, setShowNotifications] = useState(false);
   const [showPiiModal, setShowPiiModal] = useState(false);
   const [form, setForm] = useState({ officerName: '', badgeId: '', unitName: '', role: 'Field Officer' });
+
+  const openQuickLookup = () => {
+    if (location.pathname.startsWith('/cases')) {
+      window.dispatchEvent(new CustomEvent('open-quick-lookup'));
+    } else {
+      navigate('/cases?quickLookup=1');
+    }
+  };
+
+  useEffect(() => {
+    const handleQuickLookup = (event) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        openQuickLookup();
+      }
+    };
+    window.addEventListener('keydown', handleQuickLookup);
+    return () => window.removeEventListener('keydown', handleQuickLookup);
+  });
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -87,7 +107,7 @@ function Header({ theme, onToggleTheme, onOpenSidebar }) {
               id="portal-search"
               type="text"
               placeholder="Quick Lookup (Ctrl+K)"
-              onFocus={e => { e.target.blur(); window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true })); }}
+              onFocus={e => { e.target.blur(); openQuickLookup(); }}
               readOnly
             />
             <span className="kbd-hint">Ctrl+K</span>

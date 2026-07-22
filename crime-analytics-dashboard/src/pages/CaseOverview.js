@@ -90,6 +90,20 @@ function CaseOverview() {
   const dropdownRef = useRef(null);
   const searchInputRef = useRef(null);
 
+  useEffect(() => {
+    const focusQuickLookup = () => {
+      window.requestAnimationFrame(() => {
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+        setShowDropdown(true);
+      });
+    };
+
+    if (searchParams.get('quickLookup') === '1') focusQuickLookup();
+    window.addEventListener('open-quick-lookup', focusQuickLookup);
+    return () => window.removeEventListener('open-quick-lookup', focusQuickLookup);
+  }, [searchParams]);
+
   // Debounce search input (300ms)
   useEffect(() => {
     const handler = setTimeout(() => {

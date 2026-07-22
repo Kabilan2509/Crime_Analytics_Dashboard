@@ -1,16 +1,16 @@
 import React from 'react';
 import { MdFileDownload, MdPrint } from 'react-icons/md';
 import { useSecurity } from '../../../context/SecurityContext';
+import { downloadCsv, downloadExcel, downloadPdf } from '../../../utils/fileExports';
 
 function ExportFooter({ filteredCases, onExportPDF }) {
   const { session } = useSecurity();
   const refreshTime = new Date().toLocaleTimeString();
 
-  // Real client-side CSV downloader of the filtered caseload
-  const exportToCSV = (filename = 'ksp_filtered_statistics.csv') => {
+  const getExportData = () => {
     if (!filteredCases || filteredCases.length === 0) {
       alert('No data available to export.');
-      return;
+      return null;
     }
 
     const headers = [
@@ -37,30 +37,28 @@ function ExportFooter({ filteredCases, onExportPDF }) {
       c.isHeinous ? 'Heinous' : 'Non-Heinous'
     ]);
 
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.map(val => {
-        const str = String(val || '').replace(/"/g, '""');
-        return `"${str}"`;
-      }).join(','))
-    ].join('\n');
+    return { headers, rows };
+  };
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', filename);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const exportToCSV = () => {
+    const data = getExportData();
+    if (data) downloadCsv('ksp_filtered_statistics.csv', data.headers, data.rows);
+  };
+
+  const exportToExcel = () => {
+    const data = getExportData();
+    if (data) downloadExcel('ksp_filtered_statistics.xls', 'Statistics', data.headers, data.rows);
   };
 
   const handlePrintPDF = () => {
     if (onExportPDF) {
       onExportPDF();
     } else {
-      window.print();
+      const data = getExportData();
+      if (data) downloadPdf('ksp_filtered_statistics.pdf', 'KSP Filtered Crime Statistics', [
+        data.headers.join(' | '),
+        ...data.rows.map(row => row.join(' | '))
+      ]);
     }
   };
 
@@ -82,7 +80,7 @@ function ExportFooter({ filteredCases, onExportPDF }) {
       <div style={{ display: 'flex', gap: '10px' }}>
         <button
           type="button"
-          onClick={() => exportToCSV('ksp_filtered_statistics.csv')}
+          onClick={exportToCSV}
           style={{
             padding: '8px 14px',
             borderRadius: '6px',
@@ -104,7 +102,7 @@ function ExportFooter({ filteredCases, onExportPDF }) {
 
         <button
           type="button"
-          onClick={() => exportToCSV('ksp_filtered_statistics.xlsx')}
+          onClick={exportToExcel}
           style={{
             padding: '8px 14px',
             borderRadius: '6px',

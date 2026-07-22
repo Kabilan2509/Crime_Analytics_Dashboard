@@ -11,6 +11,7 @@ import 'leaflet/dist/leaflet.css';
 import { caseViews } from '../data/schemaSelectors';
 import { playAlertSound } from '../utils/audioAlert';
 import { useSecurity } from '../context/SecurityContext';
+import { downloadPdf } from '../utils/fileExports';
 
 // Deterministic locality reverse geocoding
 const getLocality = (lat, lng, caseId) => {
@@ -416,7 +417,15 @@ function SuspectTimeline() {
 
   const handleExportTimeline = () => {
     playAlertSound(800, 0.05);
-    alert(`Reconstruction Timeline PDF compiled:\nEntity: ${activeSuspect?.name}\nTotal logs verified: ${filteredEvents.length}`);
+    const suspectName = activeSuspect?.name || 'Unknown suspect';
+    downloadPdf(`suspect-timeline-${suspectName.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.pdf`,
+      `KSP Suspect Reconstruction Timeline - ${suspectName}`,
+      [
+        `Total verified logs: ${filteredEvents.length}`,
+        `Generated: ${new Date().toLocaleString()}`,
+        '',
+        ...filteredEvents.map(event => `${event.timestamp} | ${event.type} | ${event.title} | ${event.desc || ''} | ${event.source || ''}`)
+      ]);
   };
 
   // Select timeline marker

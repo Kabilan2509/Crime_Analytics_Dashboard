@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Karnataka State Police — Zoho Catalyst Services Audit Report</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+    :root {
+      --primary: #1e3a8a;
+      --primary-accent: #2563eb;
+      --dark: #0f172a;
+      --text: #334155;
+      --light-bg: #f8fafc;
+      --border: #e2e8f0;
+      --success: #16a34a;
+      --purple: #7c3aed;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--text);
+      background-color: #f1f5f9;
+      margin: 0;
+      padding: 40px 20px;
+      line-height: 1.6;
+    }
+
+    .page-container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: #ffffff;
+      padding: 50px 60px;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+      border: 1px solid var(--border);
+    }
+
+    .header {
+      border-bottom: 3px solid var(--primary);
+      padding-bottom: 20px;
+      margin-bottom: 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+
+    .header-title h1 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--primary);
+      letter-spacing: -0.5px;
+    }
+
+    .header-title h2 {
+      margin: 4px 0 0 0;
+      font-size: 15px;
+      font-weight: 600;
+      color: #64748b;
+    }
+
+    .header-meta {
+      text-align: right;
+      font-size: 12px;
+      color: #64748b;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .badge-active { background: #dcfce7; color: #15803d; }
+    .badge-future { background: #f3e8ff; color: #6b21a8; }
+
+    h3 {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--dark);
+      margin-top: 35px;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    h3::before {
+      content: '';
+      display: block;
+      width: 4px;
+      height: 18px;
+      background: var(--primary-accent);
+      border-radius: 2px;
+    }
+
+    p { margin-top: 0; margin-bottom: 16px; font-size: 14px; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 25px;
+      font-size: 13px;
+    }
+
+    th, td {
+      padding: 12px 14px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+
+    th {
+      background-color: var(--light-bg);
+      font-weight: 700;
+      color: var(--dark);
+      border-top: 1px solid var(--border);
+    }
+
+    tr:nth-child(even) td { background-color: #fafafa; }
+
+    code {
+      font-family: 'Courier New', Courier, monospace;
+      background: #f1f5f9;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+      color: #0f172a;
+    }
+
+    .arch-box {
+      background: #0f172a;
+      color: #f8fafc;
+      padding: 24px;
+      border-radius: 10px;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 12px;
+      white-space: pre;
+      overflow-x: auto;
+      margin: 20px 0;
+      line-height: 1.4;
+      border: 1px solid #334155;
+    }
+
+    .print-btn {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      background: var(--primary-accent);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 30px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
+      transition: all 0.2s;
+    }
+    .print-btn:hover { background: #1d4ed8; transform: translateY(-2px); }
+
+    @media print {
+      body { background: white; padding: 0; }
+      .page-container { box-shadow: none; border: none; padding: 0; max-width: 100%; }
+      .print-btn { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <button class="print-btn" onclick="window.print()">🖨️ Save as PDF / Print</button>
+
+  <div class="page-container">
+    
+    <div class="header">
+      <div class="header-title">
+        <h1>Karnataka State Police (KSP)</h1>
+        <h2>Crime Analytics & Intelligence Platform — Zoho Catalyst Services Audit</h2>
+      </div>
+      <div class="header-meta">
+        <div><strong>Document ID:</strong> KSP-CATALYST-AUDIT-2026</div>
+        <div><strong>Platform:</strong> Zoho Catalyst Suite</div>
+        <div><strong>Status:</strong> Active Production Infrastructure</div>
+      </div>
+    </div>
+
+    <p>This document presents a comprehensive audit of all <strong>Zoho Catalyst Cloud Services</strong> currently operational within the Karnataka State Police Crime Analytics Dashboard, along with the strategic roadmap of upcoming Catalyst services for full state-wide deployment.</p>
+
+    <!-- SECTION 1 -->
+    <h3>1. Active Zoho Catalyst Services (Currently Implemented)</h3>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 22%;">Catalyst Service</th>
+          <th style="width: 18%;">Category</th>
+          <th style="width: 38%;">Implementation & Technical Scope</th>
+          <th style="width: 22%;">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Catalyst Data Store</strong></td>
+          <td>Relational Database</td>
+          <td>Houses all 26 relational database tables containing 1,501 FIR records, accused profiles, victim datasets, arrest sheets, police stations, and officer master tables.</td>
+          <td><span class="badge badge-active">Active</span></td>
+        </tr>
+        <tr>
+          <td><strong>ZCQL Engine</strong></td>
+          <td>Query Language</td>
+          <td>Executes dynamic SQL relational joins, date-range filters, and aggregate counts (<code>COUNT</code>, <code>SUM</code>, <code>GROUP BY</code>) inside function endpoints.</td>
+          <td><span class="badge badge-active">Active</span></td>
+        </tr>
+        <tr>
+          <td><strong>Serverless Functions</strong></td>
+          <td>Node.js Express API</td>
+          <td>Powers the central backend (<code>crime_api</code>) for pre-computed statistics, cache management, and AI copilot message routing.</td>
+          <td><span class="badge badge-active">Active</span></td>
+        </tr>
+        <tr>
+          <td><strong>Web Client Hosting</strong></td>
+          <td>Cloud Hosting</td>
+          <td>Serves the single-page React client application with optimized single-command CLI deployment (<code>catalyst deploy</code>).</td>
+          <td><span class="badge badge-active">Active</span></td>
+        </tr>
+        <tr>
+          <td><strong>QuickML & GLM-4.7-Flash</strong></td>
+          <td>AI & Machine Learning</td>
+          <td>Powers the <strong>MADHUKAR AI Copilot</strong> for natural language tool calling and automated executive briefings, plus a Random Forest model for crime risk scoring.</td>
+          <td><span class="badge badge-active">Active</span></td>
+        </tr>
+        <tr>
+          <td><strong>OAuth & Credential Vault</strong></td>
+          <td>Auth Security</td>
+          <td>Multi-strategy authentication pipeline resolving Zoho OAuth tokens (<code>QuickML.deployment.READ</code>) for secure SDK and REST communications.</td>
+          <td><span class="badge badge-active">Active</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- SECTION 2 -->
+    <h3>2. Recommended Future Catalyst Services (Expansion Roadmap)</h3>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 22%;">Catalyst Service</th>
+          <th style="width: 22%;">Targeted Feature</th>
+          <th style="width: 44%;">Operational Impact & Value Proposition</th>
+          <th style="width: 12%;">Priority</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Catalyst Authentication</strong></td>
+          <td>Role-Based Access (RBAC)</td>
+          <td>Enforce rank-based access control (Commissioner vs. District SP vs. Station IO) with secure OTP & SSO login.</td>
+          <td><span class="badge badge-future">High</span></td>
+        </tr>
+        <tr>
+          <td><strong>Catalyst File Store</strong></td>
+          <td>Digital Evidence Vault</td>
+          <td>Upload and preview case document PDFs, scanned FIR papers, weapon photos, charge-sheets, and crime scene images.</td>
+          <td><span class="badge badge-future">High</span></td>
+        </tr>
+        <tr>
+          <td><strong>Catalyst Zia AI</strong></td>
+          <td>OCR & Text NLP Analysis</td>
+          <td>Auto-extract text from handwritten police complaints using Zia OCR, and auto-parse suspect names/locations from narrative text using Zia NLP.</td>
+          <td><span class="badge badge-future">Medium</span></td>
+        </tr>
+        <tr>
+          <td><strong>Catalyst Cron Jobs</strong></td>
+          <td>Automated Nightly Tasks</td>
+          <td>Run background jobs at 00:00 UTC to recalculate risk scores, aggregate station workloads, and generate daily executive summaries.</td>
+          <td><span class="badge badge-future">Medium</span></td>
+        </tr>
+        <tr>
+          <td><strong>Push Notifications</strong></td>
+          <td>Real-Time Heinous Crime Alerts</td>
+          <td>Dispatch immediate SMS/Push alerts to District SPs whenever a grave offence (e.g. Murder, Robbery) or repeat offender is registered.</td>
+          <td><span class="badge badge-future">Medium</span></td>
+        </tr>
+        <tr>
+          <td><strong>Catalyst Cache</strong></td>
+          <td>In-Memory Redis Cache</td>
+          <td>Upgrade the local Node memory cache to distributed Catalyst Cache for sub-millisecond database queries across all function instances.</td>
+          <td><span class="badge badge-future">Low</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- SECTION 3 -->
+    <h3>3. High-Level Architecture & Integration Topology</h3>
+    <div class="arch-box">┌─────────────────────────────────────────────────────────────────────────────┐
+│                      REACT FRONTEND (Catalyst Web Client)                   │
+│         Dashboard · Crime Map · Network Graph · MADHUKAR Copilot            │
+└──────────────────────────────────────┬──────────────────────────────────────┘
+                                       │ REST / JSON API
+┌──────────────────────────────────────▼──────────────────────────────────────┐
+│                CATALYST SERVERLESS FUNCTION (Node.js Express)               │
+│                  functions/crime_api  (Advanced I/O Endpoints)              │
+├──────────────────────────────────────┬──────────────────────────────────────┤
+│  • ZCQL Database Query Abstraction   │  • MADHUKAR Tool-Calling AI Engine  │
+│  • Shared 5-Minute In-Process Cache  │  • Multi-Strategy Token Authenticator│
+└──────────────────┬───────────────────┴───────────────────┬──────────────────┘
+                   │                                       │
+┌──────────────────▼──────────────────┐ ┌──────────────────▼──────────────────┐
+│         CATALYST DATA STORE         │ │        CATALYST QUICKML & GLM       │
+│  26 Tables · 1,501 Active FIRs      │ │   GLM-4.7-Flash LLM + QuickML RF   │
+└─────────────────────────────────────┘ └─────────────────────────────────────┘</div>
+
+  </div>
+
+</body>
+</html>

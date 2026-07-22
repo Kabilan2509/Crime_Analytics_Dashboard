@@ -8,6 +8,7 @@ import {
   MdWarning, MdCheck, MdLayers, MdOutlineFileDownload, MdAutorenew,
   MdExpandMore
 } from 'react-icons/md';
+import { downloadCsv } from '../utils/fileExports';
 import {
   ResponsiveContainer, AreaChart, Area, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend
 } from 'recharts';
@@ -331,6 +332,19 @@ function UserManagement() {
     setSelectedOfficerIds([]);
   };
 
+  const exportOfficerCsv = (officerIds) => {
+    const selectedOfficers = officerIds.map(id => officers.find(officer => officer.officer_id === id)).filter(Boolean);
+    downloadCsv(
+      `ksp_officers_export_${new Date().toISOString().substring(0, 10)}.csv`,
+      ['Badge No', 'Name', 'Rank', 'Email', 'Status', 'Clearance'],
+      selectedOfficers.map(officer => [
+        officer.badge_no, officer.name, officer.rank, officer.email, officer.status, officer.clearance_level
+      ])
+    );
+    logEvent('data_export', 'Directory', 'multiple', `Exported security directory profile data for ${selectedOfficers.length} accounts.`);
+    triggerToast(`Successfully exported CSV data for ${selectedOfficers.length} officers`);
+  };
+
   const handleBulkExport = () => {
     if (selectedOfficerIds.length === 0) return;
     playAlertSound(600, 0.05);
@@ -345,6 +359,7 @@ function UserManagement() {
         status: 'Pending',
         notes: `Dual sign-off requested to export directory details for ${selectedOfficerIds.length} officers.`,
         justification: `Triggered bulk export operation. Targeted records badge IDs: ${selectedOfficerIds.map(id => officers.find(o => o.officer_id === id)?.badge_no).join(', ')}.`,
+        exportOfficerIds: [...selectedOfficerIds],
         dual_control_required: true, 
         approvers: [] 
       };
@@ -361,23 +376,7 @@ function UserManagement() {
       return;
     }
 
-    // Direct Export
-    const dataRows = selectedOfficerIds.map(id => {
-      const off = officers.find(o => o.officer_id === id);
-      return `"${off.badge_no}","${off.name}","${off.rank}","${off.email}","${off.status}","${off.clearance_level}"`;
-    });
-
-    const csvContent = "data:text/csv;charset=utf-8,Badge No,Name,Rank,Email,Status,Clearance\n" + dataRows.join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `ksp_officers_export_${new Date().toISOString().substring(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    logEvent('data_export', 'Directory', 'multiple', `Exported security directory profile data for ${selectedOfficerIds.length} accounts.`);
-    triggerToast(`Successfully exported CSV data for ${selectedOfficerIds.length} officers`);
+    exportOfficerCsv(selectedOfficerIds);
     setSelectedOfficerIds([]);
   };
 
@@ -567,8 +566,9 @@ function UserManagement() {
           }));
         } else if (req.type === 'Access Request') {
           // Dynamic execution: if the Access Request was a bulk export, we allow the export action now
-          if (req.notes.includes('Bulk Data Export')) {
+          if (req.exportOfficerIds?.length) {
             triggerToast('Data export request authorized. Proceeding with export download.');
+            exportOfficerCsv(req.exportOfficerIds);
           }
         }
 

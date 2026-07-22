@@ -25,8 +25,7 @@ import {
   MdPushPin, MdClose,
 } from 'react-icons/md';
 import { buildNetworkData, getNodeStats, ENTITY } from '../features/network/graphUtils';
-import { caseViews }                               from '../data/schemaSelectors';
-import { accused, victims, districts, units }      from '../data/sampleData';
+import { caseViews, accused, victims, districts, units } from '../data/schemaSelectors';
 
 // ─── Filter chip definitions ──────────────────────────────────────────────────
 const FILTER_CHIPS = [
