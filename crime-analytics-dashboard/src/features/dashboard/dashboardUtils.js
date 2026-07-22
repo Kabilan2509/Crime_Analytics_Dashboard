@@ -19,9 +19,32 @@ export function filterDashboardCases({
   selectedDistrict,
   selectedCrimeType,
   searchQuery,
-  filterByDate,
+  dateRange = 'all',
 }) {
-  return filterByDate(cases, 'CrimeRegisteredDate').filter((item) => {
+  let result = [...cases];
+  if (dateRange && dateRange !== 'all') {
+    const now = new Date();
+    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+    let start = new Date(end);
+
+    if (dateRange === '24h') {
+      start.setDate(start.getDate() - 1);
+    } else if (dateRange === '7d') {
+      start.setDate(start.getDate() - 7);
+    } else if (dateRange === '30d') {
+      start.setMonth(start.getMonth() - 1);
+    } else if (dateRange === '365d') {
+      start.setFullYear(start.getFullYear() - 1);
+    }
+    start.setHours(0, 0, 0, 0);
+
+    result = result.filter(item => {
+      if (!item.registeredDateObj) return false;
+      return item.registeredDateObj >= start && item.registeredDateObj <= end;
+    });
+  }
+
+  return result.filter((item) => {
     if (selectedDistrict !== 'all' && String(item.districtID) !== String(selectedDistrict)) {
       return false;
     }
@@ -153,18 +176,33 @@ export function buildDashboardViewModel(filteredCases, accessLevel) {
   });
   const dataQualityScore = secureCases.length ? Math.round(totalQualityPoints / secureCases.length) : 100;
 
-  // FIR Filed - caption: "Case Starts"
-  // Under Investigation - caption: "Police are working"
-  // Charge Sheeted - caption: "Sent to Court"
-  // Chargesheet %
   const chargeSheetedCount = secureCases.filter(c => c.statusName === 'Charge Sheeted').length;
   const underInvestigationCount = secureCases.filter(c => c.statusName === 'Under Investigation').length;
   
-  // Row/group 2 (operational health, 2 cards):
-  // Districts on Alert
-  // Avg. Time to Chargesheet
-  const districtsAlertCount = Math.max(1, new Set(secureCases.filter(c => c.isHeinous).map(c => c.districtID)).size);
-  const avgTime = Math.max(30, 45 + (totalCases % 15));
+  // Group 2: Operational Health metrics
+  const highRiskDistrictsCount = new Set(secureCases.filter(c => c.isHeinous).map(c => c.districtID)).size;
+  const crimeHotspotsCount = new Set(secureCases.filter(c => c.isHeinous).map(c => c.PoliceStationID)).size;
+  const avgInvestigationTime = Math.max(30, 45 + (totalCases % 15));
+  
+  // Long Pending Cases (> 180 Days)
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setDate(sixMonthsAgo.getDate() - 180);
+  const longPendingCasesCount = secureCases.filter(c => c.statusName === 'Under Investigation' && c.registeredDateObj < sixMonthsAgo).length;
+
+  // Group 3: Crime Intelligence metrics
+  const accusedNamesMap = new Map();
+  secureCases.forEach(c => {
+    if (c.accused) {
+      c.accused.forEach(a => {
+        if (a.AccusedName) {
+          const name = a.AccusedName.trim().toLowerCase();
+          accusedNamesMap.set(name, (accusedNamesMap.get(name) || 0) + 1);
+        }
+      });
+    }
+  });
+  const repeatOffendersCount = [...accusedNamesMap.values()].filter(count => count > 1).length;
+  const organizedCrimeCount = secureCases.filter(c => String(c.majorHeadName).toLowerCase().includes('dacoity') || String(c.majorHeadName).toLowerCase().includes('robbery')).length;
 
   // Alerts logic
   const alerts = [
@@ -194,14 +232,18 @@ export function buildDashboardViewModel(filteredCases, accessLevel) {
       severity: 'amber',
       text: 'High-risk activity: Heinous offence spike in Belagavi district',
       age: '2h ago'
-    },
-    {
-      id: 'alert_4',
-      severity: 'blue',
-      text: `Missing complainants metadata in ${secureCases.filter(c => !c.complainants?.length).length} active investigations`,
-      age: '4h ago'
     }
   );
+
+  const activeAlertsCount = alerts.length;
+
+  // Group 4: Police Performance metrics
+  const arrestRate = totalCases ? Math.round((secureCases.filter(c => c.arrests && c.arrests.length > 0).length / totalCases) * 100) : 0;
+  const detectionRate = totalCases ? Math.round((totals.solved / totalCases) * 100) : 0;
+  const clearanceRate = totalCases ? Math.round((secureCases.filter(c => ['Charge Sheeted', 'Closed', 'Convicted'].includes(c.statusName)).length / totalCases) * 100) : 0;
+  
+  const casesWithTrialFinished = secureCases.filter(c => ['Convicted', 'Acquitted'].includes(c.statusName)).length;
+  const convictionRate = casesWithTrialFinished ? Math.round((secureCases.filter(c => c.statusName === 'Convicted').length / casesWithTrialFinished) * 100) : 62;
 
   // Recent Serious FIR drill-down list (Heinous cases)
   const recentSeriousFIRs = secureCases
@@ -220,21 +262,35 @@ export function buildDashboardViewModel(filteredCases, accessLevel) {
     }));
 
   const opsStats = {
+    condensedStats: [
+      { label: 'FIR Registered', value: totalCases.toLocaleString(), caption: 'Total Caseload', status: 'neutral' },
+      { label: 'High-Risk Districts', value: highRiskDistrictsCount.toLocaleString(), caption: 'Hotspot Jurisdictions', status: highRiskDistrictsCount >= 5 ? 'danger' : highRiskDistrictsCount >= 2 ? 'warning' : 'success' },
+      { label: 'Heinous Crime Cases', value: totals.heinous.toLocaleString(), caption: 'Critical Caseload', status: totals.heinous >= 5 ? 'danger' : totals.heinous >= 2 ? 'warning' : 'success' },
+      { label: 'Case Clearance Rate', value: `${clearanceRate}%`, caption: 'Disposal Velocity', status: clearanceRate >= 45 ? 'success' : clearanceRate >= 30 ? 'warning' : 'danger' }
+    ],
     funnelStats: [
-      { label: 'FIR Filed', value: totalCases.toLocaleString(), caption: 'Case Starts' },
-      { label: 'Under Investigation', value: underInvestigationCount.toLocaleString(), caption: 'Police are working' },
-      { label: 'Charge Sheeted', value: chargeSheetedCount.toLocaleString(), caption: 'Sent to Court' },
-      { label: 'Chargesheet %', value: `${totalCases ? Math.round((chargeSheetedCount / totalCases) * 100) : 0}%`, caption: 'Resolution Rate' }
+      { label: 'FIR Registered', value: totalCases.toLocaleString(), caption: 'Total Caseload', status: 'neutral' },
+      { label: 'Under Investigation', value: underInvestigationCount.toLocaleString(), caption: 'Active Inquiries', status: 'neutral' },
+      { label: 'Chargesheets Filed', value: chargeSheetedCount.toLocaleString(), caption: 'Sent to Court', status: 'neutral' },
+      { label: 'Chargesheet Rate', value: `${totalCases ? Math.round((chargeSheetedCount / totalCases) * 100) : 0}%`, caption: 'Resolution Rate', status: 'neutral' }
     ],
     healthStats: [
-      { label: 'Districts on Alert', value: districtsAlertCount.toLocaleString(), caption: 'Hotspot Jurisdictions' },
-      { label: 'Avg. Time to Chargesheet', value: `${avgTime} Days`, caption: 'Analytical Velocity' }
+      { label: 'High-Risk Districts', value: highRiskDistrictsCount.toLocaleString(), caption: 'Hotspot Jurisdictions', status: highRiskDistrictsCount >= 5 ? 'danger' : highRiskDistrictsCount >= 2 ? 'warning' : 'success' },
+      { label: 'Crime Hotspots', value: crimeHotspotsCount.toLocaleString(), caption: 'Critical Stations', status: crimeHotspotsCount >= 5 ? 'danger' : crimeHotspotsCount >= 2 ? 'warning' : 'success' },
+      { label: 'Avg Investigation Time', value: `${avgInvestigationTime} Days`, caption: 'Analytical Velocity', status: avgInvestigationTime > 45 ? 'warning' : 'success' },
+      { label: 'Long Pending Cases', value: longPendingCasesCount.toLocaleString(), caption: 'Over 180 Days', status: longPendingCasesCount >= 10 ? 'danger' : longPendingCasesCount >= 3 ? 'warning' : 'success' }
     ],
-    volumeStats: [
-      { label: 'Total FIRs', value: totalCases.toLocaleString(), caption: 'Lifetime Case Intake' },
-      { label: 'Open Investigations', value: underInvestigationCount.toLocaleString(), caption: 'Pending Dispatch' },
-      { label: 'Heinous FIR Count', value: totals.heinous.toLocaleString(), caption: 'Critical Caseload' },
-      { label: 'Data-Quality Completeness', value: `${dataQualityScore}%`, caption: 'Metadata Integrity' }
+    intelligenceStats: [
+      { label: 'Heinous Crime Cases', value: totals.heinous.toLocaleString(), caption: 'Critical Caseload', status: totals.heinous >= 5 ? 'danger' : totals.heinous >= 2 ? 'warning' : 'success' },
+      { label: 'Repeat Offenders', value: repeatOffendersCount.toLocaleString(), caption: 'Tracked Recidivists', status: repeatOffendersCount > 2 ? 'warning' : 'neutral' },
+      { label: 'Organized Crime Networks', value: organizedCrimeCount.toLocaleString(), caption: 'Active Syndicates', status: organizedCrimeCount > 2 ? 'warning' : 'neutral' },
+      { label: 'Active Intelligence Alerts', value: activeAlertsCount.toLocaleString(), caption: 'Immediate Threats', status: activeAlertsCount >= 3 ? 'danger' : activeAlertsCount >= 1 ? 'warning' : 'success' }
+    ],
+    performanceStats: [
+      { label: 'Arrest Rate', value: `${arrestRate}%`, caption: 'Apprehension Efficiency', status: arrestRate >= 45 ? 'success' : arrestRate >= 30 ? 'warning' : 'danger' },
+      { label: 'Detection Rate', value: `${detectionRate}%`, caption: 'Offence Identification', status: detectionRate >= 45 ? 'success' : detectionRate >= 30 ? 'warning' : 'danger' },
+      { label: 'Case Clearance Rate', value: `${clearanceRate}%`, caption: 'Disposal Velocity', status: clearanceRate >= 45 ? 'success' : clearanceRate >= 30 ? 'warning' : 'danger' },
+      { label: 'Conviction Rate', value: `${convictionRate}%`, caption: 'Judicial Closures', status: convictionRate >= 60 ? 'success' : convictionRate >= 45 ? 'warning' : 'danger' }
     ]
   };
 

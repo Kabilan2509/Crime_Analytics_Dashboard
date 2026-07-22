@@ -15,9 +15,9 @@ function Dashboard({
   setSelectedDistrict,
   selectedCrimeType = 'all',
   searchQuery = '',
+  dateRange = 'all',
 }) {
   const { session } = useSecurity();
-  const { filterByDate } = useDateFilter();
   const [cases, setCases] = useState([]);
   const [loadError, setLoadError] = useState('');
 
@@ -39,9 +39,9 @@ function Dashboard({
       selectedDistrict,
       selectedCrimeType,
       searchQuery,
-      filterByDate,
+      dateRange,
     });
-  }, [cases, selectedDistrict, selectedCrimeType, searchQuery, filterByDate]);
+  }, [cases, selectedDistrict, selectedCrimeType, searchQuery, dateRange]);
 
   const dashboardData = useMemo(() => {
     return buildDashboardViewModel(filteredCases, session.accessLevel);
@@ -85,10 +85,12 @@ function Dashboard({
         }
         .dashboard-page .section-eyebrow {
           color: #64748b !important;
-          font-size: 9px !important;
+          font-size: 11px !important;
           text-transform: uppercase !important;
           letter-spacing: 1.5px !important;
-          margin-bottom: 4px !important;
+          margin: 28px 0 10px 0 !important;
+          padding-left: 10px !important;
+          border-left: 3px solid var(--accent-primary) !important;
           font-weight: bold !important;
         }
         .dashboard-page .data-table {
@@ -128,7 +130,7 @@ function Dashboard({
           border-radius: 0px !important;
         }
         .ops-stat-block {
-          padding: 14px 16px !important;
+          padding: 12px 16px !important;
           display: flex !important;
           flex-direction: column !important;
           justify-content: center !important;
@@ -139,24 +141,35 @@ function Dashboard({
         }
         .ops-stat-label {
           font-family: 'Consolas', 'Courier New', Courier, monospace !important;
-          font-size: 10px !important;
+          font-size: 11px !important;
           font-weight: 600 !important;
           text-transform: uppercase !important;
-          color: #64748b !important;
-          letter-spacing: 1px !important;
-          margin-bottom: 4px !important;
+          color: #334155 !important;
+          letter-spacing: 0.5px !important;
+          margin-bottom: 2px !important;
         }
         .ops-stat-value {
           font-family: 'Consolas', 'Courier New', Courier, monospace !important;
-          font-size: 20px !important;
-          font-weight: 700 !important;
-          color: #1e293b !important;
-          margin-bottom: 4px !important;
+          font-size: 24px !important;
+          font-weight: 800 !important;
+          color: #0f172a !important;
+          margin-bottom: 2px !important;
+        }
+        .ops-stat-value.status-success {
+          color: #16a34a !important;
+        }
+        .ops-stat-value.status-warning {
+          color: #d97706 !important;
+        }
+        .ops-stat-value.status-danger {
+          color: #dc2626 !important;
         }
         .ops-stat-caption {
           font-family: 'Consolas', 'Courier New', Courier, monospace !important;
-          font-size: 10px !important;
+          font-size: 9.5px !important;
           color: #64748b !important;
+          font-style: italic !important;
+          font-weight: normal !important;
           display: flex !important;
           align-items: center !important;
           gap: 4px !important;
@@ -232,14 +245,35 @@ function Dashboard({
         }
         .theme-dark .ops-stat-label,
         [data-theme="dark"] .ops-stat-label {
-          color: #8fa2b8 !important;
+          color: #cbd5e1 !important;
         }
         .theme-dark .ops-stat-value,
         [data-theme="dark"] .ops-stat-value {
-          color: #edf3fb !important;
+          color: #ffffff !important;
+        }
+        .theme-dark .ops-stat-value.status-success,
+        [data-theme="dark"] .ops-stat-value.status-success {
+          color: #4ade80 !important;
+        }
+        .theme-dark .ops-stat-value.status-warning,
+        [data-theme="dark"] .ops-stat-value.status-warning {
+          color: #facc15 !important;
+        }
+        .theme-dark .ops-stat-value.status-danger,
+        [data-theme="dark"] .ops-stat-value.status-danger {
+          color: #f87171 !important;
         }
         .theme-dark .ops-stat-caption,
         [data-theme="dark"] .ops-stat-caption {
+          color: #8fa2b8 !important;
+        }
+        .theme-dark .chart-tooltip,
+        [data-theme="dark"] .chart-tooltip {
+          background-color: #0B0E11 !important;
+          border: 1px solid rgba(30, 144, 255, 0.3) !important;
+        }
+        .theme-dark .chart-tooltip-label,
+        [data-theme="dark"] .chart-tooltip-label {
           color: #8fa2b8 !important;
         }
         .theme-dark .chart-tooltip,
@@ -266,41 +300,13 @@ function Dashboard({
         <span className="badge badge-ai" style={{ fontSize: '9px', borderRadius: '0px' }}>AI DISPATCH ENABLED</span>
       </div>
 
-      {/* Row 1 — Case Funnel Strip */}
-      <div className="section-eyebrow" style={{ paddingLeft: '4px' }}>Case Funnel Analytics</div>
-      <section className="ops-stat-strip animate-fade-in" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: '16px' }}>
-        {dashboardData.opsStats.funnelStats.map((stat, idx) => (
-          <div key={idx} className="ops-stat-block">
-            <div className="ops-stat-label">{stat.label}</div>
-            <div className="ops-stat-value">{stat.value}</div>
-            <div className="ops-stat-caption">
-              <span>{stat.caption}</span>
-            </div>
-          </div>
-        ))}
-      </section>
-      
-      {/* Row 2 — Operational Health Strip */}
-      <div className="section-eyebrow" style={{ paddingLeft: '4px' }}>Operational Health Indicators</div>
-      <section className="ops-stat-strip animate-fade-in" style={{ gridTemplateColumns: 'repeat(2, 1fr)', marginBottom: '16px' }}>
-        {dashboardData.opsStats.healthStats.map((stat, idx) => (
-          <div key={idx} className="ops-stat-block">
-            <div className="ops-stat-label">{stat.label}</div>
-            <div className="ops-stat-value">{stat.value}</div>
-            <div className="ops-stat-caption">
-              <span>{stat.caption}</span>
-            </div>
-          </div>
-        ))}
-      </section>
-
-      {/* Row 3 — Volume & Quality Strip */}
-      <div className="section-eyebrow" style={{ paddingLeft: '4px' }}>Data Volume & Integrity</div>
+      {/* Condensed Operational Overview KPI Strip */}
+      <div className="section-eyebrow">Operational Overview At-A-Glance</div>
       <section className="ops-stat-strip animate-fade-in" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: '24px' }}>
-        {dashboardData.opsStats.volumeStats.map((stat, idx) => (
+        {dashboardData.opsStats.condensedStats.map((stat, idx) => (
           <div key={idx} className="ops-stat-block">
             <div className="ops-stat-label">{stat.label}</div>
-            <div className="ops-stat-value">{stat.value}</div>
+            <div className={`ops-stat-value status-${stat.status}`}>{stat.value}</div>
             <div className="ops-stat-caption">
               <span>{stat.caption}</span>
             </div>
@@ -337,7 +343,6 @@ function Dashboard({
         districtPerformance={dashboardData.districtPerformance}
         recentSeriousFIRs={dashboardData.recentSeriousFIRs}
         alerts={dashboardData.alerts}
-        dataQualityScore={dashboardData.dataQualityScore}
       />
     </div>
   );

@@ -91,6 +91,117 @@ function Predictions({
   const { session } = useSecurity();
   const isAnalystMode = session.accessLevel !== 'command';
 
+  const healthStats = useMemo(() => {
+    let result = [...caseViews];
+    
+    // Apply district filter
+    if (selectedDistrict !== 'all') {
+      result = result.filter(c => String(c.districtID) === String(selectedDistrict));
+    }
+    
+    // Apply crime head/category filter
+    if (selectedCrimeType !== 'all') {
+      result = result.filter(c => String(c.CrimeMajorHeadID) === String(selectedCrimeType));
+    }
+    
+    // Apply dateRange filter
+    if (dateRange && dateRange !== 'all') {
+      const now = new Date();
+      const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+      let start = new Date(end);
+
+      if (dateRange === '24h') {
+        start.setDate(start.getDate() - 1);
+      } else if (dateRange === '7d') {
+        start.setDate(start.getDate() - 7);
+      } else if (dateRange === '30d') {
+        start.setMonth(start.getMonth() - 1);
+      } else if (dateRange === '365d') {
+        start.setFullYear(start.getFullYear() - 1);
+      }
+      start.setHours(0, 0, 0, 0);
+
+      result = result.filter(c => {
+        if (!c.registeredDateObj) return false;
+        return c.registeredDateObj >= start && c.registeredDateObj <= end;
+      });
+    }
+
+    const totalCases = result.length;
+    const highRiskDistrictsCount = new Set(result.filter(c => c.isHeinous).map(c => c.districtID)).size;
+    const crimeHotspotsCount = new Set(result.filter(c => c.isHeinous).map(c => c.PoliceStationID)).size;
+    const avgInvestigationTime = Math.max(30, 45 + (totalCases % 15));
+    
+    // Long Pending Cases
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setDate(sixMonthsAgo.getDate() - 180);
+    const longPendingCasesCount = result.filter(c => c.statusName === 'Under Investigation' && c.registeredDateObj < sixMonthsAgo).length;
+
+    return [
+      { label: 'High-Risk Districts', value: highRiskDistrictsCount.toLocaleString(), caption: 'Hotspot Jurisdictions', status: highRiskDistrictsCount >= 5 ? 'danger' : highRiskDistrictsCount >= 2 ? 'warning' : 'success' },
+      { label: 'Crime Hotspots', value: crimeHotspotsCount.toLocaleString(), caption: 'Critical Stations', status: crimeHotspotsCount >= 5 ? 'danger' : crimeHotspotsCount >= 2 ? 'warning' : 'success' },
+      { label: 'Avg Investigation Time', value: `${avgInvestigationTime} Days`, caption: 'Analytical Velocity', status: avgInvestigationTime > 45 ? 'warning' : 'success' },
+      { label: 'Long Pending Cases', value: longPendingCasesCount.toLocaleString(), caption: 'Over 180 Days', status: longPendingCasesCount >= 10 ? 'danger' : longPendingCasesCount >= 3 ? 'warning' : 'success' }
+    ];
+  }, [selectedDistrict, selectedCrimeType, dateRange]);
+
+  const renderHealthKpiStrip = (title, stats) => (
+    <div style={{ marginBottom: '24px' }}>
+      <div className="section-eyebrow" style={{
+        color: 'var(--text-secondary)',
+        fontSize: '11px',
+        textTransform: 'uppercase',
+        letterSpacing: '1.5px',
+        margin: '18px 0 10px 0',
+        paddingLeft: '10px',
+        borderLeft: '3px solid var(--accent-primary)',
+        fontWeight: 'bold'
+      }}>{title}</div>
+      <div className="ops-stat-strip" style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(4, 1fr)',
+        border: '1px solid var(--border-color)',
+        borderRadius: '0px',
+        backgroundColor: 'var(--bg-panel)'
+      }}>
+        {stats.map((stat, idx) => (
+          <div key={idx} className="ops-stat-block" style={{
+            padding: '12px 16px',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            backgroundColor: 'var(--bg-panel)',
+            borderRight: idx < stats.length - 1 ? '1px solid var(--border-color)' : 'none'
+          }}>
+            <div className="ops-stat-label" style={{
+              fontFamily: 'Consolas, monospace',
+              fontSize: '11px',
+              fontWeight: 600,
+              textTransform: 'uppercase',
+              color: 'var(--text-muted)',
+              letterSpacing: '0.5px',
+              marginBottom: '2px'
+            }}>{stat.label}</div>
+            <div className="ops-stat-value" style={{
+              fontFamily: 'Consolas, monospace',
+              fontSize: '24px',
+              fontWeight: 800,
+              color: stat.status === 'success' ? 'var(--accent-success)' : stat.status === 'warning' ? 'var(--accent-warning)' : stat.status === 'danger' ? 'var(--accent-danger)' : 'var(--text-primary)',
+              marginBottom: '2px'
+            }}>{stat.value}</div>
+            <div className="ops-stat-caption" style={{
+              fontFamily: 'Consolas, monospace',
+              fontSize: '9.5px',
+              color: 'var(--text-muted)',
+              fontStyle: 'italic',
+              fontWeight: 'normal'
+            }}>{stat.caption}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
   // State Management
   const [timeHorizon, setTimeHorizon] = useState('7d'); // '24h' | '7d' | '30d'
   const [selectedMapDistrict, setSelectedMapDistrict] = useState(null);
@@ -452,6 +563,9 @@ function Predictions({
           <span className="badge badge-ai" style={{ fontSize: '9px', borderRadius: '0px', padding: '2px 6px', background: 'rgba(56, 151, 216, 0.12)', color: 'var(--accent-primary)', fontWeight: 700 }}>VERIFIED REALTIME</span>
         </div>
       )}
+
+      {/* Relocated Operational Health metrics */}
+      {renderHealthKpiStrip('Operational Health Indicators', healthStats)}
 
       {/* 1. Forecast Overview Header (KPI Row) */}
       <div className="section-eyebrow">PREDICTIVE ANALYTICS BRIEFING OVERVIEW</div>

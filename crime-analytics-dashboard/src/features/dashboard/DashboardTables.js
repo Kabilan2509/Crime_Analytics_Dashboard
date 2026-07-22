@@ -1,6 +1,7 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
-function DashboardTables({ districtPerformance, recentSeriousFIRs, alerts, dataQualityScore }) {
+function DashboardTables({ districtPerformance, recentSeriousFIRs, alerts }) {
   return (
     <section className="grid-2" style={{ gap: '20px', alignItems: 'stretch' }}>
       {/* Left Column: District Stats + Recent Heinous Cases */}
@@ -78,12 +79,12 @@ function DashboardTables({ districtPerformance, recentSeriousFIRs, alerts, dataQ
                       </span>
                     </td>
                     <td style={{ textAlign: 'right', paddingRight: '12px' }}>
-                      <a
-                        href={item.actionUrl}
+                      <Link
+                        to={item.actionUrl}
                         style={{ color: '#2563eb', textDecoration: 'underline' }}
                       >
                         Inspect
-                      </a>
+                      </Link>
                     </td>
                   </tr>
                 ))}
@@ -94,7 +95,7 @@ function DashboardTables({ districtPerformance, recentSeriousFIRs, alerts, dataQ
 
       </div>
 
-      {/* Right Column: Alert Rail + Data Quality Panel */}
+      {/* Right Column: Alert Rail */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
         
         {/* Alert Rail Card */}
@@ -118,46 +119,6 @@ function DashboardTables({ districtPerformance, recentSeriousFIRs, alerts, dataQ
                 </div>
               );
             })}
-          </div>
-        </article>
-
-        {/* Data Quality Completeness Card */}
-        <article className="card" style={{ margin: 0 }}>
-          <div className="card-header">
-            <div>
-              <div className="section-eyebrow">Integrity Check</div>
-              <h3 className="card-title">Data-quality & schema-coverage</h3>
-            </div>
-          </div>
-          <div style={{ marginTop: '16px', fontFamily: 'Consolas, monospace' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13px' }}>
-              <span style={{ color: 'var(--text-muted)' }}>Metadata Completeness Score</span>
-              <strong style={{ fontSize: '16px', color: '#16a34a' }}>{dataQualityScore}%</strong>
-            </div>
-            {/* Progress Bar */}
-            <div style={{ height: '8px', width: '100%', backgroundColor: '#cbd5e1', borderRadius: '4px', overflow: 'hidden', marginBottom: '16px' }}>
-              <div style={{ height: '100%', width: `${dataQualityScore}%`, backgroundColor: '#2563eb', transition: 'width 0.4s ease' }} />
-            </div>
-            
-            {/* Checklist details */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '11px', color: 'var(--text-secondary)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>• GPS Geo-Coordinates:</span>
-                <span style={{ color: '#16a34a' }}>100% Ingested</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>• Complainant Profiles:</span>
-                <span style={{ color: '#16a34a' }}>98.2% Covered</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>• Suspect Demographics:</span>
-                <span style={{ color: dataQualityScore > 90 ? '#16a34a' : '#d97706' }}>{Math.round(dataQualityScore * 0.95)}% Covered</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>• Act & Section Offence Codes:</span>
-                <span style={{ color: '#16a34a' }}>100% Covered</span>
-              </div>
-            </div>
           </div>
         </article>
 
