@@ -23,9 +23,10 @@ html[data-theme='light'] {
   --bg-header: rgba(244, 247, 251, 0.92);
   --bg-overlay: rgba(8, 19, 34, 0.38);
   --text-primary: #16283f;
-  --text-secondary: #4d6179;
-  --text-muted: #70839a;
+  --text-secondary: #3f536a;
+  --text-muted: #52677d;
   --text-inverse: #f8fbff;
+  --text-on-accent: #ffffff;
   --border-color: #d6dfeb;
   --border-strong: #b8c7d8;
   --accent-primary: #005B96;
@@ -57,9 +58,10 @@ html[data-theme='dark'] {
   --bg-header: rgba(13, 23, 36, 0.92);
   --bg-overlay: rgba(0, 0, 0, 0.55);
   --text-primary: #edf3fb;
-  --text-secondary: #b7c6d8;
-  --text-muted: #8fa2b8;
+  --text-secondary: #cfdae6;
+  --text-muted: #adbed0;
   --text-inverse: #f8fbff;
+  --text-on-accent: #07131f;
   --border-color: rgba(173, 193, 214, 0.16);
   --border-strong: rgba(173, 193, 214, 0.26);
   --accent-primary: #4da3d6;
@@ -1885,8 +1887,8 @@ button {
   position: absolute;
   right: 0;
   top: calc(100% + 6px);
-  width: 175px;
-  padding: 10px 12px;
+  width: min(290px, calc(100vw - 24px));
+  padding: 14px 16px;
   background: var(--bg-panel);
   border: 1px solid var(--border-color);
   border-radius: 8px;
@@ -1896,7 +1898,7 @@ button {
 }
 
 .a11y-title {
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -1909,8 +1911,8 @@ button {
   align-items: center;
   justify-content: space-between;
   gap: 6px;
-  padding: 5px 0;
-  font-size: 11px;
+  padding: 9px 0;
+  font-size: 13px;
   color: var(--text-secondary);
   border-bottom: 1px solid var(--border-color);
 }
@@ -1921,8 +1923,10 @@ button {
 }
 
 .a11y-btns button {
-  width: 30px;
-  height: 30px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px !important;
+  min-height: 44px !important;
   border-radius: 8px;
   border: 1px solid var(--border-color);
   background: var(--bg-panel-alt);
@@ -1937,7 +1941,7 @@ button {
 .a11y-btns button:hover,
 .a11y-btns button.active {
   background: var(--accent-primary);
-  color: white;
+  color: #ffffff;
   border-color: var(--accent-primary);
 }
 
@@ -1948,8 +1952,8 @@ button {
   border-radius: 10px;
   border: 1px solid var(--border-color);
   background: var(--bg-panel-alt);
-  color: var(--text-secondary);
-  font-size: 12px;
+  color: var(--text-primary);
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   display: flex;
@@ -3813,4 +3817,65 @@ th {
   :where(a, button, input, select, textarea):focus-visible {
     outline: 3px solid Highlight !important;
   }
+}
+
+/* Theme-specific readable text for compact UI and supporting labels. */
+:where(small, .text-muted, .helper-text, .form-hint, .field-hint, .card-subtitle,
+  .header-subtitle, .brand-subtitle, .data-freshness, .meta-text) {
+  color: var(--text-muted);
+}
+
+:where(.text-secondary, .card-description, .panel-description, .form-label, caption) {
+  color: var(--text-secondary);
+}
+
+:where(button, [role='button']) {
+  font-weight: 600;
+}
+
+:where(button, [role='button'], .badge, .chip, .pill) {
+  text-rendering: optimizeLegibility;
+}
+
+html[data-theme='light'] :where(button, input, select, textarea) {
+  --compact-control-text: #20354d;
+}
+
+html[data-theme='dark'] :where(button, input, select, textarea) {
+  --compact-control-text: #edf4fb;
+}
+
+:where(.btn-secondary, .stats-btn, .header-icon-btn, .a11y-reset) {
+  color: var(--compact-control-text, var(--text-primary));
+}
+
+/* Persistent user-selected type scaling from the accessibility toolbar. */
+html[data-font-size='large'] body {
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+html[data-font-size='x-large'] body {
+  font-size: 18px;
+  line-height: 1.6;
+}
+
+html[data-font-size='large'] :where(p, li, label, button, input, select, textarea, td, th, small, .header-subtitle, .brand-subtitle) {
+  font-size: max(15px, 1em) !important;
+  line-height: 1.5;
+}
+
+html[data-font-size='x-large'] :where(p, li, label, button, input, select, textarea, td, th, small, .header-subtitle, .brand-subtitle) {
+  font-size: max(17px, 1em) !important;
+  line-height: 1.55;
+}
+
+html[data-font-size='large'] :where(.main-content, .page-content),
+html[data-font-size='x-large'] :where(.main-content, .page-content) {
+  overflow-wrap: anywhere;
+}
+
+html[data-font-size='large'] :where(.header-right, .page-actions, .action-row, .card-header),
+html[data-font-size='x-large'] :where(.header-right, .page-actions, .action-row, .card-header) {
+  flex-wrap: wrap;
 }

@@ -7,10 +7,20 @@ import { MdContrast, MdRestartAlt, MdAccessibility, MdVisibility, MdClose } from
  * Required by GIGW (Guidelines for Indian Government Websites)
  */
 function AccessibilityToolbar() {
-  const [highContrast, setHighContrast] = useState(() => document.documentElement.classList.contains('high-contrast'));
-  const [colorblindSafe, setColorblindSafe] = useState(() => document.documentElement.classList.contains('colorblind-safe'));
+  const [highContrast, setHighContrast] = useState(() => localStorage.getItem('madhukar-high-contrast') === 'true');
+  const [colorblindSafe, setColorblindSafe] = useState(() => localStorage.getItem('madhukar-colorblind-safe') === 'true');
+  const [fontSize, setFontSize] = useState(() => localStorage.getItem('madhukar-font-size') || 'default');
   const [expanded, setExpanded] = useState(false);
   const toolbarRef = useRef(null);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('high-contrast', highContrast);
+    document.documentElement.classList.toggle('colorblind-safe', colorblindSafe);
+    document.documentElement.dataset.fontSize = fontSize;
+    localStorage.setItem('madhukar-high-contrast', String(highContrast));
+    localStorage.setItem('madhukar-colorblind-safe', String(colorblindSafe));
+    localStorage.setItem('madhukar-font-size', fontSize);
+  }, [highContrast, colorblindSafe, fontSize]);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -52,8 +62,7 @@ function AccessibilityToolbar() {
   const resetAll = () => {
     setHighContrast(false);
     setColorblindSafe(false);
-    document.documentElement.classList.remove('high-contrast');
-    document.documentElement.classList.remove('colorblind-safe');
+    setFontSize('default');
   };
 
   return (
@@ -105,6 +114,18 @@ function AccessibilityToolbar() {
               >
                 <MdContrast size={16} />
               </button>
+            </div>
+          </div>
+
+          <div className="a11y-row a11y-font-row">
+            <span>Text Size</span>
+            <div className="a11y-btns" role="group" aria-label="Choose dashboard text size">
+              <button type="button" onClick={() => setFontSize('default')} className={fontSize === 'default' ? 'active' : ''}
+                aria-pressed={fontSize === 'default'} title="Default text size"><span aria-hidden="true">A</span><span className="sr-only">Default</span></button>
+              <button type="button" onClick={() => setFontSize('large')} className={fontSize === 'large' ? 'active' : ''}
+                aria-pressed={fontSize === 'large'} title="Large text size"><span aria-hidden="true" style={{ fontSize: 17 }}>A</span><span className="sr-only">Large</span></button>
+              <button type="button" onClick={() => setFontSize('x-large')} className={fontSize === 'x-large' ? 'active' : ''}
+                aria-pressed={fontSize === 'x-large'} title="Extra large text size"><span aria-hidden="true" style={{ fontSize: 20 }}>A</span><span className="sr-only">Extra large</span></button>
             </div>
           </div>
 
