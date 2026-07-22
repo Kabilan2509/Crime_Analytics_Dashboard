@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { MapContainer, TileLayer, GeoJSON } from 'react-leaflet';
+import { MapContainer, TileLayer, GeoJSON, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 
 const GEOJSON_TO_DB_MAP = {
@@ -50,6 +50,17 @@ function useActiveTheme() {
 
 const KARNATAKA_CENTER = [14.65, 75.9];
 const KARNATAKA_ZOOM = 6.2;
+
+function ResizeMap() {
+  const map = useMap();
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [map]);
+  return null;
+}
 
 function KarnatakaMap({ cases, selectedDistrict, setSelectedDistrict }) {
   const theme = useActiveTheme();
@@ -150,7 +161,7 @@ function KarnatakaMap({ cases, selectedDistrict, setSelectedDistrict }) {
 
   if (loading) {
     return (
-      <div style={{ height: '380px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-panel-alt)', border: '1px solid var(--border-color)', color: 'var(--text-muted)', fontFamily: 'Consolas, monospace', fontSize: '12px' }}>
+      <div style={{ height: '100%', minHeight: '380px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-panel-alt)', border: '1px solid var(--border-color)', color: 'var(--text-muted)', fontFamily: 'Consolas, monospace', fontSize: '12px' }}>
         <span>Ingesting Geographic Overlays...</span>
       </div>
     );
@@ -158,14 +169,14 @@ function KarnatakaMap({ cases, selectedDistrict, setSelectedDistrict }) {
 
   if (error) {
     return (
-      <div style={{ height: '380px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-panel-alt)', border: '1px solid var(--border-color)', color: 'var(--accent-danger)', fontFamily: 'Consolas, monospace', fontSize: '12px', padding: '20px', textAlign: 'center' }}>
+      <div style={{ height: '100%', minHeight: '380px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-panel-alt)', border: '1px solid var(--border-color)', color: 'var(--accent-danger)', fontFamily: 'Consolas, monospace', fontSize: '12px', padding: '20px', textAlign: 'center' }}>
         <span>GIS Fetch Bypass Required: Failed to load map coordinates ({error})</span>
       </div>
     );
   }
 
   return (
-    <div style={{ height: '380px', width: '100%', position: 'relative' }}>
+    <div style={{ height: '100%', width: '100%', position: 'relative' }}>
       <style>{`
         .map-tooltip {
           background-color: var(--bg-panel) !important;
@@ -191,6 +202,7 @@ function KarnatakaMap({ cases, selectedDistrict, setSelectedDistrict }) {
         zoomControl={false}
         attributionControl={false}
       >
+        <ResizeMap />
         <TileLayer 
           url={theme === 'dark' 
             ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"

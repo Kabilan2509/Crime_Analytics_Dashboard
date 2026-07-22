@@ -6,6 +6,7 @@ import {
   MdAccountCircle, MdLock, MdVerifiedUser, MdLockOpen,
 } from 'react-icons/md';
 import { useSecurity } from '../context/SecurityContext';
+import CommandPalette from './ui/CommandPalette';
 
 /**
  * Header — Compact 2-row layout (ribbon + controls)
@@ -34,25 +35,31 @@ function Header({ theme, onToggleTheme, onOpenSidebar }) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showPiiModal, setShowPiiModal] = useState(false);
   const [form, setForm] = useState({ officerName: '', badgeId: '', unitName: '', role: 'Field Officer' });
+  const [showCommandPalette, setShowCommandPalette] = useState(false);
 
   const openQuickLookup = () => {
-    if (location.pathname.startsWith('/cases')) {
-      window.dispatchEvent(new CustomEvent('open-quick-lookup'));
-    } else {
-      navigate('/cases?quickLookup=1');
-    }
+    setShowCommandPalette(true);
   };
 
   useEffect(() => {
     const handleQuickLookup = (event) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        const target = event.target;
+        if (
+          target &&
+          (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) &&
+          target.id !== 'portal-search'
+        ) {
+          return;
+        }
+
         event.preventDefault();
-        openQuickLookup();
+        setShowCommandPalette(prev => !prev);
       }
     };
     window.addEventListener('keydown', handleQuickLookup);
     return () => window.removeEventListener('keydown', handleQuickLookup);
-  });
+  }, []);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -332,6 +339,7 @@ function Header({ theme, onToggleTheme, onOpenSidebar }) {
           </div>
         </div>
       )}
+      <CommandPalette isOpen={showCommandPalette} onClose={() => setShowCommandPalette(false)} />
     </header>
   );
 }

@@ -62,9 +62,9 @@ function DashboardTables({ districtPerformance, recentSeriousFIRs, alerts }) {
                 <tr>
                   <th>Crime No / Station</th>
                   <th>Offence Head</th>
-                  <th>Registered Date</th>
-                  <th>Current Status</th>
-                  <th style={{ textAlign: 'right', paddingRight: '12px' }}>Action</th>
+                  <th style={{ whiteSpace: 'nowrap', width: '125px' }}>Registered Date</th>
+                  <th style={{ whiteSpace: 'nowrap', width: '160px' }}>Current Status</th>
+                  <th style={{ textAlign: 'right', paddingRight: '12px', whiteSpace: 'nowrap', width: '90px' }}>Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -72,16 +72,16 @@ function DashboardTables({ districtPerformance, recentSeriousFIRs, alerts }) {
                   <tr key={item.id}>
                     <td><strong>{item.crimeNoDisplay}</strong>, {item.station}</td>
                     <td>{item.category}</td>
-                    <td>{item.registeredDate}</td>
-                    <td>
-                      <span style={{ color: item.status === 'Closed' ? '#16a34a' : '#d97706', fontWeight: 600 }}>
+                    <td style={{ whiteSpace: 'nowrap' }}>{item.registeredDate}</td>
+                    <td style={{ whiteSpace: 'nowrap' }}>
+                      <span style={{ color: item.status === 'Closed' ? '#16a34a' : '#d97706', fontWeight: 600, whiteSpace: 'nowrap' }}>
                         {item.status}
                       </span>
                     </td>
-                    <td style={{ textAlign: 'right', paddingRight: '12px' }}>
+                    <td style={{ textAlign: 'right', paddingRight: '12px', whiteSpace: 'nowrap' }}>
                       <Link
                         to={item.actionUrl}
-                        style={{ color: '#2563eb', textDecoration: 'underline' }}
+                        style={{ color: '#2563eb', textDecoration: 'underline', whiteSpace: 'nowrap' }}
                       >
                         Inspect
                       </Link>
