@@ -2,16 +2,12 @@ import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { MapContainer, TileLayer, CircleMarker, Polygon, Tooltip, useMap, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
-import 'leaflet.heat';
-
-// MarkerCluster native support
 import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import 'leaflet.markercluster';
-
 import * as turf from '@turf/turf';
 
-import { cases, districts, districtCenters } from '../data/schemaSelectors';
+import { caseViews as cases, districts, districtCenters } from '../data/schemaSelectors';
 import { useSecurity } from '../context/SecurityContext';
 
 /* Feature components */
@@ -25,6 +21,16 @@ import {
   filterMapCases, buildDistrictInspection, getDistrictCenter, calculateEmergingTrends,
   MAP_LAYERS
 } from '../features/crimeMap/crimeMapUtils';
+
+// Bind window.L for Leaflet plugins (leaflet.heat) after all imports
+if (typeof window !== 'undefined') {
+  window.L = L;
+  try {
+    require('leaflet.heat');
+  } catch (e) {
+    // fallback
+  }
+}
 
 /* ---- CUSTOM UTILITY HOOKS ---- */
 
@@ -104,30 +110,58 @@ function HeatmapLayer({ points, mapZoom }) {
   const map = useMap();
   useEffect(() => {
     if (!map || !points?.length) return;
-    
-    // Zoom-adaptive radius and blur calculations
-    const radius = Math.max(18, Math.min(42, 54 - (mapZoom * 2.5)));
-    const blur = Math.max(14, Math.round(radius * 0.72));
 
-    // Custom ArcGIS Stops stops
+    if (typeof window !== 'undefined' && (!L.heatLayer && !window.L?.heatLayer)) {
+      window.L = L;
+      try {
+        require('leaflet.heat');
+      } catch (e) {
+        console.error('leaflet.heat initialization error:', e);
+      }
+    }
+
+    const heatFn = L.heatLayer || (typeof window !== 'undefined' && window.L && window.L.heatLayer);
+    if (!heatFn) {
+      console.warn('Leaflet heatLayer function unavailable.');
+      return;
+    }
+
+    // Zoom-adaptive radius and blur calculations
+    const radius = Math.max(22, Math.min(48, 60 - (mapZoom * 2.2)));
+    const blur = Math.max(15, Math.round(radius * 0.7));
+
     const gradient = { 
-      0.2: '#4c1d95', // deep purple
-      0.4: '#c026d3', // magenta
-      0.6: '#f97316', // orange
-      0.8: '#ef4444', // red
-      1.0: '#fecaca'  // pink-white core
+      0.2: '#4c1d95',
+      0.4: '#c026d3',
+      0.6: '#f97316',
+      0.8: '#ef4444',
+      1.0: '#fecaca'
     };
 
-    const layer = L.heatLayer(points, {
-      radius,
-      blur,
-      minOpacity: 0.28,
-      max: 1,
-      maxZoom: 16,
-      gradient
-    }).addTo(map);
+    let layer = null;
+    try {
+      layer = heatFn(points, {
+        radius,
+        blur,
+        minOpacity: 0.35,
+        max: 1.0,
+        maxZoom: 18,
+        gradient
+      });
+      layer.addTo(map);
+    } catch (err) {
+      console.error('Error adding heatLayer to map:', err);
+    }
 
-    return () => map.removeLayer(layer);
+    return () => {
+      if (map && layer) {
+        try {
+          map.removeLayer(layer);
+        } catch (e) {
+          // cleanup fallback
+        }
+      }
+    };
   }, [map, points, mapZoom]);
   return null;
 }
@@ -334,99 +368,80 @@ function ZoomControlOverlay({ overlayBg, overlayBorder }) {
   );
 }
 
-// Collapsible Legend Floating Panel (Auto-collapses on screens < 1280px)
-// Centered vertically on the right edge of the map to prevent timeline overlap
-function MapLegend({ theme, overlayBg, overlayBorder }) {
-  const [collapsed, setCollapsed] = useState(() => window.innerWidth < 1280);
+// Static Horizontal Legend Strip (No popup box)
+function MapLegend({ activeLayer, activeVisLayers, theme, overlayBg, overlayBorder }) {
+  const opLayerLegendMap = {
+    gis_cctv: { label: 'CCTV Grid Camera', color: '#00e676' },
+    gis_schools: { label: 'School Location', color: '#1e90ff' },
+    emergency: { label: '112 Emergency Call', color: '#ff4d4d' },
+    patrols: { label: 'Patrol Unit Coverage', color: '#3b82f6' },
+    forecast_tomorrow: { label: "Tomorrow's AI Forecast", color: '#ff4d4d' },
+    forecast_week: { label: "Next Week AI Forecast", color: '#ffaa00' },
+  };
 
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth < 1280) {
-        setCollapsed(true);
-      }
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  const activeOp = opLayerLegendMap[activeLayer];
+  const isHeatActive = activeVisLayers?.density || ['overall', 'murder', 'theft', 'women', 'cyber'].includes(activeLayer);
 
   return (
     <div 
-      className="map-legend" 
+      className="map-legend-strip" 
       style={{
         position: 'absolute',
-        top: '50%',
-        transform: 'translateY(-50%)',
-        right: '20px',
+        top: '160px',
+        right: '15px',
         zIndex: 1005,
         background: overlayBg,
         backdropFilter: 'blur(6px)',
         border: overlayBorder,
-        padding: collapsed ? '8px' : '14px',
-        width: collapsed ? 'auto' : '200px',
+        padding: '6px 12px',
+        borderRadius: '20px',
         fontFamily: 'monospace',
-        fontSize: '11px',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
+        fontSize: '10px',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.18)',
         color: 'var(--text-primary)',
-        borderRadius: '6px'
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px',
+        pointerEvents: 'auto'
       }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: collapsed ? 0 : '10px' }}>
-        {!collapsed && <strong style={{ textTransform: 'uppercase', fontSize: '10px', color: 'var(--accent-primary)', letterSpacing: '0.5px' }}>Hotspot Legend</strong>}
-        <button 
-          onClick={() => setCollapsed(!collapsed)}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            color: 'var(--text-secondary)',
-            cursor: 'pointer',
-            fontSize: '12px',
-            padding: 0,
-            display: 'flex',
-            alignItems: 'center',
-            minHeight: 'auto',
-            minWidth: 'auto',
-            outline: 'none'
-          }}
-          title={collapsed ? "Expand Legend" : "Collapse Legend"}
-        >
-          {collapsed ? '🗺️' : '✕'}
-        </button>
-      </div>
+      <span style={{ fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--accent-primary)', fontSize: '9px', letterSpacing: '0.5px' }}>
+        MAP LEGEND:
+      </span>
 
-      {!collapsed && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <div>
-            <div style={{ marginBottom: '6px', fontWeight: 'bold', color: 'var(--text-muted)', textTransform: 'uppercase', fontSize: '9px' }}>Heat Gradient:</div>
-            <div style={{
-              height: '10px',
-              background: 'linear-gradient(to right, #4c1d95, #c026d3, #f97316, #ef4444, #fecaca)',
-              width: '100%',
-              borderRadius: '2px'
-            }} />
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', fontSize: '8px', color: 'var(--text-muted)' }}>
-              <span>Low</span>
-              <span>Med</span>
-              <span>High</span>
-            </div>
-          </div>
+      {activeOp && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{ display: 'inline-block', width: '9px', height: '9px', borderRadius: '50%', backgroundColor: activeOp.color, border: '1px solid #fff' }} />
+          <span style={{ fontWeight: 'bold' }}>{activeOp.label}</span>
+        </div>
+      )}
 
-          <div>
-            <div style={{ marginBottom: '6px', fontWeight: 'bold', color: 'var(--text-muted)', textTransform: 'uppercase', fontSize: '9px' }}>Density Tiers:</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#facc15', border: '1px solid #fff' }} />
-                <span>Low (&lt; 20 cases)</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#f97316', border: '1px solid #fff' }} />
-                <span>Medium (20 - 50 cases)</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ display: 'inline-block', width: '16px', height: '16px', borderRadius: '50%', backgroundColor: '#ef4444', border: '1px solid #fff' }} />
-                <span>High (50+ cases)</span>
-              </div>
-            </div>
-          </div>
+      {isHeatActive && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{ color: 'var(--text-muted)', fontSize: '9px' }}>Density:</span>
+          <div style={{
+            height: '8px',
+            width: '60px',
+            background: 'linear-gradient(to right, #4c1d95, #c026d3, #f97316, #ef4444, #fecaca)',
+            borderRadius: '2px'
+          }} />
+          <span style={{ fontSize: '8px', color: 'var(--text-muted)' }}>Low → High</span>
+        </div>
+      )}
+
+      {activeVisLayers?.graduated && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{ color: 'var(--text-muted)', fontSize: '9px' }}>Tiers:</span>
+          <span style={{ color: '#facc15' }}>● Low</span>
+          <span style={{ color: '#f97316' }}>● Med</span>
+          <span style={{ color: '#ef4444' }}>● High</span>
+        </div>
+      )}
+
+      {activeVisLayers?.rawPins && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#3b82f6', border: '1px solid #fff' }} />
+          <span>Incident Pin</span>
         </div>
       )}
     </div>
@@ -566,7 +581,7 @@ function LayerDropdown({
             Visualization Modes
           </div>
           {[
-            { key: 'density', label: 'Density Surface' },
+            { key: 'density', label: 'Heat Density Overlay' },
             { key: 'graduated', label: 'Graduated Symbols' },
             { key: 'choropleth', label: 'Choropleth Grid' },
             { key: 'rawPins', label: 'Raw Incident Pins' }
@@ -887,7 +902,7 @@ function CrimeMap({ selectedDistrict: globalDistrict, selectedCrimeType: globalC
             overlayBg={overlayBg} overlayBorder={overlayBorder}
           />
 
-          <MapLegend theme={theme} overlayBg={overlayBg} overlayBorder={overlayBorder} />
+          <MapLegend activeLayer={activeLayer} activeVisLayers={activeVisLayers} theme={theme} overlayBg={overlayBg} overlayBorder={overlayBorder} />
 
           <TimelineControls 
             startIndex={startIndex} setStartIndex={setStartIndex}
@@ -917,7 +932,7 @@ function CrimeMap({ selectedDistrict: globalDistrict, selectedCrimeType: globalC
             <ZoomControlOverlay overlayBg={overlayBg} overlayBorder={overlayBorder} />
 
             {/* True Kernel Density Estimation Layer */}
-            {activeVisLayers.density && liveMapZoom < 9 && weightedHeatPoints.length > 0 && (
+            {(activeVisLayers.density || ['overall', 'murder', 'theft', 'women', 'cyber'].includes(activeLayer)) && weightedHeatPoints.length > 0 && (
               <HeatmapLayer points={weightedHeatPoints} mapZoom={liveMapZoom} />
             )}
 

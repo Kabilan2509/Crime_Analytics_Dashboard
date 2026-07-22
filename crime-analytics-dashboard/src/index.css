@@ -103,6 +103,23 @@ html.colorblind-safe[data-theme='dark'] {
   --chart-gold: #ffb74d !important;
 }
 
+/* Map Colorblind-Safe Layer & Marker Filters */
+html.colorblind-safe .leaflet-container {
+  filter: contrast(1.15) saturate(1.4) hue-rotate(25deg) !important;
+}
+
+html.colorblind-safe .custom-pin-icon div {
+  background-color: #008080 !important;
+  border-color: #ffffff !important;
+}
+
+/* Heatmap Layer Visibility & Rendering Rules */
+.leaflet-heatmap-layer {
+  opacity: 0.85 !important;
+  pointer-events: none !important;
+  z-index: 400 !important;
+}
+
 /* Accessibility High Contrast Settings */
 html.high-contrast {
   --bg-app: #000000 !important;
@@ -1867,32 +1884,33 @@ button {
 .a11y-panel {
   position: absolute;
   right: 0;
-  top: calc(100% + 10px);
-  width: 220px;
-  padding: 16px;
+  top: calc(100% + 6px);
+  width: 175px;
+  padding: 10px 12px;
   background: var(--bg-panel);
   border: 1px solid var(--border-color);
-  border-radius: 16px;
+  border-radius: 8px;
   box-shadow: var(--shadow-soft);
   animation: fadeIn 200ms ease;
+  z-index: 1200;
 }
 
 .a11y-title {
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   color: var(--text-muted);
-  margin-bottom: 12px;
+  margin-bottom: 6px;
 }
 
 .a11y-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  padding: 8px 0;
-  font-size: 13px;
+  gap: 6px;
+  padding: 5px 0;
+  font-size: 11px;
   color: var(--text-secondary);
   border-bottom: 1px solid var(--border-color);
 }

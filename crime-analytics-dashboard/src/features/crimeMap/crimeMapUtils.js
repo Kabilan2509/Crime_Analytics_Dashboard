@@ -34,16 +34,17 @@ export function filterMapCases(allCases, {
 
   return allCases.filter(item => {
     if (districtId !== 'all') {
-      if (String(item.districtID) !== String(districtId)) return false;
+      const itemDist = item.districtID ?? item.DistrictID;
+      if (String(itemDist) !== String(districtId)) return false;
     }
     if (crimeHeadId !== 'all' && String(item.CrimeMajorHeadID) !== String(crimeHeadId)) return false;
     if (severityFilter !== 'all') {
-      const isH = item.isHeinous;
+      const isH = item.isHeinous ?? (item.GravityOffenceID === 1);
       if (severityFilter === 'heinous' && !isH) return false;
       if (severityFilter === 'non-heinous' && isH) return false;
     }
     if (statusFilter !== 'all') {
-      const name = item.statusName || '';
+      const name = item.statusName || (['Closed', 'Convicted'].includes(String(item.CaseStatusID)) ? 'Closed' : 'Active');
       if (statusFilter === 'active' && ['Closed', 'Convicted'].includes(name)) return false;
       if (statusFilter === 'closed' && !['Closed', 'Convicted'].includes(name)) return false;
     }
@@ -54,11 +55,17 @@ export function filterMapCases(allCases, {
       if (timeOfDayFilter === 'afternoon' && (hour < 12 || hour >= 18)) return false;
       if (timeOfDayFilter === 'night' && (hour >= 6 && hour < 18)) return false;
     }
-    const caseTime = new Date(String(item.CrimeRegisteredDate).replace(' ', 'T')).getTime();
-    if (caseTime > minTime + (dateRangeMs * (timelineIndex / 30))) return false;
+    if (timelineIndex !== undefined) {
+      const caseTime = new Date(String(item.CrimeRegisteredDate).replace(' ', 'T')).getTime();
+      if (caseTime > minTime + (dateRangeMs * (timelineIndex / 30))) return false;
+    }
 
     const layerTerms = { murder: 'murder', cyber: 'cyber', theft: 'theft', women: 'women' };
-    if (layerTerms[activeLayer] && !`${item.majorHeadName} ${item.minorHeadName}`.toLowerCase().includes(layerTerms[activeLayer])) return false;
+    if (layerTerms[activeLayer]) {
+      const maj = item.majorHeadName || '';
+      const min = item.minorHeadName || '';
+      if (!`${maj} ${min}`.toLowerCase().includes(layerTerms[activeLayer])) return false;
+    }
 
     return true;
   });

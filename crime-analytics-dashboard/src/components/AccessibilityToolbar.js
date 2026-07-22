@@ -1,47 +1,58 @@
-import React, { useState } from 'react';
-import { MdTextIncrease, MdTextDecrease, MdContrast, MdRestartAlt, MdAccessibility, MdVisibility } from 'react-icons/md';
+import React, { useState, useRef, useEffect } from 'react';
+import { MdContrast, MdRestartAlt, MdAccessibility, MdVisibility, MdClose } from 'react-icons/md';
 
 /**
  * Accessibility Toolbar — government compliance feature
- * Font size controls, high contrast toggle, text spacing, and colorblind mode
+ * High contrast toggle and colorblind mode
  * Required by GIGW (Guidelines for Indian Government Websites)
  */
 function AccessibilityToolbar() {
-  const [fontSize, setFontSize] = useState(100);
-  const [highContrast, setHighContrast] = useState(false);
-  const [colorblindSafe, setColorblindSafe] = useState(false);
+  const [highContrast, setHighContrast] = useState(() => document.documentElement.classList.contains('high-contrast'));
+  const [colorblindSafe, setColorblindSafe] = useState(() => document.documentElement.classList.contains('colorblind-safe'));
   const [expanded, setExpanded] = useState(false);
+  const toolbarRef = useRef(null);
 
-  const changeFontSize = (delta) => {
-    const newSize = Math.max(80, Math.min(130, fontSize + delta));
-    setFontSize(newSize);
-    document.documentElement.style.fontSize = `${newSize}%`;
-  };
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (toolbarRef.current && !toolbarRef.current.contains(event.target)) {
+        setExpanded(false);
+      }
+    }
+    if (expanded) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [expanded]);
 
   const toggleContrast = () => {
-    setHighContrast(!highContrast);
-    document.documentElement.classList.toggle('high-contrast');
+    const next = !highContrast;
+    setHighContrast(next);
+    document.documentElement.classList.toggle('high-contrast', next);
   };
 
   const toggleColorblind = () => {
-    setColorblindSafe(!colorblindSafe);
-    document.documentElement.classList.toggle('colorblind-safe');
+    const next = !colorblindSafe;
+    setColorblindSafe(next);
+    document.documentElement.classList.toggle('colorblind-safe', next);
   };
 
   const resetAll = () => {
-    setFontSize(100);
     setHighContrast(false);
     setColorblindSafe(false);
-    document.documentElement.style.fontSize = '100%';
     document.documentElement.classList.remove('high-contrast');
     document.documentElement.classList.remove('colorblind-safe');
   };
 
   return (
-    <div className="a11y-toolbar">
+    <div className="a11y-toolbar" ref={toolbarRef}>
       <button
+        type="button"
         className="a11y-toggle"
-        onClick={() => setExpanded(!expanded)}
+        onClick={() => setExpanded(prev => !prev)}
         title="Accessibility Options"
         aria-label="Toggle accessibility toolbar"
       >
@@ -50,24 +61,32 @@ function AccessibilityToolbar() {
 
       {expanded && (
         <div className="a11y-panel">
-          <div className="a11y-title">Accessibility</div>
-
-          <div className="a11y-row">
-            <span>Font Size ({fontSize}%)</span>
-            <div className="a11y-btns">
-              <button onClick={() => changeFontSize(-10)} title="Decrease font size" aria-label="Decrease font size">
-                <MdTextDecrease size={16} />
-              </button>
-              <button onClick={() => changeFontSize(10)} title="Increase font size" aria-label="Increase font size">
-                <MdTextIncrease size={16} />
-              </button>
-            </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+            <div className="a11y-title" style={{ margin: 0 }}>Accessibility</div>
+            <button
+              type="button"
+              onClick={() => setExpanded(false)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--text-muted)',
+                cursor: 'pointer',
+                padding: 0,
+                display: 'flex',
+                alignItems: 'center',
+                outline: 'none'
+              }}
+              title="Close Panel"
+            >
+              <MdClose size={14} />
+            </button>
           </div>
 
           <div className="a11y-row">
             <span>High Contrast</span>
             <div className="a11y-btns">
               <button
+                type="button"
                 onClick={toggleContrast}
                 className={highContrast ? 'active' : ''}
                 title="Toggle high contrast"
@@ -82,6 +101,7 @@ function AccessibilityToolbar() {
             <span>Colorblind Mode</span>
             <div className="a11y-btns">
               <button
+                type="button"
                 onClick={toggleColorblind}
                 className={colorblindSafe ? 'active' : ''}
                 title="Toggle colorblind-safe colors"
@@ -92,7 +112,7 @@ function AccessibilityToolbar() {
             </div>
           </div>
 
-          <button className="a11y-reset" onClick={resetAll}>
+          <button type="button" className="a11y-reset" onClick={resetAll}>
             <MdRestartAlt size={14} /> Reset All
           </button>
         </div>
