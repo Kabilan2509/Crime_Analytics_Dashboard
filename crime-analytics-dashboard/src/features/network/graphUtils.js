@@ -32,10 +32,32 @@ export function buildNetworkData(cases, accused, victims, districts, stations) {
   const stationLookup = indexMasterRows(stations, ['ROWID', 'UnitID', 'PoliceStationID', 'SourceUnitID']);
   const usableName = value => value && String(value).trim().toLowerCase() !== 'unknown';
 
-  // Top 40 cases (heinous first)
+  // The intelligence graph is a complete operational index. Never sample FIRs.
   const activeCases = [...(cases || [])]
-    .sort((a, b) => (b.isHeinous ? 1 : 0) - (a.isHeinous ? 1 : 0))
-    .slice(0, 40);
+    .sort((a, b) => (b.isHeinous ? 1 : 0) - (a.isHeinous ? 1 : 0));
+
+  const districtNodeId = row => `dist_${row?.ROWID ?? row?.DistrictID ?? row?.SourceDistrictID}`;
+  const stationNodeId = row => `station_${row?.ROWID ?? row?.UnitID ?? row?.PoliceStationID ?? row?.SourceUnitID}`;
+
+  // Add every master location first, including locations with no FIR in the current dataset.
+  (districts || []).forEach((district, index) => {
+    const name = district?.DistrictName || district?.Name;
+    const id = districtNodeId(district);
+    if (!name || id.endsWith('undefined') || nodeSet.has(id)) return;
+    nodes.push({ id, type: 'district', label: String(name), color: ENTITY.district.color, radius: 15, data: district, x: 0, y: 0, vx: 0, vy: 0, order: index });
+    nodeSet.add(id);
+  });
+  (stations || []).forEach((station, index) => {
+    const name = station?.UnitName || station?.PoliceStationName || station?.Name;
+    const id = stationNodeId(station);
+    if (!name || id.endsWith('undefined') || nodeSet.has(id)) return;
+    nodes.push({ id, type: 'station', label: String(name), color: ENTITY.station.color, radius: 13, data: station, x: 0, y: 0, vx: 0, vy: 0, order: index });
+    nodeSet.add(id);
+    const district = districtLookup.get(String(station.DistrictID ?? station.SourceDistrictID));
+    if (district && nodeSet.has(districtNodeId(district))) {
+      edges.push({ source: id, target: districtNodeId(district), type: 'station_in_district', strength: 0.35 });
+    }
+  });
 
   // Catalyst child tables reference CaseMaster.ROWID, while the normalized case
   // view can expose the logical CaseMasterID. Resolve both forms to one graph node.
@@ -85,7 +107,7 @@ export function buildNetworkData(cases, accused, victims, districts, stations) {
       : district?.DistrictName || district?.Name || null;
 
     // 2. District node
-    const distId = `dist_${districtKey ?? districtName}`;
+    const distId = district ? districtNodeId(district) : `dist_${districtKey ?? districtName}`;
     if (districtName && !nodeSet.has(distId)) {
       nodes.push({
         id: distId, type: 'district',
@@ -98,7 +120,7 @@ export function buildNetworkData(cases, accused, victims, districts, stations) {
     if (districtName) edges.push({ source: nodeId, target: distId, type: 'located_in', strength: 0.2 });
 
     // 3. Station node
-    const stId = `station_${stationKey ?? stationName}`;
+    const stId = station ? stationNodeId(station) : `station_${stationKey ?? stationName}`;
     if (stationName && !nodeSet.has(stId)) {
       nodes.push({
         id: stId, type: 'station',
@@ -174,12 +196,15 @@ export function buildNetworkData(cases, accused, victims, districts, stations) {
     edges.push({ source: victimId, target: caseNodeId, type: 'victim_of', strength: 0.5 });
   });
 
-  // Position nodes in a force-friendly circle
+  // Deterministic sunflower layout produces a dense but readable complete graph.
+  // It avoids random node movement between visits and scales to several thousand nodes.
   const W = 700, H = 460;
+  const goldenAngle = Math.PI * (3 - Math.sqrt(5));
   nodes.forEach((n, i) => {
-    const angle = (i / nodes.length) * Math.PI * 2;
-    n.x = W / 2 + Math.cos(angle) * (100 + Math.random() * 80);
-    n.y = H / 2 + Math.sin(angle) * (100 + Math.random() * 80);
+    const angle = i * goldenAngle;
+    const radius = 12 * Math.sqrt(i + 1);
+    n.x = W / 2 + Math.cos(angle) * radius;
+    n.y = H / 2 + Math.sin(angle) * radius;
   });
 
   return { nodes, edges };

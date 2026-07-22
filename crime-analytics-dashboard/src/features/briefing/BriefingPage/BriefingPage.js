@@ -170,9 +170,39 @@ function BriefingPage() {
   };
 
   const handleExportPDF = () => {
-    const pageText = document.querySelector('.briefing-page')?.innerText || 'No briefing content available.';
     const date = new Date().toISOString().slice(0, 10);
-    downloadPdf(`ksp-intelligence-briefing-${date}.pdf`, 'KSP Intelligence Briefing', pageText.split('\n'));
+    const summary = data?.summary || {};
+    const incidents = data?.incidents?.criticalIncidents || [];
+    downloadPdf(`ksp-intelligence-briefing-${date}.pdf`, 'KSP Intelligence Briefing', {
+      metadata: [
+        { label: 'Operational scope', value: getActiveFilterSummary() },
+        { label: 'Report date', value: date },
+        { label: 'Classification', value: 'Official Use Only' },
+      ],
+      sections: [
+        {
+          heading: 'Executive Summary',
+          keyValues: [
+            { label: 'Major crimes', value: summary.totalMajorCrimes ?? 0 },
+            { label: 'Escalated districts', value: summary.districtsEscalated ?? 0 },
+            { label: 'Critical incidents', value: summary.activeCriticalIncidents ?? 0 },
+            { label: 'Active BOLOs', value: summary.activeBolos ?? 0 },
+          ],
+        },
+        {
+          heading: 'Intelligence Assessment',
+          table: { headers: ['Threat level', 'Assessment'], rows: (data?.narrative || []).map(item => [item.level, item.text]) },
+        },
+        {
+          heading: 'Critical Incidents',
+          table: { headers: ['FIR / Incident', 'Registered', 'Location', 'Operational note'], rows: incidents.map(item => [item.title, item.time, item.location, item.note]) },
+        },
+        {
+          heading: 'Recommended Actions',
+          table: { headers: ['Priority', 'Recommendation', 'Confidence', 'Status'], rows: (data?.recommendations || []).map(item => [item.priority, item.text, `${item.confidence}%`, item.status]) },
+        },
+      ],
+    });
   };
 
   return (

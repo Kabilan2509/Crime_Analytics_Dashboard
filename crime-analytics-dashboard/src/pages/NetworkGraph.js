@@ -69,6 +69,7 @@ export default function NetworkGraph() {
   const connSetRef    = useRef(null);
   const labelModeRef  = useRef('smart');
   const animRef       = useRef(null);
+  const fittedRef     = useRef(false);
 
   // ── Build raw graph ────────────────────────────────────────────────────────
   const rawGraph = useMemo(
@@ -242,6 +243,7 @@ export default function NetworkGraph() {
       deg[e.source] = (deg[e.source] || 0) + 1;
       deg[e.target] = (deg[e.target] || 0) + 1;
     });
+    fittedRef.current = false;
 
     const frame = () => {
       // ── Resize canvas to fill container (HiDPI aware) ──────────────────
@@ -254,13 +256,29 @@ export default function NetworkGraph() {
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       }
 
+      if (!fittedRef.current && nodes.length) {
+        const xs = nodes.map(node => node.x);
+        const ys = nodes.map(node => node.y);
+        const minX = Math.min(...xs), maxX = Math.max(...xs);
+        const minY = Math.min(...ys), maxY = Math.max(...ys);
+        const fitZoom = Math.min((W - 48) / Math.max(maxX - minX, 1), (H - 48) / Math.max(maxY - minY, 1), 1);
+        transformRef.current = {
+          zoom: fitZoom,
+          x: W / 2 - ((minX + maxX) / 2) * fitZoom,
+          y: H / 2 - ((minY + maxY) / 2) * fitZoom,
+        };
+        fittedRef.current = true;
+      }
+
       // ── Physics ─────────────────────────────────────────────────────────
       const dragged  = dragRef.current.node;
       const pinned   = pinnedRef.current;
       const cx = W / 2, cy = H / 2;
 
-      // Coulomb repulsion (N² — acceptable for ≤200 nodes)
-      for (let i = 0; i < nodes.length; i++) {
+      // Exact repulsion is intentionally limited to small filtered views. The complete
+      // graph uses the deterministic large-graph layout to avoid an O(N²) frame cost.
+      const runExactPhysics = nodes.length <= 350;
+      for (let i = 0; runExactPhysics && i < nodes.length; i++) {
         const a = nodes[i];
         if (pinned.has(a.id) || a === dragged) continue;
         for (let j = i + 1; j < nodes.length; j++) {
@@ -279,7 +297,7 @@ export default function NetworkGraph() {
       }
 
       // Spring forces (Hooke)
-      edges.forEach(edge => {
+      if (runExactPhysics) edges.forEach(edge => {
         const s = nm.get(edge.source), t = nm.get(edge.target);
         if (!s || !t) return;
         const dx   = t.x - s.x, dy = t.y - s.y;
@@ -291,7 +309,7 @@ export default function NetworkGraph() {
       });
 
       // Gravity + integrate
-      nodes.forEach(n => {
+      if (runExactPhysics) nodes.forEach(n => {
         if (pinned.has(n.id) || n === dragged) return;
         n.vx += (cx - n.x) * GRAVITY;
         n.vy += (cy - n.y) * GRAVITY;
@@ -335,12 +353,12 @@ export default function NetworkGraph() {
         ctx.beginPath();
         ctx.moveTo(s.x, s.y);
         ctx.lineTo(t.x, t.y);
-        ctx.lineWidth    = connected ? 2 : 1;
+        ctx.lineWidth    = connected ? 2 : 0.85;
         ctx.strokeStyle  = dimmed
-          ? 'rgba(100,120,140,0.06)'
+          ? 'rgba(255,255,255,0.10)'
           : connected
-            ? 'rgba(255,255,255,0.55)'
-            : 'rgba(140,175,210,0.13)';
+            ? 'rgba(255,255,255,0.92)'
+            : 'rgba(255,255,255,0.42)';
         ctx.shadowBlur   = connected ? 6 : 0;
         ctx.shadowColor  = 'rgba(255,255,255,0.4)';
         ctx.stroke();
@@ -355,7 +373,10 @@ export default function NetworkGraph() {
         const isPinned   = pinnedRef.current.has(n.id);
         const dimmed     = cSet && !cSet.has(n.id);
         const nodeDeg    = deg[n.id] || 0;
-        const r          = n.radius + Math.min(nodeDeg * 1.2, 10);
+        const largeGraph = nodes.length > 500;
+        const r = largeGraph
+          ? Math.max(2.4, n.radius * 0.42 + Math.min(nodeDeg * 0.18, 3.5))
+          : n.radius + Math.min(nodeDeg * 1.2, 10);
 
         ctx.globalAlpha = dimmed ? 0.18 : 1;
 
@@ -377,8 +398,8 @@ export default function NetworkGraph() {
         ctx.fill();
 
         // Stroke
-        ctx.strokeStyle = isSelected ? ent.color : 'rgba(255,255,255,0.15)';
-        ctx.lineWidth   = isSelected ? 2.5 : 1;
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth   = isSelected ? 2.5 : (largeGraph ? 0.9 : 1.5);
         ctx.stroke();
 
         // Pin dot
@@ -528,7 +549,19 @@ export default function NetworkGraph() {
       zoom: nz,
     };
   };
-  const recenter = () => { transformRef.current = { x: 0, y: 0, zoom: 1 }; };
+  const recenter = () => {
+    const canvas = canvasRef.current;
+    if (!canvas || !visNodes.length) return;
+    const rect = canvas.getBoundingClientRect();
+    const xs = visNodes.map(node => node.x), ys = visNodes.map(node => node.y);
+    const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+    const fitZoom = Math.min((rect.width - 48) / Math.max(maxX - minX, 1), (rect.height - 48) / Math.max(maxY - minY, 1), 1);
+    transformRef.current = {
+      zoom: fitZoom,
+      x: rect.width / 2 - ((minX + maxX) / 2) * fitZoom,
+      y: rect.height / 2 - ((minY + maxY) / 2) * fitZoom,
+    };
+  };
 
   const onCanvasKeyDown = useCallback((event) => {
     if (!visNodes.length) return;

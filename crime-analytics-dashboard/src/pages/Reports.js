@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import {
@@ -733,43 +732,35 @@ function Reports() {
           didDrawPage: data => { if (data.pageNumber > 1) drawHeader(); }
         });
       } else if (activeTab === 'charts') {
-        const chartElement = document.getElementById('report-chart-content');
-        if (!chartElement) throw new Error('Chart content is not available.');
-        await new Promise(resolve => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)));
-        const chartCanvas = await html2canvas(chartElement, {
-          scale: 2, useCORS: true, backgroundColor: theme === 'dark' ? '#101820' : '#ffffff', logging: false
+        autoTable(pdf, {
+          startY: 61, margin: { left: margin, right: margin, top: 30, bottom: 16 },
+          head: [['Year', 'Total cases', 'Violent crime', 'Property crime']],
+          body: multiYearComparisonData.map(item => [item.year, item.total, item.violent, item.property]),
+          theme: 'grid', styles: { font: 'helvetica', fontSize: 8.5, cellPadding: 3, halign: 'right' },
+          headStyles: { fillColor: [20, 55, 92], textColor: 255, fontStyle: 'bold' },
+          alternateRowStyles: { fillColor: [244, 247, 250] },
+          didDrawPage: data => { if (data.pageNumber > 1) drawHeader(); }
         });
-        const maxWidth = pageWidth - margin * 2;
-        const maxHeight = pageHeight - 82;
-        const ratio = Math.min(maxWidth / chartCanvas.width, maxHeight / chartCanvas.height);
-        const chartWidth = chartCanvas.width * ratio;
-        const chartHeight = chartCanvas.height * ratio;
-        pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(11);
-        pdf.setTextColor(25, 35, 45);
-        pdf.text('FIR Registration Progression Trend', margin, 64);
-        pdf.addImage(chartCanvas.toDataURL('image/png'), 'PNG', margin, 70, chartWidth, chartHeight, undefined, 'FAST');
-        pdf.setFont('helvetica', 'italic');
-        pdf.setFontSize(8);
-        pdf.setTextColor(90, 100, 110);
-        pdf.text('Figure generated from the currently submitted report query.', margin, Math.min(pageHeight - 17, 75 + chartHeight));
       } else {
-        const contentText = element.innerText.split('\n').map(sanitizePdfText).filter(Boolean);
-        let y = 63;
-        contentText.forEach((line, index) => {
-          const isHeading = line.length < 75 && (line === line.toUpperCase() || index === 0);
-          pdf.setFont('helvetica', isHeading ? 'bold' : 'normal');
-          pdf.setFontSize(isHeading ? 10.5 : 8.5);
-          pdf.setTextColor(isHeading ? 20 : 55, isHeading ? 55 : 65, isHeading ? 92 : 75);
-          const wrapped = pdf.splitTextToSize(line, pageWidth - margin * 2);
-          const requiredHeight = wrapped.length * (isHeading ? 5 : 4.2) + (isHeading ? 2 : 0);
-          if (y + requiredHeight > pageHeight - 18) {
-            pdf.addPage();
-            drawHeader();
-            y = 34;
-          }
-          pdf.text(wrapped, margin, y);
-          y += requiredHeight;
+        const heinous = filteredCases.filter(c => c.isHeinous).length;
+        const underInvestigation = filteredCases.filter(c => String(c.statusName).toLowerCase().includes('investigation')).length;
+        const districtCounts = Object.entries(filteredCases.reduce((acc, item) => {
+          const district = item.districtName || 'Unassigned'; acc[district] = (acc[district] || 0) + 1; return acc;
+        }, {})).sort((a, b) => b[1] - a[1]);
+        autoTable(pdf, {
+          startY: 61, margin: { left: margin, right: margin },
+          body: [['Total matching cases', filteredCases.length], ['Heinous cases', heinous], ['Under investigation', underInvestigation], ['Districts represented', districtCounts.length]],
+          theme: 'grid', styles: { font: 'helvetica', fontSize: 9, cellPadding: 3 },
+          columnStyles: { 0: { fontStyle: 'bold', fillColor: [244, 247, 250] }, 1: { halign: 'right' } }
+        });
+        autoTable(pdf, {
+          startY: pdf.lastAutoTable.finalY + 8, margin: { left: margin, right: margin, bottom: 16 },
+          head: [['District', 'Case count', 'Share of report']],
+          body: districtCounts.map(([district, count]) => [district, count, `${filteredCases.length ? ((count / filteredCases.length) * 100).toFixed(1) : 0}%`]),
+          theme: 'grid', styles: { font: 'helvetica', fontSize: 8, cellPadding: 2.5 },
+          headStyles: { fillColor: [20, 55, 92], textColor: 255, fontStyle: 'bold' },
+          alternateRowStyles: { fillColor: [244, 247, 250] },
+          didDrawPage: data => { if (data.pageNumber > 1) drawHeader(); }
         });
       }
 
@@ -787,9 +778,15 @@ function Reports() {
       pdf.save(`KSP_${activeTemplate.toUpperCase()}_${activeTab.toUpperCase()}_${new Date().toISOString().split('T')[0]}.pdf`);
     } catch (err) {
       console.error('PDF export failed:', err);
-      const reportText = element.innerText || 'No report content available.';
       downloadPdf(`KSP_${activeTemplate.toUpperCase()}_Briefing_${new Date().toISOString().split('T')[0]}.pdf`,
-        `KSP ${activeTemplate.toUpperCase()} Briefing`, reportText.split('\n'));
+        `KSP ${activeTemplate.toUpperCase()} Briefing`, {
+          orientation: 'landscape',
+          metadata: [{ label: 'Applied filters', value: getAppliedFiltersText() }, { label: 'Matching cases', value: filteredCases.length }],
+          sections: [{ heading: 'Case Records', table: {
+            headers: ['Case ID', 'FIR Number', 'Crime Group', 'District', 'Station', 'Registered', 'Status', 'Severity'],
+            rows: filteredCases.map(c => [c.CaseMasterID, isCommandMode ? c.FIRNo : maskText(c.FIRNo || `FIR-${c.CaseMasterID}`, 6, 4), c.majorHeadName, c.districtName, c.policeStationName, String(c.CrimeRegisteredDate).split(' ')[0], c.statusName, c.gravityLabel]),
+          } }],
+        });
     } finally {
       setExporting(false);
     }

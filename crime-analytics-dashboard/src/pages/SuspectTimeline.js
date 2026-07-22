@@ -419,13 +419,21 @@ function SuspectTimeline() {
     playAlertSound(800, 0.05);
     const suspectName = activeSuspect?.name || 'Unknown suspect';
     downloadPdf(`suspect-timeline-${suspectName.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.pdf`,
-      `KSP Suspect Reconstruction Timeline - ${suspectName}`,
-      [
-        `Total verified logs: ${filteredEvents.length}`,
-        `Generated: ${new Date().toLocaleString()}`,
-        '',
-        ...filteredEvents.map(event => `${event.timestamp} | ${event.type} | ${event.title} | ${event.desc || ''} | ${event.source || ''}`)
-      ]);
+      `KSP Suspect Reconstruction Timeline - ${suspectName}`, {
+        orientation: 'landscape',
+        metadata: [
+          { label: 'Suspect', value: suspectName },
+          { label: 'Verified events', value: filteredEvents.length },
+          { label: 'Prepared by', value: session.officerName || 'Duty Officer' },
+        ],
+        sections: [{
+          heading: 'Chronological Event Record',
+          table: {
+            headers: ['Date and time', 'Event type', 'Event', 'Details', 'Source'],
+            rows: filteredEvents.map(event => [event.timestamp, event.type, event.title, event.desc || 'Not recorded', event.source || 'Not recorded']),
+          },
+        }],
+      });
   };
 
   // Select timeline marker

@@ -57,13 +57,15 @@ function ExportFooter({ filteredCases, filterSummary = 'All Records', onExportPD
       onExportPDF();
     } else {
       const data = getExportData();
-      if (data) downloadPdf(`ksp-filtered-cases-${new Date().toISOString().slice(0, 10)}.pdf`, 'KSP Filtered Crime Case Export', [
-        `Applied filters: ${filterSummary}`,
-        `Matching cases: ${data.rows.length}`,
-        '',
-        data.headers.join(' | '),
-        ...data.rows.map(row => row.join(' | '))
-      ]);
+      if (data) downloadPdf(`ksp-filtered-cases-${new Date().toISOString().slice(0, 10)}.pdf`, 'KSP Filtered Crime Case Export', {
+        orientation: 'landscape',
+        metadata: [
+          { label: 'Applied filters', value: filterSummary },
+          { label: 'Matching cases', value: data.rows.length },
+          { label: 'Exported by', value: session?.officerName || 'Authorized dashboard user' },
+        ],
+        sections: [{ heading: 'Filtered Case Records', table: { headers: data.headers, rows: data.rows } }],
+      });
     }
   };
 

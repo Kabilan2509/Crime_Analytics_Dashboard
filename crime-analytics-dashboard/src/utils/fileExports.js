@@ -1,4 +1,5 @@
 import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const triggerDownload = (filename, blob) => {
   const url = URL.createObjectURL(blob);
@@ -45,8 +46,9 @@ export const downloadExcel = (filename, sheetName, headers, rows) => {
   triggerDownload(filename, new Blob([workbook], { type: 'application/vnd.ms-excel;charset=utf-8' }));
 };
 
-export const downloadPdf = (filename, title, lines = []) => {
-  const pdf = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
+export const downloadPdf = (filename, title, content = []) => {
+  const document = Array.isArray(content) ? { paragraphs: content } : (content || {});
+  const pdf = new jsPDF({ orientation: document.orientation || 'portrait', unit: 'mm', format: 'a4', compress: true });
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
   const margin = 16;
@@ -65,6 +67,8 @@ export const downloadPdf = (filename, title, lines = []) => {
     pdf.text('OFFICIAL USE', pageWidth - margin, 13, { align: 'right' });
   };
 
+  const addPage = () => { pdf.addPage(); drawHeader(); return 32; };
+  const ensureSpace = (y, needed = 12) => y + needed > pageHeight - 18 ? addPage() : y;
   drawHeader();
   pdf.setTextColor(25, 35, 45);
   pdf.setFont('helvetica', 'bold');
@@ -81,22 +85,65 @@ export const downloadPdf = (filename, title, lines = []) => {
   pdf.line(margin, y, pageWidth - margin, y);
   y += 8;
 
-  lines.forEach(rawLine => {
+  const renderParagraphs = (lines, startY) => {
+    let cursor = startY;
+    (lines || []).forEach(rawLine => {
     const line = sanitizePdfText(rawLine);
-    if (!line) { y += 3; return; }
+    if (!line) { cursor += 3; return; }
     const heading = line.endsWith(':') || (line.length < 70 && line === line.toUpperCase());
     pdf.setFont('helvetica', heading ? 'bold' : 'normal');
     pdf.setFontSize(heading ? 10 : 8.7);
     pdf.setTextColor(heading ? 20 : 50, heading ? 55 : 62, heading ? 92 : 72);
     const wrapped = pdf.splitTextToSize(line, pageWidth - margin * 2);
     const lineHeight = heading ? 5 : 4.3;
-    if (y + wrapped.length * lineHeight > pageHeight - 19) {
-      pdf.addPage();
-      drawHeader();
-      y = 33;
+    cursor = ensureSpace(cursor, wrapped.length * lineHeight);
+    pdf.text(wrapped, margin, cursor);
+    cursor += wrapped.length * lineHeight + (heading ? 2 : 0.8);
+    });
+    return cursor;
+  };
+
+  if (document.metadata?.length) {
+    autoTable(pdf, {
+      startY: y, margin: { left: margin, right: margin },
+      body: document.metadata.map(item => [sanitizePdfText(item.label), sanitizePdfText(item.value)]),
+      theme: 'plain', styles: { font: 'helvetica', fontSize: 8.5, cellPadding: 1.5, textColor: [55, 65, 75] },
+      columnStyles: { 0: { fontStyle: 'bold', cellWidth: 38, textColor: [20, 55, 92] } },
+    });
+    y = pdf.lastAutoTable.finalY + 6;
+  }
+  y = renderParagraphs(document.paragraphs, y);
+  (document.sections || []).forEach(section => {
+    y = ensureSpace(y, 14);
+    if (section.heading) {
+      pdf.setFillColor(232, 239, 246); pdf.rect(margin, y - 4, pageWidth - margin * 2, 8, 'F');
+      pdf.setTextColor(20, 55, 92); pdf.setFont('helvetica', 'bold'); pdf.setFontSize(10);
+      pdf.text(sanitizePdfText(section.heading), margin + 3, y + 1); y += 8;
     }
-    pdf.text(wrapped, margin, y);
-    y += wrapped.length * lineHeight + (heading ? 2 : 0.8);
+    y = renderParagraphs(section.paragraphs, y);
+    if (section.keyValues?.length) {
+      autoTable(pdf, {
+        startY: y, margin: { left: margin, right: margin },
+        body: section.keyValues.map(item => [sanitizePdfText(item.label), sanitizePdfText(item.value)]),
+        theme: 'grid', styles: { font: 'helvetica', fontSize: 8, cellPadding: 2, valign: 'top' },
+        columnStyles: { 0: { fontStyle: 'bold', cellWidth: 42, fillColor: [244, 247, 250] } },
+        didDrawPage: data => { if (data.pageNumber > 1) drawHeader(); },
+      });
+      y = pdf.lastAutoTable.finalY + 6;
+    }
+    if (section.table?.headers?.length) {
+      autoTable(pdf, {
+        startY: y, margin: { left: margin, right: margin, top: 30, bottom: 18 },
+        head: [section.table.headers.map(sanitizePdfText)],
+        body: (section.table.rows || []).map(row => row.map(sanitizePdfText)),
+        theme: 'grid', styles: { font: 'helvetica', fontSize: document.orientation === 'landscape' ? 7 : 7.5, cellPadding: 2, overflow: 'linebreak', valign: 'top' },
+        headStyles: { fillColor: [20, 55, 92], textColor: 255, fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [244, 247, 250] },
+        columnStyles: section.table.columnStyles || {},
+        didDrawPage: data => { if (data.pageNumber > 1) drawHeader(); },
+      });
+      y = pdf.lastAutoTable.finalY + 7;
+    }
   });
 
   const totalPages = pdf.getNumberOfPages();
