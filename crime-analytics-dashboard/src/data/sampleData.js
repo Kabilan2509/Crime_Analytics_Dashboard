@@ -629,6 +629,7 @@ const crimeHeadWeights = [
 ];
 
 const cases = [];
+const crimeSerials = new Map();
 
 for (let i = 0; i < TOTAL_CASES; i++) {
   const districtID = weightedPick(districtWeights);
@@ -659,16 +660,19 @@ for (let i = 0; i < TOTAL_CASES; i++) {
 
   const coords = getCoordinates(districtID);
 
-  // CrimeNo format: 10 44 300 06 2026 00001
-  // StateCode(2) + DistrictCode(2) + UnitCode(3) + CaseCategory(2) + Year(4) + SeqNo(5)
-  const stateCode = '10';
-  const districtCode = String(districtID).padStart(2, '0');
-  const unitCode = String(policeStationID).padStart(3, '0');
+  // Karnataka FIR-system format (18 digits): category(1) + district(4)
+  // + police station/unit(4) + year(4) + per-scope running serial(5).
+  // The business category code is not always the lookup PK (Zero FIR = 8).
+  const categoryCodeByID = { 1: '1', 2: '2', 3: '3', 4: '4', 5: '8' };
+  const districtCode = String(districtID).padStart(4, '0');
+  const unitCode = String(policeStationID).padStart(4, '0');
   const caseCategoryID = weightedPick(caseCategoryWeights);
-  const catCode = String(caseCategoryID).padStart(2, '0');
+  const catCode = categoryCodeByID[caseCategoryID];
   const yearCode = String(registrationDate.getFullYear());
-  const seqNo = String(i + 1).padStart(5, '0');
-  const crimeNo = `${stateCode}${districtCode}${unitCode}${catCode}${yearCode}${seqNo}`;
+  const serialKey = `${policeStationID}|${caseCategoryID}|${yearCode}`;
+  crimeSerials.set(serialKey, (crimeSerials.get(serialKey) || 0) + 1);
+  const seqNo = String(crimeSerials.get(serialKey)).padStart(5, '0');
+  const crimeNo = `${catCode}${districtCode}${unitCode}${yearCode}${seqNo}`;
 
   cases.push({
     CaseMasterID: i + 1,

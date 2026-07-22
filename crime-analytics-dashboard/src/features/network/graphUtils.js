@@ -18,6 +18,20 @@ export function buildNetworkData(cases, accused, victims, districts, stations) {
   const edges  = [];
   const nodeSet = new Set();
 
+  const indexMasterRows = (rows, keys) => {
+    const index = new Map();
+    (rows || []).forEach(row => {
+      keys.forEach(key => {
+        const value = row?.[key];
+        if (value !== undefined && value !== null && value !== '') index.set(String(value), row);
+      });
+    });
+    return index;
+  };
+  const districtLookup = indexMasterRows(districts, ['ROWID', 'DistrictID', 'SourceDistrictID']);
+  const stationLookup = indexMasterRows(stations, ['ROWID', 'UnitID', 'PoliceStationID', 'SourceUnitID']);
+  const usableName = value => value && String(value).trim().toLowerCase() !== 'unknown';
+
   // Top 40 cases (heinous first)
   const activeCases = [...(cases || [])]
     .sort((a, b) => (b.isHeinous ? 1 : 0) - (a.isHeinous ? 1 : 0))
@@ -58,31 +72,43 @@ export function buildNetworkData(cases, accused, victims, districts, stations) {
     });
     nodeSet.add(nodeId);
 
+    const stationKey = c.PoliceStationID ?? c.UnitID ?? c.unit?.UnitID ?? c.unit?.ROWID;
+    const station = c.unit || stationLookup.get(String(stationKey)) || null;
+    const stationName = usableName(c.policeStationName)
+      ? String(c.policeStationName)
+      : station?.UnitName || station?.PoliceStationName || null;
+    const districtKey = c.DistrictID ?? c.districtID ?? c.district?.DistrictID
+      ?? station?.DistrictID ?? station?.SourceDistrictID;
+    const district = c.district || districtLookup.get(String(districtKey)) || null;
+    const districtName = usableName(c.districtName)
+      ? String(c.districtName)
+      : district?.DistrictName || district?.Name || null;
+
     // 2. District node
-    const distId = `dist_${c.districtName}`;
-    if (c.districtName && !nodeSet.has(distId)) {
+    const distId = `dist_${districtKey ?? districtName}`;
+    if (districtName && !nodeSet.has(distId)) {
       nodes.push({
         id: distId, type: 'district',
-        label: c.districtName,
-        color: ENTITY.district.color, radius: 15, data: { name: c.districtName },
+        label: districtName,
+        color: ENTITY.district.color, radius: 15, data: district || { name: districtName },
         x: 0, y: 0, vx: 0, vy: 0,
       });
       nodeSet.add(distId);
     }
-    if (c.districtName) edges.push({ source: nodeId, target: distId, type: 'located_in', strength: 0.2 });
+    if (districtName) edges.push({ source: nodeId, target: distId, type: 'located_in', strength: 0.2 });
 
     // 3. Station node
-    const stId = `station_${c.policeStationName}`;
-    if (c.policeStationName && !nodeSet.has(stId)) {
+    const stId = `station_${stationKey ?? stationName}`;
+    if (stationName && !nodeSet.has(stId)) {
       nodes.push({
         id: stId, type: 'station',
-        label: c.policeStationName,
-        color: ENTITY.station.color, radius: 13, data: { name: c.policeStationName },
+        label: stationName,
+        color: ENTITY.station.color, radius: 13, data: station || { name: stationName },
         x: 0, y: 0, vx: 0, vy: 0,
       });
       nodeSet.add(stId);
     }
-    if (c.policeStationName) edges.push({ source: nodeId, target: stId, type: 'registered_at', strength: 0.3 });
+    if (stationName) edges.push({ source: nodeId, target: stId, type: 'registered_at', strength: 0.3 });
   });
 
   // 4. Accused nodes + co-accused edges

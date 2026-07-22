@@ -29,6 +29,7 @@ async function safeZcql(app, sql, label) {
 // ─── Pagination helper ────────────────────────────────────────────────────────
 async function fetchTablePaged(app, tableName, maxPages = 10) {
   const rows = [];
+  const seenRowIds = new Set();
   for (let page = 0; page < maxPages; page++) {
     const offset = page * 300;
     const batch = await safeZcql(
@@ -37,7 +38,14 @@ async function fetchTablePaged(app, tableName, maxPages = 10) {
       `${tableName}-p${page}`
     );
     if (!batch.length) break;
-    rows.push(...batch);
+    // Catalyst can repeat the boundary ROWID on adjacent OFFSET pages.
+    // De-duplicate it so dashboard consumers receive each stored row once.
+    for (const row of batch) {
+      const rowId = row.ROWID == null ? null : String(row.ROWID);
+      if (rowId !== null && seenRowIds.has(rowId)) continue;
+      if (rowId !== null) seenRowIds.add(rowId);
+      rows.push(row);
+    }
     if (batch.length < 300) break;
   }
   return rows;

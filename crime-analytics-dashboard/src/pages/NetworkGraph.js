@@ -22,7 +22,7 @@ import React, {
 } from 'react';
 import {
   MdHub, MdSearch, MdZoomIn, MdZoomOut, MdCenterFocusStrong,
-  MdPushPin, MdClose,
+  MdPushPin, MdClose, MdViewList, MdAccountTree,
 } from 'react-icons/md';
 import { buildNetworkData, getNodeStats, ENTITY } from '../features/network/graphUtils';
 import { caseViews, accused, victims, districts, units } from '../data/schemaSelectors';
@@ -55,6 +55,8 @@ export default function NetworkGraph() {
   const [pinnedNodes,  setPinnedNodes]  = useState(new Set());
   const [labelMode,    setLabelMode]    = useState('smart'); // 'all' | 'smart' | 'none'
   const [showLegend,   setShowLegend]   = useState(true);
+  const [viewMode,     setViewMode]     = useState('graph');
+  const [, setKeyboardNode] = useState(0);
 
   // ── Refs (no re-render on every frame) ────────────────────────────────────
   const canvasRef     = useRef(null);
@@ -528,6 +530,27 @@ export default function NetworkGraph() {
   };
   const recenter = () => { transformRef.current = { x: 0, y: 0, zoom: 1 }; };
 
+  const onCanvasKeyDown = useCallback((event) => {
+    if (!visNodes.length) return;
+    if (['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp'].includes(event.key)) {
+      event.preventDefault();
+      const direction = ['ArrowRight', 'ArrowDown'].includes(event.key) ? 1 : -1;
+      setKeyboardNode(current => {
+        const next = (current + direction + visNodes.length) % visNodes.length;
+        setSelectedNode(visNodes[next]);
+        return next;
+      });
+    } else if (event.key === '+' || event.key === '=') {
+      event.preventDefault(); zoom(1.25);
+    } else if (event.key === '-') {
+      event.preventDefault(); zoom(0.8);
+    } else if (event.key === '0') {
+      event.preventDefault(); recenter();
+    } else if (event.key === 'Escape') {
+      setSelectedNode(null);
+    }
+  }, [visNodes]);
+
   // ── Styles ─────────────────────────────────────────────────────────────────
   const chip = (active, color) => ({
     padding: '4px 12px', borderRadius: '20px', cursor: 'pointer', fontSize: '11px',
@@ -562,9 +585,9 @@ export default function NetworkGraph() {
             <MdHub size={22} color="#fff" />
           </div>
           <div>
-            <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 700 }}>Criminal Intelligence Network</h2>
+            <h1 className="network-title">Criminal Intelligence Network</h1>
             <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)' }}>
-              Entity relationship graph &nbsp;·&nbsp; {graphStats.N} nodes &nbsp;·&nbsp; {graphStats.E} connections
+              Explore how accused persons, FIRs, victims and locations are connected.
             </p>
           </div>
         </div>
@@ -585,14 +608,29 @@ export default function NetworkGraph() {
         </div>
       </div>
 
+      <section className="network-intro" aria-labelledby="network-help-title">
+        <div>
+          <strong id="network-help-title">How to use this page</strong>
+          <p>Select a node to see direct connections. Use filters to reduce noise, or switch to List view for a text-based overview.</p>
+        </div>
+        <div className="network-view-switch" role="group" aria-label="Network display mode">
+          <button type="button" className={viewMode === 'graph' ? 'active' : ''} aria-pressed={viewMode === 'graph'} onClick={() => setViewMode('graph')}>
+            <MdAccountTree aria-hidden="true" /> Graph view
+          </button>
+          <button type="button" className={viewMode === 'list' ? 'active' : ''} aria-pressed={viewMode === 'list'} onClick={() => setViewMode('list')}>
+            <MdViewList aria-hidden="true" /> List view
+          </button>
+        </div>
+      </section>
+
       {/* Relocated Crime Intelligence Metrics */}
       {renderKpiStrip('Criminal Intelligence Overview', intelligenceStats)}
 
       {/* ── Two-column layout ─────────────────────────────────────────────── */}
-      <div className="network-page">
+      <div className={`network-page network-page--${viewMode}`}>
 
         {/* ── Canvas column ─────────────────────────────────────────────── */}
-        <div style={{
+        <div className="network-visual" hidden={viewMode !== 'graph'} style={{
           position: 'relative', flex: 1, minHeight: '560px',
           background: '#07101c', borderRadius: '14px', overflow: 'hidden',
           border: '1px solid rgba(255,255,255,0.06)',
@@ -600,13 +638,20 @@ export default function NetworkGraph() {
         }}>
           <canvas
             ref={canvasRef}
+            tabIndex={0}
+            role="img"
+            aria-label={`Interactive criminal network with ${graphStats.N} nodes and ${graphStats.E} connections. Use arrow keys to move between nodes, plus and minus to zoom, zero to reset, and Escape to clear selection.`}
             style={{ width: '100%', height: '100%', display: 'block', cursor: 'grab' }}
             onMouseDown={onMouseDown}
             onMouseMove={onMouseMove}
             onMouseUp={onMouseUp}
             onMouseLeave={onMouseUp}
             onDoubleClick={onDoubleClick}
+            onKeyDown={onCanvasKeyDown}
           />
+          <p className="sr-only" aria-live="polite">
+            {selectedNode ? `Selected ${selectedNode.label}, ${ENTITY[selectedNode.type]?.label || selectedNode.type}, with ${connItems.length} direct connections.` : 'No network node selected.'}
+          </p>
 
           {/* ── Floating Legend ─────────────────────────────────────────── */}
           {showLegend ? (
@@ -706,6 +751,30 @@ export default function NetworkGraph() {
         </div>
 
         {/* ── Right Sidebar ──────────────────────────────────────────────── */}
+        {viewMode === 'list' && (
+          <section className="network-list-view" aria-labelledby="network-list-title">
+            <div className="network-list-heading">
+              <h2 id="network-list-title">Network entities</h2>
+              <p>{visNodes.length} visible entities. Select one to inspect its direct connections.</p>
+            </div>
+            {visNodes.length ? (
+              <ul className="network-entity-list">
+                {visNodes.map(node => (
+                  <li key={node.id}>
+                    <button type="button" onClick={() => setSelectedNode(node)} aria-current={selectedNode?.id === node.id ? 'true' : undefined}>
+                      <span className="network-entity-marker" style={{ backgroundColor: ENTITY[node.type]?.color }} aria-hidden="true" />
+                      <span className="network-entity-copy"><strong>{node.label}</strong><span>{ENTITY[node.type]?.label || node.type}</span></span>
+                      <span className="network-entity-count">{graphStats.deg[node.id] || 0} connection{(graphStats.deg[node.id] || 0) === 1 ? '' : 's'}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="network-empty" role="status">No entities match the current search and filter. Clear them to view the network.</div>
+            )}
+          </section>
+        )}
+
         <div className="network-controls" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
 
           {/* Search + Filter chips */}
@@ -713,6 +782,8 @@ export default function NetworkGraph() {
             <div style={{ ...metaRow, marginBottom: '10px' }}>SEARCH & FILTER</div>
             <div style={{ position: 'relative', marginBottom: '10px' }}>
               <input
+                id="network-search"
+                aria-label="Search network entities by name or FIR number"
                 type="text"
                 placeholder="Search nodes by name / FIR…"
                 value={search}
@@ -733,6 +804,8 @@ export default function NetworkGraph() {
               {FILTER_CHIPS.map(f => (
                 <button
                   key={f.key}
+                  type="button"
+                  aria-pressed={filterType === f.key}
                   onClick={() => setFilterType(f.key)}
                   style={chip(filterType === f.key, ENTITY[f.key]?.color)}
                 >
@@ -793,7 +866,7 @@ export default function NetworkGraph() {
                     {selectedNode.label}
                   </div>
                 </div>
-                <button onClick={() => setSelectedNode(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '18px', lineHeight: 1, padding: '2px 4px', flexShrink: 0 }}>
+                <button type="button" aria-label="Close selected entity details" onClick={() => setSelectedNode(null)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '18px', lineHeight: 1, padding: '6px', flexShrink: 0 }}>
                   <MdClose size={16} />
                 </button>
               </div>
@@ -841,10 +914,11 @@ export default function NetworkGraph() {
                   <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '12px', padding: '16px' }}>No visible connections</div>
                 )}
                 {connItems.map((item, i) => (
-                  <div
+                  <button
+                    type="button"
                     key={i}
                     onClick={() => { const n = nodeMap.get(item.id); if (n) setSelectedNode(n); }}
-                    style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '7px 9px', borderRadius: '8px', cursor: 'pointer', background: 'var(--bg-panel-alt)', border: '1px solid transparent', transition: 'all 0.15s', fontSize: '12px' }}
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '9px', borderRadius: '8px', cursor: 'pointer', background: 'var(--bg-panel-alt)', border: '1px solid transparent', transition: 'all 0.15s', fontSize: '12px', width: '100%', textAlign: 'left' }}
                     onMouseEnter={e => { e.currentTarget.style.background = `${ENTITY[item.nodeType]?.color || '#fff'}12`; e.currentTarget.style.borderColor = `${ENTITY[item.nodeType]?.color || '#fff'}30`; }}
                     onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-panel-alt)'; e.currentTarget.style.borderColor = 'transparent'; }}
                   >
@@ -853,7 +927,7 @@ export default function NetworkGraph() {
                     <span style={{ fontSize: '10px', color: 'var(--text-muted)', flexShrink: 0, background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px' }}>
                       {(item.edgeType || '').replace(/_/g, ' ')}
                     </span>
-                  </div>
+                  </button>
                 ))}
               </div>
 

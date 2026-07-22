@@ -97,8 +97,32 @@ function transform(table, source) {
   return row;
 }
 
+function validateCaseNumbers(rows) {
+  const categoryCodes = new Map([[1, '1'], [2, '2'], [3, '3'], [4, '4'], [5, '8']]);
+  const serials = new Map();
+  for (const row of rows) {
+    const crimeNo = String(row.CrimeNo || '');
+    const caseNo = String(row.CaseNo || '');
+    const year = String(row.CrimeRegisteredDate || '').slice(0, 4);
+    const prefix = `${categoryCodes.get(Number(row.CaseCategoryID))}${String(row.DistrictID).padStart(4, '0')}${String(row.PoliceStationID).padStart(4, '0')}${year}`;
+    if (!/^\d{18}$/.test(crimeNo) || !crimeNo.startsWith(prefix)) {
+      throw new Error(`CaseMaster ${row.CaseMasterID}: invalid CrimeNo ${crimeNo}`);
+    }
+    if (!/^\d{9}$/.test(caseNo) || caseNo !== crimeNo.slice(-9)) {
+      throw new Error(`CaseMaster ${row.CaseMasterID}: CaseNo must be the last 9 digits of CrimeNo`);
+    }
+    const key = `${row.PoliceStationID}|${row.CaseCategoryID}|${year}`;
+    const next = (serials.get(key) || 0) + 1;
+    serials.set(key, next);
+    if (crimeNo.slice(-5) !== String(next).padStart(5, '0')) {
+      throw new Error(`CaseMaster ${row.CaseMasterID}: invalid running serial for ${key}`);
+    }
+  }
+}
+
 async function main() {
   const data = loadData();
+  validateCaseNumbers(data.cases);
   console.log('Source:', INSERT_ORDER.map(t => `${t}=${data[TABLES[t][0]].length}`).join(', '));
   // Resolve every relationship before deleting anything. Fake ROWIDs are enough for this pass.
   for (const table of INSERT_ORDER) {
