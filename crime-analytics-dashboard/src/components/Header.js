@@ -22,6 +22,7 @@ const PAGE_TITLES = {
   '/statistics':{ title: 'Statistical Analytics Suite', subtitle: 'Pattern analysis, temporal distributions, and rankings' },
   '/reports':   { title: 'Briefing & Report Generator', subtitle: 'Intelligence summaries and briefing exports' },
   '/settings':  { title: 'Command Center Configuration', subtitle: 'Thresholds, refresh frequencies, and scaling settings' },
+  '/predictions':{ title: 'Predictions', subtitle: 'Predictive intelligence modeling and regional risk forecasts' },
 };
 
 function Header({ theme, onToggleTheme, onOpenSidebar }) {
@@ -71,7 +72,9 @@ function Header({ theme, onToggleTheme, onOpenSidebar }) {
           </button>
           <MdShield size={28} className="header-shield" />
           <div>
-            <div className="header-breadcrumb">Command Center / Police Operations</div>
+            <div className="header-breadcrumb">
+              {location.pathname.startsWith('/predictions') ? 'AI Intelligence / Predictions' : 'Command Center / Police Operations'}
+            </div>
             <h1 className="header-title">{page.title}</h1>
           </div>
         </div>

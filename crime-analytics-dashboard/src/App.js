@@ -153,7 +153,7 @@ function App() {
                     <Route path="/map" element={<CrimeMap {...filterProps} />} />
                     <Route path="/statistics" element={<Statistics {...filterProps} />} />
                     <Route path="/reports" element={<Reports {...filterProps} />} />
-                    <Route path="/predictions" element={<Predictions />} />
+                    <Route path="/predictions" element={<Predictions {...filterProps} />} />
 
                     {/* Admin Pages */}
                     <Route path="/admin/users" element={<UserManagement />} />
