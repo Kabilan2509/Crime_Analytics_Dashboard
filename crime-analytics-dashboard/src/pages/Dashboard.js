@@ -93,6 +93,64 @@ function Dashboard({
           border-left: 3px solid var(--accent-primary) !important;
           font-weight: bold !important;
         }
+        .dashboard-page .card-header .section-eyebrow {
+          margin: 0 0 6px 0 !important;
+        }
+        .dashboard-tables {
+          display: grid;
+          gap: 20px;
+        }
+        .dashboard-tables-summary {
+          display: grid;
+          grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
+          gap: 20px;
+          align-items: stretch;
+        }
+        .dashboard-page .dashboard-table-card {
+          min-width: 0;
+          margin: 0 !important;
+        }
+        .dashboard-serious-table-wrap {
+          width: 100%;
+          overflow-x: auto;
+        }
+        .dashboard-serious-table {
+          min-width: 760px;
+          table-layout: fixed;
+        }
+        .dashboard-serious-table th:nth-child(1) { width: 28%; }
+        .dashboard-serious-table th:nth-child(2) { width: 27%; }
+        .dashboard-serious-table th:nth-child(3) { width: 17%; }
+        .dashboard-serious-table th:nth-child(4) { width: 18%; }
+        .dashboard-serious-table th:nth-child(5) { width: 10%; }
+        .dashboard-page .case-station {
+          display: block;
+          margin-top: 3px;
+          color: #64748b;
+          font-size: 11px;
+        }
+        .dashboard-page .table-nowrap { white-space: nowrap; }
+        .dashboard-page .table-action-column {
+          text-align: right !important;
+          padding-right: 12px !important;
+          white-space: nowrap;
+        }
+        .dashboard-page .case-status { font-weight: 700; }
+        .dashboard-page .case-status-closed { color: #16a34a; }
+        .dashboard-page .case-status-active { color: #d97706; }
+        .dashboard-page .case-inspect-link {
+          color: #2563eb;
+          font-weight: 700;
+          text-decoration: none;
+        }
+        .dashboard-page .case-inspect-link:hover { text-decoration: underline; }
+        @media (max-width: 1050px) {
+          .dashboard-tables-summary { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 700px) {
+          .dashboard-page .card { padding: 12px !important; }
+          .dashboard-page .card-title { font-size: 15px !important; }
+        }
         .dashboard-page .data-table {
           width: 100% !important;
           border-collapse: collapse !important;

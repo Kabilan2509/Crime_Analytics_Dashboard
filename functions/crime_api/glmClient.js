@@ -18,37 +18,138 @@ const GLM_MODEL    = 'crm-di-glm47b_30b_it';
 const CATALYST_ORG = '60076926826';
 const MAX_ROUNDS   = 6;    // max tool-call rounds per conversation turn
 const TIMEOUT_MS   = 60000;
+const TOKEN_EXPIRY_SKEW_MS = 5 * 60 * 1000;
+
+let oauthTokenCache = { accessToken: '', expiresAt: 0 };
+let tokenRefreshPromise = null;
+
+function getRefreshTokenConfig() {
+  return {
+    accountsUrl: (process.env.ZOHO_ACCOUNTS_URL || 'https://accounts.zoho.in').replace(/\/+$/, ''),
+    clientId: process.env.ZOHO_CLIENT_ID || '',
+    clientSecret: process.env.ZOHO_CLIENT_SECRET || '',
+    refreshToken: process.env.ZOHO_REFRESH_TOKEN || '',
+  };
+}
+
+function hasRefreshTokenConfig() {
+  const config = getRefreshTokenConfig();
+  return Boolean(config.clientId && config.clientSecret && config.refreshToken);
+}
+
+function requestRefreshedAccessToken() {
+  const config = getRefreshTokenConfig();
+  const missing = [];
+  if (!config.clientId) missing.push('ZOHO_CLIENT_ID');
+  if (!config.clientSecret) missing.push('ZOHO_CLIENT_SECRET');
+  if (!config.refreshToken) missing.push('ZOHO_REFRESH_TOKEN');
+  if (missing.length) {
+    return Promise.reject(new Error(`GLM OAuth configuration is incomplete. Missing: ${missing.join(', ')}`));
+  }
+
+  return new Promise((resolve, reject) => {
+    let url;
+    try {
+      url = new URL(`${config.accountsUrl}/oauth/v2/token`);
+    } catch (_) {
+      reject(new Error('GLM OAuth configuration has an invalid ZOHO_ACCOUNTS_URL.'));
+      return;
+    }
+
+    const body = new URLSearchParams({
+      refresh_token: config.refreshToken,
+      client_id: config.clientId,
+      client_secret: config.clientSecret,
+      grant_type: 'refresh_token',
+    }).toString();
+
+    const request = https.request({
+      hostname: url.hostname,
+      port: url.port || 443,
+      path: url.pathname + url.search,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Length': Buffer.byteLength(body),
+      },
+    }, (response) => {
+      let data = '';
+      response.on('data', (chunk) => { data += chunk; });
+      response.on('end', () => {
+        let parsed;
+        try {
+          parsed = JSON.parse(data);
+        } catch (_) {
+          reject(new Error(`GLM OAuth token refresh returned an invalid response (HTTP ${response.statusCode}).`));
+          return;
+        }
+
+        if (response.statusCode >= 400 || !parsed.access_token) {
+          const reason = parsed.error || parsed.error_description || 'token refresh failed';
+          reject(new Error(`GLM OAuth token refresh failed (HTTP ${response.statusCode}): ${reason}`));
+          return;
+        }
+
+        const expiresInSeconds = Number(parsed.expires_in) || 3600;
+        oauthTokenCache = {
+          accessToken: parsed.access_token,
+          expiresAt: Date.now() + (expiresInSeconds * 1000),
+        };
+        console.log('[GLM Auth] OAuth access token refreshed successfully');
+        resolve(oauthTokenCache.accessToken);
+      });
+    });
+
+    request.on('error', (error) => reject(new Error(`GLM OAuth token refresh request failed: ${error.message}`)));
+    request.setTimeout(TIMEOUT_MS, () => {
+      request.destroy();
+      reject(new Error(`GLM OAuth token refresh timed out after ${TIMEOUT_MS / 1000}s`));
+    });
+    request.write(body);
+    request.end();
+  });
+}
+
+async function getRefreshedAccessToken(forceRefresh = false) {
+  if (!forceRefresh
+      && oauthTokenCache.accessToken
+      && Date.now() < oauthTokenCache.expiresAt - TOKEN_EXPIRY_SKEW_MS) {
+    return oauthTokenCache.accessToken;
+  }
+
+  if (!tokenRefreshPromise) {
+    tokenRefreshPromise = requestRefreshedAccessToken()
+      .finally(() => { tokenRefreshPromise = null; });
+  }
+  return tokenRefreshPromise;
+}
 
 // ─── Auth Token Extraction ────────────────────────────────────────────────────
 /**
  * Tries multiple strategies to get a valid Zoho OAuth access token
  * from inside a Catalyst Serverless Function.
  */
-async function getAuthToken(app, req) {
-  // Strategy 1: quickml-config.json explicit token (highest priority — user-set)
-  try {
-    // Use readFileSync to bypass Node's module cache (so token updates take effect without restart)
-    const fs = require('fs');
-    const path = require('path');
-    const cfgPath = path.join(__dirname, 'quickml-config.json');
-    const cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
-    const t = cfg.zoho_access_token;
-    if (t && t !== 'PASTE_YOUR_TOKEN_HERE' && t.length > 10) {
-      console.log('[GLM Auth] Using quickml-config.json token');
-      return t;
-    }
-  } catch (_) {}
+async function getAuthToken(app, req, forceRefresh = false) {
+  // Primary: obtain short-lived access tokens using the long-lived refresh token.
+  if (hasRefreshTokenConfig()) {
+    return getRefreshedAccessToken(forceRefresh);
+  }
 
-  // Strategy 2: Environment variable (set in Catalyst Function environment config)
+  const refreshConfig = getRefreshTokenConfig();
+  if (refreshConfig.clientId || refreshConfig.clientSecret || refreshConfig.refreshToken) {
+    return getRefreshedAccessToken(forceRefresh);
+  }
+
+  // Backward-compatible fallback for environments without refresh-token configuration.
   const envToken = process.env.ZOHO_ACCESS_TOKEN
     || process.env.ZOHO_CATALYST_AUTH_TOKEN
     || process.env.X_CATALYST_AUTH_TOKEN;
-  if (envToken && envToken.length > 10) {
-    console.log('[GLM Auth] Using env var token');
+  if (envToken && !envToken.includes('ENVIRONMENT') && envToken !== 'PASTE_YOUR_TOKEN_HERE' && envToken.length > 10) {
+    console.log('[GLM Auth] Using process.env.ZOHO_ACCESS_TOKEN');
     return envToken;
   }
 
-  // Strategy 3: x-zoho-auth-user-token header injected by Catalyst runtime
+  // x-zoho-auth-user-token header injected by Catalyst runtime
   const headers = req?.headers || {};
   const fromHeader = headers['x-zoho-auth-user-token'] || headers['x-catalyst-auth-token'];
   if (fromHeader && fromHeader !== 'undefined' && fromHeader.length > 10) {
@@ -56,7 +157,7 @@ async function getAuthToken(app, req) {
     return fromHeader;
   }
 
-  // Strategy 4: Authorization header from browser request
+  // Authorization Bearer header
   const authHeader = headers['authorization'] || '';
   if (authHeader.startsWith('Bearer ')) {
     const t = authHeader.slice(7).trim();
@@ -64,8 +165,7 @@ async function getAuthToken(app, req) {
   }
 
   throw new Error(
-    'GLM: No valid OAuth token found. ' +
-    'Open functions/crime_api/quickml-config.json and set "zoho_access_token" to your Zoho access token.'
+    'GLM: No valid OAuth configuration found. Set ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET, and ZOHO_REFRESH_TOKEN in Catalyst Console.'
   );
 }
 
@@ -114,7 +214,9 @@ function callGLMHTTP(token, messages, tools, enableThinking) {
 
           if (res.statusCode >= 400) {
             const msg = parsed?.message || parsed?.error || JSON.stringify(parsed).slice(0, 200);
-            reject(new Error(`GLM API ${res.statusCode}: ${msg}`));
+            const error = new Error(`GLM API ${res.statusCode}: ${msg}`);
+            error.statusCode = res.statusCode;
+            reject(error);
             return;
           }
 
@@ -165,7 +267,7 @@ function callGLMHTTP(token, messages, tools, enableThinking) {
  * @returns {{ text, toolCalls, uiAccumulator }}
  */
 async function runConversation(app, httpReq, messages, tools, executeTool) {
-  const token = await getAuthToken(app, httpReq);
+  let token = await getAuthToken(app, httpReq);
 
   const conversation = [...messages];
   const uiAccumulator = { results: [], chartData: [], sources: [], predictions: [] };
@@ -177,7 +279,20 @@ async function runConversation(app, httpReq, messages, tools, executeTool) {
     const roundTools = allToolCalls.length === 0 ? tools : [];
     console.log(`[GLM] Round ${round + 1}/${MAX_ROUNDS} — ${conversation.length} messages, tools: ${roundTools.length > 0 ? roundTools.length : 'none'}`);
 
-    const response = await callGLMHTTP(token, conversation, roundTools, false);
+    let response;
+    try {
+      response = await callGLMHTTP(token, conversation, roundTools, false);
+    } catch (error) {
+      const canRefresh = hasRefreshTokenConfig();
+      if (canRefresh && (error.statusCode === 401 || error.statusCode === 403)) {
+        console.log(`[GLM Auth] HTTP ${error.statusCode}; refreshing the OAuth token and retrying once`);
+        oauthTokenCache = { accessToken: '', expiresAt: 0 };
+        token = await getAuthToken(app, httpReq, true);
+        response = await callGLMHTTP(token, conversation, roundTools, false);
+      } else {
+        throw error;
+      }
+    }
     const choice = response?.choices?.[0];
     if (!choice) throw new Error('GLM returned no choices');
 

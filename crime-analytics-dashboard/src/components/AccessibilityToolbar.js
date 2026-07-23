@@ -72,9 +72,9 @@ function AccessibilityToolbar() {
         className="a11y-toggle"
         onClick={() => setExpanded(prev => !prev)}
         title="Accessibility Options"
-        aria-label="Toggle accessibility toolbar"
         aria-expanded={expanded}
         aria-controls="accessibility-options"
+        aria-label={`Accessibility options${highContrast ? ', high contrast enabled' : ''}`}
       >
         <MdAccessibility size={18} />
       </button>
@@ -111,6 +111,7 @@ function AccessibilityToolbar() {
                 className={highContrast ? 'active' : ''}
                 title="Toggle high contrast"
                 aria-label="Toggle high contrast"
+                aria-pressed={highContrast}
               >
                 <MdContrast size={16} />
               </button>
@@ -138,6 +139,7 @@ function AccessibilityToolbar() {
                 className={colorblindSafe ? 'active' : ''}
                 title="Toggle colorblind-safe colors"
                 aria-label="Toggle colorblind-safe colors"
+                aria-pressed={colorblindSafe}
               >
                 <MdVisibility size={16} />
               </button>

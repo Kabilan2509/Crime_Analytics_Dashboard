@@ -101,41 +101,31 @@ function Copilot() {
       const res = await fetch(`${API_BASE}/copilot/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ message: queryText, history: historyPayload }),
       });
-
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-      }
-
-      const data = await res.json();
-      aiResponse = {
-        id: `a-${Date.now()}`,
-        type: 'ai',
-        intent: data.intent,
-        entities: data.entities,
-        content: data.answer || data.summary || 'Query executed.',
-        summary: data.summary,
-        results: data.results || [],
-        chartData: data.chartData || [],
-        predictions: data.predictions || [],
-        suggestions: data.suggestions || [],
-        sources: data.sources || [],
-        timestamp: new Date(),
-      };
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      aiResponse = await res.json();
     } catch (err) {
-      console.warn('[Copilot] API call failed, using local fallback:', err.message);
-      const fallback = await fetchLocalFallback(queryText, historyPayload);
-      aiResponse = {
-        id: `a-${Date.now()}`,
-        type: 'ai',
-        ...fallback,
-        timestamp: new Date(),
-      };
+      // Backend unreachable — fall back to local engine
+      console.warn('[Copilot] Backend error, using local fallback:', err.message);
+      aiResponse = await fetchLocalFallback(queryText, historyPayload);
     }
 
-    setMessages(prev => [...prev, aiResponse]);
+    const aiMsg = {
+      id: `ai-${Date.now()}`,
+      type: 'ai',
+      content: aiResponse.answer || aiResponse.summary || 'No response generated.',
+      intent: aiResponse.intent,
+      entities: aiResponse.entities,
+      results: aiResponse.results,
+      chartData: aiResponse.chartData,
+      suggestions: aiResponse.suggestions,
+      sources: aiResponse.sources,
+      _offline: aiResponse._offline,
+      timestamp: new Date(),
+    };
+
+    setMessages(prev => [...prev, aiMsg]);
     setIsThinking(false);
   }, [input, isThinking, messages, isCommandMode]);
 
@@ -155,10 +145,11 @@ function Copilot() {
   ];
 
   return (
-    <div className="page-content animate-fade-in text-inverse">
+    <div className="page-content copilot-page-content animate-fade-in text-inverse">
       <div className="copilot-page">
-        {/* Left Side: Chat Arena */}
+        {/* Left Side: Chat Arena — fixed height, messages scroll inside */}
         <div className="copilot-chat">
+          {/* Banner — fixed height */}
           <div className="copilot-banner">
             <MdSmartToy size={24} style={{ color: '#9b5de5' }} />
             <div style={{ flex: 1 }}>
@@ -185,6 +176,7 @@ function Copilot() {
             </button>
           </div>
 
+          {/* Messages — scrollable, NEVER expands the outer box */}
           <div className="copilot-messages">
             {messages.map(msg => (
               <CopilotMessage key={msg.id} msg={msg} onSuggestionClick={handleSend} />
@@ -197,7 +189,7 @@ function Copilot() {
                     width: '36px', height: '36px', borderRadius: '50%',
                     background: 'linear-gradient(135deg, #9b5de5 0%, #1976d2 100%)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff',
-                    boxShadow: '0 0 10px rgba(155, 93, 229, 0.4)'
+                    boxShadow: '0 0 10px rgba(155, 93, 229, 0.4)', flexShrink: 0,
                   }}>
                     <MdSmartToy size={20} />
                   </div>
@@ -215,7 +207,8 @@ function Copilot() {
             <div ref={messagesEndRef} />
           </div>
 
-          <div className="copilot-input-bar">
+          {/* Input bar — fixed height, never scrolls */}
+          <div className="copilot-input-bar" style={{ flexShrink: 0 }}>
             <input
               type="text"
               className="copilot-input"
@@ -271,8 +264,8 @@ function Copilot() {
                 <span style={{ color: 'var(--accent-primary)', fontWeight: 600 }}>● Active</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--text-muted)' }}>QuickML Predictions</span>
-                <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>○ Not configured</span>
+                <span style={{ color: 'var(--text-muted)' }}>Auth Token</span>
+                <span style={{ color: 'var(--accent-success, #22c55e)', fontWeight: 600 }}>● Env Variable</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Conversation turns</span>

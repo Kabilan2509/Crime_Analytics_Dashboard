@@ -3,12 +3,9 @@ import { Link } from 'react-router-dom';
 
 function DashboardTables({ districtPerformance, recentSeriousFIRs, alerts }) {
   return (
-    <section className="grid-2" style={{ gap: '20px', alignItems: 'stretch' }}>
-      {/* Left Column: District Stats + Recent Heinous Cases */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-        
-        {/* District Performance Card */}
-        <article className="card" style={{ margin: 0 }}>
+    <section className="dashboard-tables">
+      <div className="dashboard-tables-summary">
+        <article className="card dashboard-table-card">
           <div className="card-header">
             <div>
               <div className="section-eyebrow">District View</div>
@@ -48,58 +45,7 @@ function DashboardTables({ districtPerformance, recentSeriousFIRs, alerts }) {
           </div>
         </article>
 
-        {/* Recent Serious FIR Drill-down Card */}
-        <article className="card" style={{ margin: 0 }}>
-          <div className="card-header">
-            <div>
-              <div className="section-eyebrow">Recent Serious Cases</div>
-              <h3 className="card-title">High-severity recent FIR drill-down</h3>
-            </div>
-          </div>
-          <div className="table-wrap">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Crime No / Station</th>
-                  <th>Offence Head</th>
-                  <th style={{ whiteSpace: 'nowrap', width: '125px' }}>Registered Date</th>
-                  <th style={{ whiteSpace: 'nowrap', width: '160px' }}>Current Status</th>
-                  <th style={{ textAlign: 'right', paddingRight: '12px', whiteSpace: 'nowrap', width: '90px' }}>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentSeriousFIRs.map((item) => (
-                  <tr key={item.id}>
-                    <td><strong>{item.crimeNoDisplay}</strong>, {item.station}</td>
-                    <td>{item.category}</td>
-                    <td style={{ whiteSpace: 'nowrap' }}>{item.registeredDate}</td>
-                    <td style={{ whiteSpace: 'nowrap' }}>
-                      <span style={{ color: item.status === 'Closed' ? '#16a34a' : '#d97706', fontWeight: 600, whiteSpace: 'nowrap' }}>
-                        {item.status}
-                      </span>
-                    </td>
-                    <td style={{ textAlign: 'right', paddingRight: '12px', whiteSpace: 'nowrap' }}>
-                      <Link
-                        to={item.actionUrl}
-                        style={{ color: '#2563eb', textDecoration: 'underline', whiteSpace: 'nowrap' }}
-                      >
-                        Inspect
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </article>
-
-      </div>
-
-      {/* Right Column: Alert Rail */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-        
-        {/* Alert Rail Card */}
-        <article className="card" style={{ margin: 0, flex: 1 }}>
+        <article className="card dashboard-table-card">
           <div className="card-header">
             <div>
               <div className="section-eyebrow">Real-time Intelligence</div>
@@ -121,8 +67,46 @@ function DashboardTables({ districtPerformance, recentSeriousFIRs, alerts }) {
             })}
           </div>
         </article>
-
       </div>
+
+      <article className="card dashboard-table-card dashboard-serious-cases">
+        <div className="card-header">
+          <div>
+            <div className="section-eyebrow">Recent Serious Cases</div>
+            <h3 className="card-title">High-severity recent FIR drill-down</h3>
+          </div>
+        </div>
+        <div className="table-wrap dashboard-serious-table-wrap">
+          <table className="data-table dashboard-serious-table">
+            <thead>
+              <tr>
+                <th>Crime No / Station</th>
+                <th>Offence Head</th>
+                <th>Registered Date</th>
+                <th>Current Status</th>
+                <th className="table-action-column">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recentSeriousFIRs.map((item) => (
+                <tr key={item.id}>
+                  <td><strong>{item.crimeNoDisplay}</strong><span className="case-station">{item.station}</span></td>
+                  <td>{item.category}</td>
+                  <td className="table-nowrap">{item.registeredDate}</td>
+                  <td className="table-nowrap">
+                    <span className={`case-status case-status-${item.status === 'Closed' ? 'closed' : 'active'}`}>
+                      {item.status}
+                    </span>
+                  </td>
+                  <td className="table-action-column">
+                    <Link to={item.actionUrl} className="case-inspect-link">Inspect</Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </article>
     </section>
   );
 }

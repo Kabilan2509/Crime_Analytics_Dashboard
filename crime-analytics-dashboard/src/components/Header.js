@@ -25,17 +25,25 @@ const PAGE_TITLES = {
   '/predictions':{ title: 'Predictions', subtitle: 'Predictive intelligence modeling and regional risk forecasts' },
 };
 
-function Header({ theme, onToggleTheme, onOpenSidebar }) {
+function Header({ theme, onToggleTheme, onToggleSidebar, sidebarCollapsed, sidebarOpen }) {
   const location = useLocation();
   const navigate = useNavigate();
   const page = PAGE_TITLES[location.pathname] || PAGE_TITLES['/'];
-  const { session, isCommandMode, lockSession, logout } = useSecurity();
+  const { session, isCommandMode, lockSession } = useSecurity();
 
   const [showNotifications, setShowNotifications] = useState(false);
   const [showPiiModal, setShowPiiModal] = useState(false);
   const [showLockDropdown, setShowLockDropdown] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [elapsedTime, setElapsedTime] = useState('just now');
+  const [compactViewport, setCompactViewport] = useState(() => window.matchMedia('(max-width: 1080px)').matches);
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 1080px)');
+    const handleViewportChange = event => setCompactViewport(event.matches);
+    media.addEventListener('change', handleViewportChange);
+    return () => media.removeEventListener('change', handleViewportChange);
+  }, []);
 
   const openQuickLookup = () => {
     setShowCommandPalette(true);
@@ -117,7 +125,19 @@ function Header({ theme, onToggleTheme, onOpenSidebar }) {
       {/* Row 2: Title + Controls */}
       <div className="header-main">
         <div className="header-left">
-          <button type="button" className="header-menu-btn" onClick={onOpenSidebar} aria-label="Open navigation">
+          <button
+            type="button"
+            className="header-menu-btn"
+            onClick={onToggleSidebar}
+            aria-label={compactViewport
+              ? `${sidebarOpen ? 'Close' : 'Open'} navigation`
+              : `${sidebarCollapsed ? 'Expand' : 'Collapse'} navigation`}
+            aria-expanded={compactViewport ? sidebarOpen : !sidebarCollapsed}
+            aria-controls="primary-sidebar"
+            title={compactViewport
+              ? `${sidebarOpen ? 'Close' : 'Open'} sidebar`
+              : `${sidebarCollapsed ? 'Expand' : 'Collapse'} sidebar`}
+          >
             <MdMenu size={22} />
           </button>
           <MdShield size={28} className="header-shield" />
@@ -153,7 +173,6 @@ function Header({ theme, onToggleTheme, onOpenSidebar }) {
                 border: '1px solid rgba(0, 230, 118, 0.2)',
                 borderRadius: '4px',
                 padding: '4px 8px',
-                marginRight: '8px',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
@@ -166,12 +185,13 @@ function Header({ theme, onToggleTheme, onOpenSidebar }) {
               title={`Authorized access granted to station ${session.unitName}`}
             >
               <span style={{ width: '6px', height: '6px', background: 'var(--accent-success, #00e676)', borderRadius: '50%', display: 'inline-block' }} />
-              <span>COMMAND MODE — {session.officerName} ({session.badgeId}) — unlocked {elapsedTime}</span>
+              <span className="command-banner-label">COMMAND MODE</span>
+              <span className="command-banner-details">— {session.officerName} ({session.badgeId}) — unlocked {elapsedTime}</span>
             </div>
           )}
 
           {/* Security badge & Interactive Lock Button for PII */}
-          <div style={{ position: 'relative' }}>
+          <div className="security-control" style={{ position: 'relative' }}>
             <div 
               className={`security-pill ${isCommandMode ? 'live' : ''}`}
               onClick={handlePillClick}
@@ -228,24 +248,6 @@ function Header({ theme, onToggleTheme, onOpenSidebar }) {
                     }}
                   >
                     🔒 Lock PII Access
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { logout(); setShowLockDropdown(false); }}
-                    style={{
-                      width: '100%',
-                      padding: '8px 12px',
-                      textAlign: 'left',
-                      background: 'transparent',
-                      border: 'none',
-                      color: 'var(--accent-danger, #ff4d4d)',
-                      fontSize: '11px',
-                      cursor: 'pointer',
-                      display: 'block',
-                      borderTop: '1px solid var(--border-color)'
-                    }}
-                  >
-                    ❌ End Session (Logout)
                   </button>
                 </div>
               </>

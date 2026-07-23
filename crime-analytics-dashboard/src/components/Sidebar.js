@@ -1,12 +1,15 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   MdDashboard, MdMap, MdBarChart, MdDescription, MdSettings,
   MdShield, MdClose, MdSmartToy, MdHub,
-  MdAutoGraph, MdAssignment, MdPeople, MdLink
+  MdAutoGraph, MdAssignment, MdPeople, MdLink, MdLogout
 } from 'react-icons/md';
 import { useSecurity } from '../context/SecurityContext';
 import { caseViews } from '../data/schemaSelectors';
+
+const IDLE_TIMEOUT_MS = 2.5 * 60 * 1000;
+const LOGIN_PATH = '/__catalyst/auth/login';
 
 /**
  * Sidebar — Command center navigation
@@ -17,8 +20,56 @@ import { caseViews } from '../data/schemaSelectors';
  *   Investigation → Case Overview, Evidence, Officer Analytics, Suspect Timeline
  *   Deployment → Patrol, Resources, EOC, Admin, Settings
  */
-function Sidebar({ isOpen, onClose }) {
-  const { isCommandMode } = useSecurity();
+function Sidebar({ isOpen, isCollapsed, onClose }) {
+  const { isCommandMode, logout: clearLocalSession } = useSecurity();
+  const [idleSecondsRemaining, setIdleSecondsRemaining] = useState(IDLE_TIMEOUT_MS / 1000);
+
+  const endAuthenticatedSession = useCallback(() => {
+    clearLocalSession();
+    const loginUrl = `${window.location.origin}${LOGIN_PATH}`;
+
+    try {
+      if (window.catalyst?.auth?.signOut) {
+        window.catalyst.auth.signOut(loginUrl);
+        return;
+      }
+    } catch (error) {
+      console.error('Catalyst sign out failed; continuing to hosted login.', error);
+    }
+
+    window.location.replace(loginUrl);
+  }, [clearLocalSession]);
+
+  useEffect(() => {
+    let idleDeadline = Date.now() + IDLE_TIMEOUT_MS;
+    let hasTimedOut = false;
+
+    const resetIdleDeadline = () => {
+      if (hasTimedOut) return;
+      idleDeadline = Date.now() + IDLE_TIMEOUT_MS;
+      setIdleSecondsRemaining(IDLE_TIMEOUT_MS / 1000);
+    };
+    const updateCountdown = () => {
+      const seconds = Math.max(0, Math.ceil((idleDeadline - Date.now()) / 1000));
+      setIdleSecondsRemaining(seconds);
+      if (seconds === 0 && !hasTimedOut) {
+        hasTimedOut = true;
+        endAuthenticatedSession();
+      }
+    };
+
+    const activityEvents = ['mousemove', 'mousedown', 'click', 'keydown', 'scroll', 'touchstart', 'pointerdown'];
+    activityEvents.forEach(eventName => window.addEventListener(eventName, resetIdleDeadline, { passive: true }));
+    const countdownInterval = window.setInterval(updateCountdown, 1000);
+    updateCountdown();
+
+    return () => {
+      window.clearInterval(countdownInterval);
+      activityEvents.forEach(eventName => window.removeEventListener(eventName, resetIdleDeadline));
+    };
+  }, [endAuthenticatedSession]);
+
+  const idleTimerLabel = `${String(Math.floor(idleSecondsRemaining / 60)).padStart(2, '0')}:${String(idleSecondsRemaining % 60).padStart(2, '0')}`;
 
   const quickStats = useMemo(() => {
     const total = caseViews.length;
@@ -65,7 +116,7 @@ function Sidebar({ isOpen, onClose }) {
 
   return (
     <>
-      <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
+      <aside id="primary-sidebar" className={`sidebar ${isOpen ? 'open' : ''}${isCollapsed ? ' collapsed' : ''}`}>
         {/* Brand Header */}
         <div className="sidebar-brand">
           <div className="brand-mark">
@@ -93,6 +144,7 @@ function Sidebar({ isOpen, onClose }) {
                   end={item.path === '/'}
                   className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
                   onClick={onClose}
+                  title={isCollapsed ? item.label : undefined}
                 >
                   <span className="nav-icon">{item.icon}</span>
                   <span className="nav-label">{item.label}</span>
@@ -125,9 +177,28 @@ function Sidebar({ isOpen, onClose }) {
             <div className={`session-dot ${isCommandMode ? 'active' : ''}`} />
             <span>{isCommandMode ? 'Command Mode' : 'Restricted Mode'}</span>
           </div>
+          <div className="sidebar-session-actions">
+            <div
+              className={`session-timer${idleSecondsRemaining <= 30 ? ' session-timer-warning' : ''}`}
+              title="Time remaining before automatic logout due to inactivity"
+              aria-label={`Automatic logout in ${idleTimerLabel}`}
+            >
+              <span>Idle logout</span>
+              <strong>{idleTimerLabel}</strong>
+            </div>
+            <button
+              type="button"
+              className="header-logout-btn sidebar-logout-btn"
+              onClick={endAuthenticatedSession}
+              title="Log out of the KSP dashboard"
+            >
+              <MdLogout size={17} />
+              <span>Logout</span>
+            </button>
+          </div>
         </div>
       </aside>
-      {isOpen && <div className="sidebar-overlay" onClick={onClose} />}
+      {isOpen && <div className="sidebar-overlay" onClick={onClose} aria-hidden="true" />}
     </>
   );
 }

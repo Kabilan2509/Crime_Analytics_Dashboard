@@ -61,8 +61,12 @@ function AdaptiveFilterBar(props) {
 function MainContentWrapper({ children }) {
   const location = useLocation();
   const isMapRoute = location.pathname.startsWith('/map');
+  const isCopilotRoute = location.pathname.startsWith('/copilot');
+  const contentClassName = isMapRoute
+    ? 'main-content-map'
+    : `main-content${isCopilotRoute ? ' main-content-copilot' : ''}`;
   return (
-    <main id="main-content" tabIndex="-1" className={isMapRoute ? "main-content-map" : "main-content"}>
+    <main id="main-content" tabIndex="-1" className={contentClassName}>
       {children}
     </main>
   );
@@ -71,6 +75,7 @@ function MainContentWrapper({ children }) {
 function App() {
   const [theme, setTheme] = useState(() => localStorage.getItem('ksp-theme') || 'dark');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('ksp-sidebar-collapsed') === 'true');
   const [dataReady, setDataReady] = useState(false);
   const [dataError, setDataError] = useState('');
 
@@ -106,6 +111,18 @@ function App() {
 
   const toggleTheme = () => setTheme(t => (t === 'light' ? 'dark' : 'light'));
 
+  const handleSidebarToggle = () => {
+    if (window.matchMedia('(max-width: 1080px)').matches) {
+      setSidebarOpen(open => !open);
+      return;
+    }
+    setSidebarCollapsed(collapsed => {
+      const next = !collapsed;
+      localStorage.setItem('ksp-sidebar-collapsed', String(next));
+      return next;
+    });
+  };
+
   const filterProps = {
     selectedDistrict, setSelectedDistrict,
     selectedCrimeType, setSelectedCrimeType,
@@ -123,12 +140,18 @@ function App() {
     <SecurityProvider>
       <DateFilterProvider>
         <Router basename="/app">
-          <div className={`app-shell theme-${theme}`}>
+          <div className={`app-shell theme-${theme}${sidebarCollapsed ? ' sidebar-collapsed' : ''}`}>
             <a className="skip-link" href="#main-content">Skip to main content</a>
-            <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+            <Sidebar isOpen={sidebarOpen} isCollapsed={sidebarCollapsed} onClose={() => setSidebarOpen(false)} />
             <div className="app-main">
               <EmergencyTicker />
-              <Header theme={theme} onToggleTheme={toggleTheme} onOpenSidebar={() => setSidebarOpen(true)} />
+              <Header
+                theme={theme}
+                onToggleTheme={toggleTheme}
+                onToggleSidebar={handleSidebarToggle}
+                sidebarCollapsed={sidebarCollapsed}
+                sidebarOpen={sidebarOpen}
+              />
               <AdaptiveFilterBar {...filterProps} />
               <MainContentWrapper>
                 <Suspense fallback={<PageLoader compact />}>
