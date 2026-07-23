@@ -36,6 +36,7 @@ function Header({ theme, onToggleTheme, onToggleSidebar, sidebarCollapsed, sideb
   const [showLockDropdown, setShowLockDropdown] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [elapsedTime, setElapsedTime] = useState('just now');
+  const [currentTime, setCurrentTime] = useState(() => new Date());
   const [compactViewport, setCompactViewport] = useState(() => window.matchMedia('(max-width: 1080px)').matches);
 
   useEffect(() => {
@@ -44,6 +45,25 @@ function Header({ theme, onToggleTheme, onToggleSidebar, sidebarCollapsed, sideb
     media.addEventListener('change', handleViewportChange);
     return () => media.removeEventListener('change', handleViewportChange);
   }, []);
+
+  useEffect(() => {
+    const clockInterval = window.setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => window.clearInterval(clockInterval);
+  }, []);
+
+  const clockTime = currentTime.toLocaleTimeString('en-GB', {
+    timeZone: 'Asia/Kolkata',
+    hour12: false,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+  const clockDate = currentTime.toLocaleDateString('en-GB', {
+    timeZone: 'Asia/Kolkata',
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).toUpperCase();
 
   const openQuickLookup = () => {
     setShowCommandPalette(true);
@@ -117,6 +137,11 @@ function Header({ theme, onToggleTheme, onToggleSidebar, sidebarCollapsed, sideb
           <strong>KARNATAKA STATE POLICE</strong>
         </div>
         <div className="ribbon-right">
+          <time className="command-clock" dateTime={currentTime.toISOString()} title="Indian Standard Time">
+            <strong>{clockTime}</strong>
+            <span>{clockDate} · IST</span>
+          </time>
+          <span className="ribbon-clock-separator" aria-hidden="true" />
           <span className="freshness-dot" />
           SECURE PROTOCOL HTTPS/AES-256
         </div>

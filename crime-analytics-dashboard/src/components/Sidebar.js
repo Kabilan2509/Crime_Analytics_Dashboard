@@ -10,6 +10,7 @@ import { caseViews } from '../data/schemaSelectors';
 
 const IDLE_TIMEOUT_MS = 2.5 * 60 * 1000;
 const LOGIN_PATH = '/__catalyst/auth/login';
+const BROWSER_SESSION_KEY = 'ksp-catalyst-browser-session';
 
 /**
  * Sidebar — Command center navigation
@@ -26,6 +27,7 @@ function Sidebar({ isOpen, isCollapsed, onClose }) {
 
   const endAuthenticatedSession = useCallback(() => {
     clearLocalSession();
+    window.sessionStorage.removeItem(BROWSER_SESSION_KEY);
     const loginUrl = `${window.location.origin}${LOGIN_PATH}`;
 
     try {

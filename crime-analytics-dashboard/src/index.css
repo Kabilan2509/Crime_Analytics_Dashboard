@@ -321,6 +321,37 @@ button {
   font-size: 10px;
 }
 
+.command-clock {
+  min-width: 98px;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #f5f8fc;
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-style: normal;
+  line-height: 1;
+  letter-spacing: 0.08em;
+}
+
+.command-clock strong {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.command-clock span {
+  margin-top: 3px;
+  color: rgba(210, 222, 236, 0.68);
+  font-size: 7px;
+  letter-spacing: 0.04em;
+}
+
+.ribbon-clock-separator {
+  width: 1px;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.16);
+}
+
 .header-main {
   display: flex;
   align-items: center;
