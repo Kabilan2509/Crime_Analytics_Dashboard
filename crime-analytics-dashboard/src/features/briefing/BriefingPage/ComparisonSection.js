@@ -30,7 +30,7 @@ function ComparisonSection({ comparisons }) {
     <div style={{ marginBottom: '24px' }} className="comparison-section">
       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '14px' }}>
         <span style={{ width: '4px', height: '14px', background: 'var(--accent-primary)', display: 'inline-block' }} />
-        <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+        <span className="briefing-section-heading" style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
           JURISDICTIONAL COMPARISON & RANKINGS
         </span>
       </div>
@@ -69,7 +69,16 @@ function ComparisonSection({ comparisons }) {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={sortedData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
                 <CartesianGrid stroke="var(--chart-grid)" strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={10} tickLine={false} />
+                <XAxis 
+                  dataKey="name" 
+                  stroke="var(--text-muted)" 
+                  fontSize={8} 
+                  tickLine={false} 
+                  interval={0} 
+                  angle={-35} 
+                  textAnchor="end" 
+                  height={50} 
+                />
                 <YAxis stroke="var(--text-muted)" fontSize={10} tickLine={false} axisLine={false} />
                 <Tooltip
                   contentStyle={{ background: 'var(--bg-panel)', borderColor: 'var(--border-color)', borderRadius: '0px', color: 'var(--text-primary)', fontFamily: 'monospace', fontSize: '11px' }}

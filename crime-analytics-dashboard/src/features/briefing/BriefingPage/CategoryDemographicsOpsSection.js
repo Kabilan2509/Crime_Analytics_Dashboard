@@ -34,9 +34,9 @@ function CategoryDemographicsOpsSection({ categoriesData, operations }) {
             </span>
             <div style={{ height: '130px' }}>
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={categories} layout="vertical" margin={{ top: 0, right: 10, left: -25, bottom: 0 }}>
+                <BarChart data={categories} layout="vertical" margin={{ top: 0, right: 10, left: 15, bottom: 0 }}>
                   <XAxis type="number" stroke="var(--text-muted)" fontSize={8} tickLine={false} />
-                  <YAxis dataKey="name" type="category" stroke="var(--text-muted)" fontSize={8} tickLine={false} width={80} />
+                  <YAxis dataKey="name" type="category" stroke="var(--text-muted)" fontSize={8} tickLine={false} width={90} />
                   <Tooltip
                     contentStyle={{ background: 'var(--bg-panel)', borderColor: 'var(--border-color)', borderRadius: '0px', color: 'var(--text-primary)', fontFamily: 'monospace', fontSize: '9px' }}
                   />

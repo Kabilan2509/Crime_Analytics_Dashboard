@@ -26,6 +26,8 @@ import {
 } from 'react-icons/md';
 import { buildNetworkData, getNodeStats, ENTITY } from '../features/network/graphUtils';
 import { caseViews, accused, victims, districts, units } from '../data/schemaSelectors';
+import { useSecurity } from '../context/SecurityContext';
+import { getSecureCaseViews } from '../security/securityUtils';
 
 // ─── Filter chip definitions ──────────────────────────────────────────────────
 const FILTER_CHIPS = [
@@ -46,6 +48,11 @@ const DAMPING     = 0.78;
 
 // ─────────────────────────────────────────────────────────────────────────────
 export default function NetworkGraph() {
+  const { session } = useSecurity();
+  const secureCases = useMemo(
+    () => getSecureCaseViews(caseViews, session.accessLevel),
+    [session.accessLevel]
+  );
 
   // ── State ──────────────────────────────────────────────────────────────────
   const [search,       setSearch]       = useState('');
@@ -73,8 +80,8 @@ export default function NetworkGraph() {
 
   // ── Build raw graph ────────────────────────────────────────────────────────
   const rawGraph = useMemo(
-    () => buildNetworkData(caseViews, accused, victims, districts, units),
-    [],
+    () => buildNetworkData(secureCases, [], [], districts, units),
+    [secureCases],
   );
 
   // ── Apply type filter + search filter ─────────────────────────────────────

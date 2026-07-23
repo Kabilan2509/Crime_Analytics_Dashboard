@@ -78,7 +78,7 @@ function Dashboard({
           color: #1e293b !important;
           font-family: 'Consolas', 'Courier New', Courier, monospace !important;
           text-transform: uppercase !important;
-          font-size: 13px !important;
+          font-size: 18px !important;
           font-weight: 700 !important;
           letter-spacing: 1.2px !important;
           margin: 0 !important;
@@ -141,7 +141,7 @@ function Dashboard({
         }
         .ops-stat-label {
           font-family: 'Consolas', 'Courier New', Courier, monospace !important;
-          font-size: 11px !important;
+          font-size: 19px !important;
           font-weight: 600 !important;
           text-transform: uppercase !important;
           color: #334155 !important;
@@ -150,7 +150,7 @@ function Dashboard({
         }
         .ops-stat-value {
           font-family: 'Consolas', 'Courier New', Courier, monospace !important;
-          font-size: 24px !important;
+          font-size: 29px !important;
           font-weight: 800 !important;
           color: #0f172a !important;
           margin-bottom: 2px !important;

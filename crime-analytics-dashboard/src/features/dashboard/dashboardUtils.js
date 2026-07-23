@@ -220,7 +220,7 @@ export function buildDashboardViewModel(filteredCases, accessLevel) {
       alerts.push({
         id: 'alert_2',
         severity: 'red',
-        text: `Statutory bail deadline approaching for Case No ${targetCase.CrimeNo}`,
+        text: `Statutory bail deadline approaching for Case No ${targetCase.displayCrimeNo}`,
         age: '12m ago'
       });
     }
@@ -252,8 +252,8 @@ export function buildDashboardViewModel(filteredCases, accessLevel) {
     .slice(0, 6)
     .map(c => ({
       id: c.CaseMasterID,
-      crimeNo: c.CrimeNo,
-      crimeNoDisplay: `Cr No ${c.CrimeNo}/2026`,
+      crimeNo: c.displayCrimeNo,
+      crimeNoDisplay: `Cr No ${c.displayCrimeNo}`,
       station: c.policeStationName,
       category: c.minorHeadName || c.majorHeadName,
       registeredDate: c.registeredDateObj.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),

@@ -9,20 +9,80 @@ export function maskNarrative(text) {
   return 'Narrative restricted. Open a secure police session to view operational case facts.';
 }
 
+export function maskPersonName(value, label = 'Protected Person') {
+  if (!value) return label;
+  const first = String(value).trim().charAt(0).toUpperCase();
+  return first ? `${first}. ••••• (${label})` : label;
+}
+
+export function maskBadge(value) {
+  if (!value) return 'Protected';
+  return maskText(String(value), 2, 2);
+}
+
+function redactPersonRecord(record, kind) {
+  if (!record) return record;
+  const redacted = { ...record };
+  const nameFields = ['AccusedName', 'VictimName', 'ComplainantName', 'Name', 'FullName', 'FirstName', 'LastName'];
+  const privateFields = [
+    'Address', 'PresentAddress', 'PermanentAddress', 'MobileNo', 'PhoneNo', 'Phone',
+    'Email', 'EmailID', 'AadhaarNo', 'AadharNo', 'PAN', 'PassportNo', 'IMEI',
+  ];
+  nameFields.forEach(field => {
+    if (redacted[field]) redacted[field] = maskPersonName(redacted[field], kind);
+  });
+  privateFields.forEach(field => {
+    if (redacted[field]) redacted[field] = 'Protected';
+  });
+  return redacted;
+}
+
+export function getSecureCaseView(item, accessLevel) {
+  if (!item) return item;
+  const command = accessLevel === 'command';
+  const crimeNumber = item.CrimeNo || item.FIRNo || item.CaseNo || `FIR-${item.CaseMasterID}`;
+  if (command) {
+    return {
+      ...item,
+      displayCrimeNo: item.displayCrimeNo || crimeNumber,
+      displayOfficerName: item.officerName || 'Unassigned',
+      displayBriefFacts: item.briefFacts || item.BriefFacts || '',
+    };
+  }
+
+  const maskedCrimeNumber = maskText(String(crimeNumber), 4, 3);
+  const maskedOfficer = maskPersonName(item.officerName, 'Protected Officer');
+  const restrictedNarrative = maskNarrative(item.briefFacts || item.BriefFacts);
+  const safeCoordinate = value => Number.isFinite(Number(value)) ? Number(Number(value).toFixed(1)) : value;
+
+  return {
+    ...item,
+    CrimeNo: maskedCrimeNumber,
+    FIRNo: maskedCrimeNumber,
+    CaseNo: item.CaseNo ? maskText(String(item.CaseNo), 3, 2) : item.CaseNo,
+    displayCrimeNo: maskedCrimeNumber,
+    officerName: maskedOfficer,
+    officerKGID: maskBadge(item.officerKGID),
+    briefFacts: restrictedNarrative,
+    BriefFacts: restrictedNarrative,
+    displayOfficerName: maskedOfficer,
+    displayBriefFacts: restrictedNarrative,
+    latitude: safeCoordinate(item.latitude),
+    longitude: safeCoordinate(item.longitude),
+    accused: (item.accused || []).map(person => redactPersonRecord(person, 'Protected Accused')),
+    victims: (item.victims || []).map(person => redactPersonRecord(person, 'Protected Victim')),
+    complainants: (item.complainants || []).map(person => redactPersonRecord(person, 'Protected Complainant')),
+    employee: item.employee ? redactPersonRecord({ ...item.employee, KGID: maskBadge(item.employee.KGID) }, 'Protected Officer') : item.employee,
+  };
+}
+
 export function secureOfficerLabel(officerName, accessLevel) {
   if (accessLevel === 'command') return officerName;
   return officerName ? `Assigned ${maskText(officerName, 3, 4)}` : 'Assigned Officer Protected';
 }
 
 export function getSecureCaseViews(caseViews, accessLevel) {
-  return caseViews.map((item) => ({
-    ...item,
-    displayCrimeNo: accessLevel === 'command' ? item.CrimeNo : maskText(item.CrimeNo, 6, 4),
-    displayOfficerName: secureOfficerLabel(item.officerName, accessLevel),
-    displayBriefFacts: accessLevel === 'command' ? item.briefFacts : maskNarrative(item.briefFacts),
-    latitude: accessLevel === 'command' ? item.latitude : Number(item.latitude.toFixed(2)),
-    longitude: accessLevel === 'command' ? item.longitude : Number(item.longitude.toFixed(2)),
-  }));
+  return caseViews.map(item => getSecureCaseView(item, accessLevel));
 }
 
 export function downloadBlob(filename, content, type) {

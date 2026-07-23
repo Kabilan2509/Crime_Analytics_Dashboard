@@ -2,6 +2,7 @@ import React from 'react';
 import { MdFileDownload, MdPrint } from 'react-icons/md';
 import { useSecurity } from '../../../context/SecurityContext';
 import { downloadCsv, downloadExcel, downloadPdf } from '../../../utils/fileExports';
+import { getSecureCaseViews } from '../../../security/securityUtils';
 
 function ExportFooter({ filteredCases, filterSummary = 'All Records', onExportPDF }) {
   const { session } = useSecurity();
@@ -26,9 +27,10 @@ function ExportFooter({ filteredCases, filterSummary = 'All Records', onExportPD
       'InvestigatingOfficer'
     ];
 
-    const rows = filteredCases.map(c => [
+    const exportCases = getSecureCaseViews(filteredCases, session?.accessLevel);
+    const rows = exportCases.map(c => [
       c.CaseMasterID,
-      c.CrimeNo,
+      c.displayCrimeNo,
       c.CrimeRegisteredDate,
       c.districtName,
       c.policeStationName,
@@ -36,7 +38,7 @@ function ExportFooter({ filteredCases, filterSummary = 'All Records', onExportPD
       c.minorHeadName,
       c.statusName,
       c.isHeinous ? 'Heinous' : 'Non-Heinous',
-      c.officerName
+      c.displayOfficerName
     ]);
 
     return { headers, rows };

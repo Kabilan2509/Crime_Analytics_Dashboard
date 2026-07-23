@@ -13,6 +13,7 @@ import { caseViews } from '../data/schemaSelectors';
 import { playAlertSound } from '../utils/audioAlert';
 import { accused, victims, complainantDetails } from '../data/sampleData';
 import { useSecurity } from '../context/SecurityContext';
+import { getSecureCaseViews } from '../security/securityUtils';
 
 // Helper function to check if a case is restricted for the current officer session
 const checkIsCaseRestricted = (c, session) => {
@@ -68,6 +69,10 @@ function CaseOverview() {
   const isCaseOverviewRoute = location.pathname.startsWith('/case-overview') || location.pathname.includes('case-overview');
 
   const { session, isCommandMode } = useSecurity();
+  const secureCases = useMemo(
+    () => getSecureCaseViews(caseViews, session.accessLevel),
+    [session.accessLevel]
+  );
 
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
@@ -162,7 +167,7 @@ function CaseOverview() {
 
     const matched = [];
 
-    caseViews.forEach((c) => {
+    secureCases.forEach((c) => {
       const caseIdStr = String(c.CaseMasterID);
       const crimeNoStr = String(c.CrimeNo).toLowerCase();
       const caseNoStr = c.CaseNo ? String(c.CaseNo).toLowerCase() : '';
@@ -247,7 +252,7 @@ function CaseOverview() {
   // Run initial case lookup when caseIdParam changes in URL
   useEffect(() => {
     if (caseIdParam) {
-      const foundCase = caseViews.find(c => String(c.CaseMasterID) === String(caseIdParam));
+      const foundCase = secureCases.find(c => String(c.CaseMasterID) === String(caseIdParam));
       if (foundCase) {
         const restricted = checkIsCaseRestricted(foundCase, session);
         setIsRestrictedDirect(restricted);
@@ -266,7 +271,7 @@ function CaseOverview() {
       setActiveCase(null);
       setIsRestrictedDirect(false);
     }
-  }, [caseIdParam, session.unitName, session.accessLevel]);
+  }, [caseIdParam, session.unitName, session.accessLevel, secureCases]);
 
   const triggerRetry = () => {
     playAlertSound(700, 0.05);
@@ -382,11 +387,11 @@ function CaseOverview() {
   const hiddenAssociations = useMemo(() => {
     if (!activeCase) return [];
     const activeCaseAccusedNames = new Set((activeCase.accused || []).map(a => a.AccusedName).filter(Boolean));
-    const activeComplainants = new Set(complainantDetails.filter(c => c.CaseMasterID === activeCase.CaseMasterID).map(c => c.ComplainantName));
+    const activeComplainants = new Set((activeCase.complainants || []).map(c => c.ComplainantName));
     const activeVictims = new Set(activeCase.victims?.map(v => v.VictimName));
 
     const matches = [];
-    caseViews.forEach(other => {
+    secureCases.forEach(other => {
       if (other.CaseMasterID === activeCase.CaseMasterID) return;
 
       const otherAccused = other.accused || [];
@@ -424,7 +429,7 @@ function CaseOverview() {
     });
 
     return matches.slice(0, 3);
-  }, [activeCase]);
+  }, [activeCase, secureCases]);
 
   // Action bars permissions checks
   const canUpdateStatus = useMemo(() => {
@@ -981,7 +986,7 @@ function CaseOverview() {
                   <div style={{ textAlign: 'right' }}>
                     <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', letterSpacing: '0.04em' }}>INVESTIGATING OFFICER</span>
                     <strong style={{ fontSize: '15px', color: 'var(--accent-primary)', display: 'block', marginTop: '4px' }}>
-                      {activeCase.officerName}
+                          {activeCase.displayOfficerName || activeCase.officerName}
                     </strong>
                     <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>KGID: {activeCase.officerKGID || 'Unassigned'}</span>
                   </div>
@@ -1017,7 +1022,7 @@ function CaseOverview() {
                           {activeCase.officerName ? activeCase.officerName.charAt(0) : 'I'}
                         </div>
                         <div style={{ flex: 1 }}>
-                          <strong style={{ fontSize: '13px', display: 'block', color: 'var(--text-primary)' }}>{activeCase.officerName}</strong>
+                          <strong style={{ fontSize: '13px', display: 'block', color: 'var(--text-primary)' }}>{activeCase.displayOfficerName || activeCase.officerName}</strong>
                           <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Lead Investigating Officer (Lead IO)</span>
                         </div>
                         <span className="badge" style={{ background: 'rgba(0, 91, 150, 0.1)', color: 'var(--accent-primary)', fontSize: '10px', padding: '2px 8px', borderRadius: '99px' }}>Assignee</span>
@@ -1161,7 +1166,7 @@ function CaseOverview() {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                         <div style={{ borderBottom: '1px dashed var(--border-color)', paddingBottom: '8px' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '3px' }}>
-                            <strong>IO {activeCase.officerName}</strong>
+                            <strong>IO {activeCase.displayOfficerName || activeCase.officerName}</strong>
                             <span>24h after filing</span>
                           </div>
                           <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Crime scene inspected. Witness depositions and sketches compiled. Digital assets registered in vault.</span>

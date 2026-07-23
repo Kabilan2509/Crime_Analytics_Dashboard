@@ -3,18 +3,17 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import {
   MdMenu, MdOutlineLightMode, MdOutlineDarkMode,
   MdNotificationsNone, MdSearch, MdShield,
-  MdAccountCircle, MdLock, MdVerifiedUser, MdLockOpen,
+  MdAccountCircle, MdLock, MdVerifiedUser,
 } from 'react-icons/md';
 import { useSecurity } from '../context/SecurityContext';
 import CommandPalette from './ui/CommandPalette';
+import PIIUnlockModal from './ui/PIIUnlockModal';
 
 /**
  * Header — Compact 2-row layout (ribbon + controls)
  *
  * Row 1: Government ribbon with security badge
  * Row 2: Page title + search + theme toggle + notifications + profile
- *
- * Session Strip is now a floating modal overlay triggerable from the header bar.
  */
 
 const PAGE_TITLES = {
@@ -30,12 +29,13 @@ function Header({ theme, onToggleTheme, onOpenSidebar }) {
   const location = useLocation();
   const navigate = useNavigate();
   const page = PAGE_TITLES[location.pathname] || PAGE_TITLES['/'];
-  const { session, isCommandMode, startSecureSession, lockSession } = useSecurity();
+  const { session, isCommandMode, lockSession, logout } = useSecurity();
 
   const [showNotifications, setShowNotifications] = useState(false);
   const [showPiiModal, setShowPiiModal] = useState(false);
-  const [form, setForm] = useState({ officerName: '', badgeId: '', unitName: '', role: 'Field Officer' });
+  const [showLockDropdown, setShowLockDropdown] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
+  const [elapsedTime, setElapsedTime] = useState('just now');
 
   const openQuickLookup = () => {
     setShowCommandPalette(true);
@@ -61,12 +61,35 @@ function Header({ theme, onToggleTheme, onOpenSidebar }) {
     return () => window.removeEventListener('keydown', handleQuickLookup);
   }, []);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    startSecureSession(form);
-    setShowPiiModal(false);
+  // Minute-interval hook to calculate elapsed unlock time
+  useEffect(() => {
+    if (!isCommandMode || !session.unlockedAt) {
+      setElapsedTime('just now');
+      return;
+    }
+
+    const updateElapsed = () => {
+      const diffMs = new Date().getTime() - session.unlockedAt;
+      const diffMins = Math.floor(diffMs / 60000);
+      if (diffMins < 1) {
+        setElapsedTime('just now');
+      } else {
+        setElapsedTime(`${diffMins} min ago`);
+      }
+    };
+
+    updateElapsed();
+    const interval = setInterval(updateElapsed, 60000);
+    return () => clearInterval(interval);
+  }, [isCommandMode, session.unlockedAt]);
+
+  const handlePillClick = () => {
+    if (isCommandMode) {
+      setShowLockDropdown(prev => !prev);
+    } else {
+      setShowPiiModal(true);
+    }
   };
-  const setField = (key, val) => setForm(prev => ({ ...prev, [key]: val }));
 
   const alerts = [
     { id: 1, type: 'Spike', text: 'Crime spike: Cyber Crimes in Bengaluru Urban (+18% past 48h)', time: '5m ago', unread: true },
@@ -120,16 +143,113 @@ function Header({ theme, onToggleTheme, onOpenSidebar }) {
             <span className="kbd-hint">Ctrl+K</span>
           </label>
 
+          {/* Persistent security authorization banner */}
+          {isCommandMode && (
+            <div 
+              style={{
+                fontSize: '10px',
+                color: 'var(--accent-success, #00e676)',
+                background: 'rgba(0, 230, 118, 0.08)',
+                border: '1px solid rgba(0, 230, 118, 0.2)',
+                borderRadius: '4px',
+                padding: '4px 8px',
+                marginRight: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                height: '32px',
+                boxSizing: 'border-box',
+                fontFamily: 'monospace',
+                whiteSpace: 'nowrap'
+              }} 
+              className="command-banner-indicator"
+              title={`Authorized access granted to station ${session.unitName}`}
+            >
+              <span style={{ width: '6px', height: '6px', background: 'var(--accent-success, #00e676)', borderRadius: '50%', display: 'inline-block' }} />
+              <span>COMMAND MODE — {session.officerName} ({session.badgeId}) — unlocked {elapsedTime}</span>
+            </div>
+          )}
+
           {/* Security badge & Interactive Lock Button for PII */}
-          <div 
-            className={`security-pill ${isCommandMode ? 'live' : ''}`}
-            onClick={() => setShowPiiModal(true)}
-            style={{ cursor: 'pointer', userSelect: 'none' }}
-            title="Click to manage PII access permissions"
-          >
-            {isCommandMode ? <MdVerifiedUser size={14} /> : <MdLock size={14} />}
-            <span className="security-pill-label">{isCommandMode ? session.role : 'Redacted'}</span>
-            <span style={{ fontSize: '9px', marginLeft: '4px', opacity: 0.6 }}>🔑</span>
+          <div style={{ position: 'relative' }}>
+            <div 
+              className={`security-pill ${isCommandMode ? 'live' : ''}`}
+              onClick={handlePillClick}
+              style={{ cursor: 'pointer', userSelect: 'none' }}
+              title="Click to manage PII access permissions"
+            >
+              {isCommandMode ? <MdVerifiedUser size={14} /> : <MdLock size={14} />}
+              <span className="security-pill-label">
+                {isCommandMode ? 'Command Mode' : 'Restricted'}
+              </span>
+              <span style={{ fontSize: '9px', marginLeft: '4px', opacity: 0.6 }}>🔑</span>
+            </div>
+
+            {showLockDropdown && (
+              <>
+                <div 
+                  onClick={() => setShowLockDropdown(false)} 
+                  style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    zIndex: 999,
+                    background: 'transparent'
+                  }}
+                />
+                <div style={{
+                  position: 'absolute',
+                  top: '36px',
+                  right: '0',
+                  background: 'var(--bg-panel, #142132)',
+                  border: '1px solid var(--border-color, rgba(173, 193, 214, 0.16))',
+                  borderRadius: '4px',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+                  zIndex: 1000,
+                  width: '180px',
+                  padding: '4px 0',
+                  fontFamily: 'monospace'
+                }}>
+                  <button
+                    type="button"
+                    onClick={() => { lockSession(); setShowLockDropdown(false); }}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      textAlign: 'left',
+                      background: 'transparent',
+                      border: 'none',
+                      color: 'var(--text-primary)',
+                      fontSize: '11px',
+                      cursor: 'pointer',
+                      display: 'block'
+                    }}
+                  >
+                    🔒 Lock PII Access
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { logout(); setShowLockDropdown(false); }}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      textAlign: 'left',
+                      background: 'transparent',
+                      border: 'none',
+                      color: 'var(--accent-danger, #ff4d4d)',
+                      fontSize: '11px',
+                      cursor: 'pointer',
+                      display: 'block',
+                      borderTop: '1px solid var(--border-color)'
+                    }}
+                  >
+                    ❌ End Session (Logout)
+                  </button>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Theme toggle */}
@@ -169,177 +289,19 @@ function Header({ theme, onToggleTheme, onOpenSidebar }) {
           <div className="header-profile">
             <MdAccountCircle size={22} />
             <div>
-              <span className="profile-name">DGP Kishore, IPS</span>
-              <span className="profile-role">State DGP Command</span>
+              <span className="profile-name">
+                {session.officerName ? session.officerName : 'DGP Kishore, IPS'}
+              </span>
+              <span className="profile-role">
+                {session.badgeId ? `${session.badgeId} · ${session.unitName}` : 'State DGP Command'}
+              </span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Floating Modal Overlay for PII Credentials */}
-      {showPiiModal && (
-        <div 
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(15, 23, 42, 0.65)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 9999,
-            backdropFilter: 'blur(4px)'
-          }}
-          onClick={() => setShowPiiModal(false)}
-        >
-          <div 
-            style={{
-              background: 'var(--bg-panel, #142132)',
-              border: '1px solid var(--border-color, rgba(173, 193, 214, 0.16))',
-              borderRadius: '8px',
-              padding: '24px',
-              width: '320px',
-              boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
-              fontFamily: 'monospace',
-              color: 'var(--text-primary)'
-            }}
-            onClick={e => e.stopPropagation()}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <strong style={{ fontSize: '13px', textTransform: 'uppercase', color: '#60a5fa', letterSpacing: '0.5px' }}>
-                🔑 PII Access Control
-              </strong>
-              <button 
-                onClick={() => setShowPiiModal(false)}
-                style={{ 
-                  background: 'transparent', 
-                  border: 'none', 
-                  color: 'var(--text-secondary)', 
-                  cursor: 'pointer', 
-                  fontSize: '14px',
-                  minHeight: 'auto',
-                  minWidth: 'auto'
-                }}
-              >
-                ✕
-              </button>
-            </div>
-
-            {isCommandMode ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <p style={{ fontSize: '11px', margin: 0, color: 'var(--text-secondary)', lineHeight: '1.4' }}>
-                  Secure session active for <strong>{session.officerName}</strong> at <strong>{session.unitName}</strong>.
-                </p>
-                <button 
-                  type="button" 
-                  onClick={() => {
-                    lockSession();
-                    setShowPiiModal(false);
-                  }} 
-                  style={{
-                    background: 'var(--accent-danger, #ff4d4d)',
-                    color: '#ffffff',
-                    border: 'none',
-                    borderRadius: '4px',
-                    padding: '8px 12px',
-                    cursor: 'pointer',
-                    fontSize: '12px',
-                    fontWeight: 'bold',
-                    width: '100%',
-                    minHeight: '36px'
-                  }}
-                >
-                  Lock Session (Redact PII)
-                </button>
-              </div>
-            ) : (
-              <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '9px', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase' }}>PSI NAME</label>
-                  <input 
-                    value={form.officerName} 
-                    onChange={e => setField('officerName', e.target.value)} 
-                    placeholder="e.g. Inspector Ramesh" 
-                    required 
-                    style={{
-                      width: '100%',
-                      padding: '8px 10px',
-                      borderRadius: '4px',
-                      border: '1px solid var(--border-color)',
-                      background: 'var(--bg-panel-alt)',
-                      color: 'var(--text-primary)',
-                      fontSize: '12px',
-                      boxSizing: 'border-box',
-                      minHeight: '36px'
-                    }} 
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '9px', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase' }}>KGID / BADGE NUMBER</label>
-                  <input 
-                    value={form.badgeId} 
-                    onChange={e => setField('badgeId', e.target.value)} 
-                    placeholder="e.g. KG12345" 
-                    required 
-                    style={{
-                      width: '100%',
-                      padding: '8px 10px',
-                      borderRadius: '4px',
-                      border: '1px solid var(--border-color)',
-                      background: 'var(--bg-panel-alt)',
-                      color: 'var(--text-primary)',
-                      fontSize: '12px',
-                      boxSizing: 'border-box',
-                      minHeight: '36px'
-                    }} 
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '9px', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase' }}>ASSIGNED STATION</label>
-                  <input 
-                    value={form.unitName} 
-                    onChange={e => setField('unitName', e.target.value)} 
-                    placeholder="e.g. Shivaji Nagar PS" 
-                    required 
-                    style={{
-                      width: '100%',
-                      padding: '8px 10px',
-                      borderRadius: '4px',
-                      border: '1px solid var(--border-color)',
-                      background: 'var(--bg-panel-alt)',
-                      color: 'var(--text-primary)',
-                      fontSize: '12px',
-                      boxSizing: 'border-box',
-                      minHeight: '36px'
-                    }} 
-                  />
-                </div>
-                <button 
-                  type="submit" 
-                  style={{
-                    background: 'var(--accent-primary, #3b82f6)',
-                    color: '#ffffff',
-                    border: 'none',
-                    borderRadius: '4px',
-                    padding: '8px 12px',
-                    cursor: 'pointer',
-                    fontSize: '12px',
-                    fontWeight: 'bold',
-                    marginTop: '4px',
-                    width: '100%',
-                    minHeight: '36px'
-                  }}
-                >
-                  Unlock PII Data
-                </button>
-              </form>
-            )}
-          </div>
-        </div>
-      )}
       <CommandPalette isOpen={showCommandPalette} onClose={() => setShowCommandPalette(false)} />
+      <PIIUnlockModal isOpen={showPiiModal} onClose={() => setShowPiiModal(false)} />
     </header>
   );
 }

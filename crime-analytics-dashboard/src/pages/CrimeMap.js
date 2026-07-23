@@ -9,6 +9,7 @@ import * as turf from '@turf/turf';
 
 import { caseViews as cases, districts, districtCenters } from '../data/schemaSelectors';
 import { useSecurity } from '../context/SecurityContext';
+import { getSecureCaseViews } from '../security/securityUtils';
 
 /* Feature components */
 import DistrictDrawer from '../features/crimeMap/DistrictDrawer';
@@ -782,9 +783,9 @@ function CrimeMap({ selectedDistrict: globalDistrict, selectedCrimeType: globalC
 
   // Secure coordinates with metadata
   const secureCases = useMemo(() => {
-    return filteredCases.map(c => {
-      const lat = isCommandMode ? c.latitude : Number(Number(c.latitude).toFixed(2));
-      const lng = isCommandMode ? c.longitude : Number(Number(c.longitude).toFixed(2));
+    return getSecureCaseViews(filteredCases, isCommandMode ? 'command' : 'redacted').map(c => {
+      const lat = c.latitude;
+      const lng = c.longitude;
       return {
         ...c,
         lat,

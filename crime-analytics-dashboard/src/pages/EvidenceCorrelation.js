@@ -1,7 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { MdLink, MdSearch, MdDirectionsCar, MdPhone, MdAccountBalance, MdLocationOn } from 'react-icons/md';
+import { useSecurity } from '../context/SecurityContext';
+import { maskText } from '../security/securityUtils';
 
 function EvidenceCorrelation() {
+  const { isCommandMode } = useSecurity();
   const [query, setQuery] = useState('');
 
   // Enforce realistic mock relationships
@@ -12,15 +15,26 @@ function EvidenceCorrelation() {
     { id: 4, type: 'location', value: 'Hebbal Flyover Junction', label: 'Spatial Proximity Match', sourceCase: 'FIR-1005', targetCase: 'FIR-1056', matchScore: 78, reason: 'Cell tower triangulation overlap detected.' }
   ], []);
 
+  const secureRelationships = useMemo(() => relationships.map(r => {
+    if (isCommandMode) return r;
+    return {
+      ...r,
+      value: maskText(r.value, r.type === 'phone' ? 3 : 2, 2),
+      sourceCase: maskText(r.sourceCase, 3, 2),
+      targetCase: maskText(r.targetCase, 3, 2),
+      reason: 'Correlation details restricted. Unlock PII access to inspect the underlying evidence match.',
+    };
+  }), [relationships, isCommandMode]);
+
   const filtered = useMemo(() => {
-    if (!query) return relationships;
+    if (!query) return secureRelationships;
     const q = query.toLowerCase();
-    return relationships.filter(r =>
+    return secureRelationships.filter(r =>
       r.value.toLowerCase().includes(q) ||
       r.label.toLowerCase().includes(q) ||
       r.reason.toLowerCase().includes(q)
     );
-  }, [relationships, query]);
+  }, [secureRelationships, query]);
 
   return (
     <div className="page-content animate-fade-in text-inverse">

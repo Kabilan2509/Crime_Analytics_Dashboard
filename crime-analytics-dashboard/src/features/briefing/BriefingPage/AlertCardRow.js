@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { MdClose, MdPushPin, MdNotifications, MdWarning, MdSmartToy, MdLocalPolice } from 'react-icons/md';
+import { useNavigate } from 'react-router-dom';
+import { useSecurity } from '../../../context/SecurityContext';
 
-function AlertCardRow({ incidents }) {
+function AlertCardRow({ incidents, viewMode }) {
+  const navigate = useNavigate();
+  const { isCommandMode } = useSecurity();
   const {
     criticalIncidents = [],
     bolos = [],
@@ -11,16 +15,24 @@ function AlertCardRow({ incidents }) {
 
   const [cards, setCards] = useState([]);
 
-  // Sync props to state on mount/change
+  // Sync props to state on mount/change, taking viewMode into account
   useEffect(() => {
-    const list = [
-      ...criticalIncidents.map(c => ({ ...c, cardType: 'critical', pinned: false })),
-      ...bolos.map(b => ({ ...b, cardType: 'bolo', pinned: false })),
-      ...aiInsights.map(a => ({ ...a, cardType: 'ai', pinned: false })),
-      ...recommendations.map(r => ({ ...r, cardType: 'recommendation', pinned: false }))
-    ];
+    let list = [];
+    if (viewMode === 'data_only') {
+      // In data-only mode, we only show quantitative critical incidents
+      list = [
+        ...criticalIncidents.map(c => ({ ...c, cardType: 'critical', pinned: false }))
+      ];
+    } else {
+      list = [
+        ...criticalIncidents.map(c => ({ ...c, cardType: 'critical', pinned: false })),
+        ...bolos.map(b => ({ ...b, cardType: 'bolo', pinned: false })),
+        ...aiInsights.map(a => ({ ...a, cardType: 'ai', pinned: false })),
+        ...recommendations.map(r => ({ ...r, cardType: 'recommendation', pinned: false }))
+      ];
+    }
     setCards(list);
-  }, [criticalIncidents, bolos, aiInsights, recommendations]);
+  }, [criticalIncidents, bolos, aiInsights, recommendations, viewMode]);
 
   const handleDismiss = (id) => {
     setCards(prev => prev.filter(c => c.id !== id));
@@ -36,9 +48,38 @@ function AlertCardRow({ incidents }) {
     });
   };
 
-  const handleLinkRedirect = (route, message) => {
-    alert(message);
-    window.location.hash = `#${route}`;
+  const handleLinkRedirect = (route) => {
+    navigate(route);
+  };
+
+  const maskText = (value, visibleStart = 4, visibleEnd = 3) => {
+    if (!value) return 'Protected';
+    if (value.length <= visibleStart + visibleEnd) return `${value.slice(0, 2)}•••`;
+    return `${value.slice(0, visibleStart)}${'•'.repeat(Math.max(4, value.length - visibleStart - visibleEnd))}${value.slice(-visibleEnd)}`;
+  };
+
+  const getSecureTitle = (card) => {
+    if (card.cardType !== 'critical') return card.title || card.action;
+    if (isCommandMode) return card.title;
+    
+    // Mask the FIR part (e.g. "Heinous Assault - FIR 20230005" -> "Heinous Assault - FIR 2023••••05")
+    const match = card.title.match(/(.*- FIR\s+)(.*)/i);
+    if (match) {
+      return `${match[1]}${maskText(match[2], 6, 4)}`;
+    }
+    return card.title;
+  };
+
+  const getSecureLocation = (card) => {
+    if (isCommandMode) return card.location;
+    // Mask the police station name (before the comma, e.g. "Shivaji PS, Bengaluru" -> "Sh•••• PS, Bengaluru")
+    const parts = card.location.split(',');
+    if (parts.length > 0) {
+      const station = parts[0].trim();
+      const district = parts.slice(1).join(',').trim();
+      return `${maskText(station, 3, 3)}, ${district}`;
+    }
+    return card.location;
   };
 
   if (cards.length === 0) {
@@ -49,7 +90,7 @@ function AlertCardRow({ incidents }) {
     <div id="alerts-brief-section" style={{ marginBottom: '24px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
         <span style={{ width: '4px', height: '14px', background: 'var(--accent-primary)', display: 'inline-block' }} />
-        <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+        <span className="briefing-section-heading" style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
           Active Threat & Security Alerts
         </span>
         <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>(Scroll horizontally to view all · Cards dismissible)</span>
@@ -145,14 +186,14 @@ function AlertCardRow({ incidents }) {
               {/* Main Content */}
               <div style={{ flex: 1 }}>
                 <h4 style={{ margin: '0 0 4px 0', fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>
-                  {card.title || card.action || 'Alert Indicator'}
+                  {getSecureTitle(card)}
                 </h4>
                 <p style={{ margin: 0, fontSize: '11px', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
                   {card.text || card.note || card.reason}
                 </p>
                 {card.location && (
                   <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                    Loc: {card.location}
+                    Loc: {getSecureLocation(card)}
                   </div>
                 )}
               </div>
@@ -162,7 +203,7 @@ function AlertCardRow({ incidents }) {
                 {card.cardType === 'critical' && (
                   <button
                     type="button"
-                    onClick={() => handleLinkRedirect('/cases', 'Navigating to details view in Case Directory...')}
+                    onClick={() => handleLinkRedirect(card.id ? `/cases/${card.id}` : '/cases')}
                     style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontSize: '10px', fontWeight: 700, cursor: 'pointer', padding: 0 }}
                   >
                     VIEW DETAILS →
@@ -172,7 +213,7 @@ function AlertCardRow({ incidents }) {
                 {card.cardType === 'bolo' && card.suspectId && (
                   <button
                     type="button"
-                    onClick={() => handleLinkRedirect('/suspect-timeline', 'Opening Suspect Timeline dossier...')}
+                    onClick={() => handleLinkRedirect(`/suspect-timeline/${card.id || ''}?suspectId=${card.suspectId}`)}
                     style={{ background: 'none', border: 'none', color: 'var(--accent-warning)', fontSize: '10px', fontWeight: 700, cursor: 'pointer', padding: 0 }}
                   >
                     SUSPECT TIMELINE →
@@ -182,7 +223,7 @@ function AlertCardRow({ incidents }) {
                 {card.cardType === 'ai' && (
                   <button
                     type="button"
-                    onClick={() => handleLinkRedirect('/copilot', 'Opening Copilot window to investigate pattern...')}
+                    onClick={() => handleLinkRedirect('/copilot')}
                     style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontSize: '10px', fontWeight: 700, cursor: 'pointer', padding: 0 }}
                   >
                     ASK COPILOT →

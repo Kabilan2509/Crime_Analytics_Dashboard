@@ -54,10 +54,8 @@ function PageLoader({ compact = false }) {
 
 function AdaptiveFilterBar(props) {
   const location = useLocation();
-  if (location.pathname.startsWith('/reports') || location.pathname.startsWith('/map') || location.pathname.startsWith('/statistics')) {
-    return null;
-  }
-  return <FilterBar {...props} />;
+  const usesGlobalScopeFilters = location.pathname === '/' || location.pathname.startsWith('/predictions');
+  return usesGlobalScopeFilters ? <FilterBar {...props} /> : null;
 }
 
 function MainContentWrapper({ children }) {

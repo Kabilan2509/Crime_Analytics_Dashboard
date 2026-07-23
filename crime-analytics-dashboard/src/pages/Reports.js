@@ -849,7 +849,7 @@ function Reports() {
                 <div key={c.CaseMasterID} style={{ borderLeft: '4px solid #dc2626', backgroundColor: '#fef2f2', padding: '10px', fontSize: '12px' }}>
                   <strong>[CRITICAL ALERT] Case #{c.CaseMasterID} — {c.minorHeadName}</strong>
                   <div style={{ color: '#555', marginTop: '4px', fontSize: '11px' }}>
-                    Registered at {c.policeStationName} ({c.districtName}) on {String(c.CrimeRegisteredDate).split(' ')[0]}. Investigation assigned to {c.officerName}.
+                    Registered at {c.policeStationName} ({c.districtName}) on {String(c.CrimeRegisteredDate).split(' ')[0]}. Investigation assigned to {isCommandMode ? c.officerName : maskText(c.officerName || 'Officer', 3, 3)}.
                   </div>
                 </div>
               ))}
@@ -918,7 +918,7 @@ function Reports() {
                 <tr key={c.CaseMasterID} style={{ borderBottom: '1px solid #eee' }}>
                   <td style={{ padding: '6px' }}><strong>{isCommandMode ? c.FIRNo : maskText(c.FIRNo || `FIR-${c.CaseMasterID}`, 6, 4)}</strong></td>
                   <td style={{ padding: '6px' }}>{c.majorHeadName}</td>
-                  <td style={{ padding: '6px' }}>{c.officerName}</td>
+                  <td style={{ padding: '6px' }}>{isCommandMode ? c.officerName : maskText(c.officerName || 'Officer', 3, 3)}</td>
                   <td style={{ padding: '6px' }}>{String(c.CrimeRegisteredDate).split(' ')[0]}</td>
                 </tr>
               ))}

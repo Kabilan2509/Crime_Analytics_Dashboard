@@ -1,7 +1,7 @@
 import React from 'react';
 import { MdAssignment, MdWarning, MdNotifications, MdSecurity, MdTrendingUp } from 'react-icons/md';
 
-function ExecutiveSummaryKpiRow({ summary }) {
+function ExecutiveSummaryKpiRow({ summary, onKpiClick }) {
   const {
     totalMajorCrimes = 0,
     percentChange = 0,
@@ -11,8 +11,11 @@ function ExecutiveSummaryKpiRow({ summary }) {
     emergingTrendsCount = 0
   } = summary;
 
-  const scrollToSection = (id) => {
-    const el = document.getElementById(id);
+  const handleKpiClick = (type, sectionId) => {
+    if (onKpiClick) {
+      onKpiClick(type);
+    }
+    const el = document.getElementById(sectionId);
     if (el) {
       el.scrollIntoView({ behavior: 'smooth' });
     }
@@ -27,7 +30,7 @@ function ExecutiveSummaryKpiRow({ summary }) {
     }}>
       {/* 1. Total Major Crimes */}
       <div 
-        onClick={() => scrollToSection('trends-brief-section')}
+        onClick={() => handleKpiClick('major_crimes', 'map-brief-section')}
         style={{
           borderLeft: '4px solid var(--accent-primary)',
           cursor: 'pointer'
@@ -48,7 +51,7 @@ function ExecutiveSummaryKpiRow({ summary }) {
 
       {/* 2. Districts with Escalated Risk */}
       <div 
-        onClick={() => scrollToSection('map-brief-section')}
+        onClick={() => handleKpiClick('escalated_districts', 'map-brief-section')}
         style={{
           borderLeft: districtsEscalated > 0 ? '4px solid var(--accent-danger)' : '4px solid var(--border-color)',
           cursor: 'pointer'
@@ -71,7 +74,7 @@ function ExecutiveSummaryKpiRow({ summary }) {
 
       {/* 3. Active Critical Incidents */}
       <div 
-        onClick={() => scrollToSection('alerts-brief-section')}
+        onClick={() => handleKpiClick('critical_incidents', 'map-brief-section')}
         style={{
           borderLeft: activeCriticalIncidents > 0 ? '4px solid var(--accent-danger)' : '4px solid var(--border-color)',
           border: activeCriticalIncidents > 0 ? '1px solid var(--accent-danger)' : '1px solid var(--border-color)',
@@ -95,7 +98,7 @@ function ExecutiveSummaryKpiRow({ summary }) {
 
       {/* 4. Active BOLOs */}
       <div 
-        onClick={() => scrollToSection('alerts-brief-section')}
+        onClick={() => handleKpiClick('bolos', 'map-brief-section')}
         style={{
           borderLeft: '4px solid var(--accent-warning)',
           cursor: 'pointer'
@@ -116,7 +119,7 @@ function ExecutiveSummaryKpiRow({ summary }) {
 
       {/* 5. Emerging Trends Flagged */}
       <div 
-        onClick={() => scrollToSection('trends-brief-section')}
+        onClick={() => handleKpiClick('emerging_trends', 'map-brief-section')}
         style={{
           borderLeft: '4px solid var(--accent-primary)',
           cursor: 'pointer'
@@ -141,6 +144,12 @@ function ExecutiveSummaryKpiRow({ summary }) {
           border: 1px solid var(--border-color);
           padding: 14px 16px;
           transition: transform 0.15s, border-color 0.15s;
+        }
+        .kpi-card > div:first-child > span {
+          font-size: 19px !important;
+        }
+        .kpi-card > div:nth-child(2) {
+          font-size: 29px !important;
         }
         .kpi-card:hover {
           transform: translateY(-2px);

@@ -100,6 +100,15 @@ function filterCaseload(filters = {}) {
       return false;
     }
 
+    // 6. Simulate data feed filtering based on includeSources
+    const includeSources = filters.includeSources || ['NCRB', 'OSINT'];
+    if (!includeSources.includes('NCRB')) {
+      if (item.CaseMasterID % 2 === 0) return false;
+    }
+    if (!includeSources.includes('OSINT')) {
+      if (item.CaseMasterID % 2 !== 0) return false;
+    }
+
     return true;
   });
 }
@@ -183,10 +192,25 @@ export const briefingApi = {
       note: `Case registered under ${c.minorHeadName || 'special sections'}. Investigation assigned.`
     }));
 
+    // Find real cases with accused in caseViews to map BOLOs to actual records
+    const casesWithAccused = caseViews.filter(c => c.accused && c.accused.length > 0);
+    const case1 = casesWithAccused[0] || { CaseMasterID: 1, accused: [{ AccusedMasterID: 's_101', AccusedName: 'ACCUSED-101' }], districtName: 'Bengaluru' };
+    const case2 = casesWithAccused[1] || { CaseMasterID: 2, accused: [{ AccusedMasterID: 's_102', AccusedName: 'ACCUSED-102' }], districtName: 'Bengaluru Rural' };
+
     // BOLOs list
     const bolos = [
-      { id: 'BOLO-01', title: 'Wanted Suspect: Theft Ring Lead', text: 'Associated with repeated commercial break-ins. Linked to vehicle KA-03-M-1124.', suspectId: 'acc-824' },
-      { id: 'BOLO-02', title: 'Vehicle Advisory: Gray Sedan', text: 'Spotted leaving scene of robbery in Bengaluru Rural area. Watch highways.' }
+      { 
+        id: case1.CaseMasterID, 
+        title: `Wanted Suspect: ${case1.accused[0].AccusedName || 'Theft Lead'}`, 
+        text: `Associated with crime head: ${case1.minorHeadName || 'Commercial Break-ins'}. Linked to vehicle KA-03-M-1124.`, 
+        suspectId: case1.accused[0].AccusedMasterID 
+      },
+      { 
+        id: case2.CaseMasterID, 
+        title: `BOLO Suspect: ${case2.accused[0].AccusedName || 'Vehicle Advisory'}`, 
+        text: `Accused wanted in active case. Spotted leaving crime scene in ${case2.districtName || 'Bengaluru Rural'}.`, 
+        suspectId: case2.accused[0].AccusedMasterID 
+      }
     ];
 
     // AI generated insights
@@ -219,7 +243,7 @@ export const briefingApi = {
       dRisk[d.DistrictID] = {
         id: d.DistrictID,
         name: d.DistrictName.replace(' (Dakshina Kannada)', ''),
-        riskScore: 20 + (d.DistrictID * 7) % 65, // base mock formula
+        riskScore: 0,
         count: 0
       };
     });
@@ -227,7 +251,14 @@ export const briefingApi = {
     list.forEach(c => {
       if (dRisk[c.districtID]) {
         dRisk[c.districtID].count += 1;
-        dRisk[c.districtID].riskScore = Math.min(100, dRisk[c.districtID].riskScore + 3);
+      }
+    });
+
+    // Calculate risk scores based on caseload to vary naturally and avoid identically clamping to 100%
+    districts.forEach(d => {
+      if (dRisk[d.DistrictID]) {
+        const count = dRisk[d.DistrictID].count;
+        dRisk[d.DistrictID].riskScore = Math.min(95, Math.round(15 + (d.DistrictID * 6) % 35 + count * 1.2));
       }
     });
 
@@ -352,7 +383,8 @@ export const briefingApi = {
   },
 
   // 9. GET /api/briefing/events
-  getEvents: () => {
+  getEvents: (filters) => {
+    const includeSources = filters?.includeSources || ['NCRB', 'OSINT'];
     const events = [
       { id: 'EVT-01', title: 'Local Gathering and Procession', date: '2026-07-19', note: 'Heavy transit regulations in Central Zone. 40 units deployed.', severity: 'medium' },
       { id: 'EVT-02', title: 'VVIP Convoy Transit Route Beat', date: '2026-07-20', note: 'Anti-sabotage sweep checks at Sector 2 and highway exits.', severity: 'high' }
@@ -360,8 +392,8 @@ export const briefingApi = {
 
     const externalBulletins = [
       { source: 'NCRB', text: 'Regional cybersecurity reports indicate rise in social engineering scam volumes.' },
-      { source: 'NATGRID', text: 'National watchlist updates. Border transit checks advised for suspect registry.' }
-    ];
+      { source: 'OSINT', text: 'National watchlist updates. Border transit checks advised for suspect registry.' }
+    ].filter(b => includeSources.includes(b.source));
 
     return delay({
       events,

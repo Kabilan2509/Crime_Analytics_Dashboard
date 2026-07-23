@@ -11,6 +11,7 @@ import 'leaflet/dist/leaflet.css';
 import { caseViews } from '../data/schemaSelectors';
 import { playAlertSound } from '../utils/audioAlert';
 import { useSecurity } from '../context/SecurityContext';
+import { getSecureCaseView } from '../security/securityUtils';
 import { downloadPdf } from '../utils/fileExports';
 
 // Deterministic locality reverse geocoding
@@ -175,8 +176,9 @@ function SuspectTimeline() {
   // Find active case
   const activeCase = useMemo(() => {
     if (!caseId) return null;
-    return caseViews.find(c => String(c.CaseMasterID) === String(caseId));
-  }, [caseId]);
+    const found = caseViews.find(c => String(c.CaseMasterID) === String(caseId));
+    return getSecureCaseView(found, session.accessLevel);
+  }, [caseId, session.accessLevel]);
 
   // Suspects list inside active case
   const suspectsList = useMemo(() => {
@@ -277,8 +279,8 @@ function SuspectTimeline() {
 
   // Determine if a particular event is restricted for this user
   const isEventRestricted = (ev) => {
-    if (!ev.isRestricted) return false;
-    return session.accessLevel !== 'command' || session.role === 'Support Staff';
+    if (session.accessLevel !== 'command') return true;
+    return ev.isRestricted && session.role === 'Support Staff';
   };
 
   // Filter events based on active configurations

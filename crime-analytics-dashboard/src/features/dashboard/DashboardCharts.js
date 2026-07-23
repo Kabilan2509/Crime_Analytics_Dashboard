@@ -97,10 +97,19 @@ function DashboardCharts({ monthlyTrend, crimeDistribution, stacked = false }) {
         </div>
         <div className="chart-container" style={{ height: '220px', flex: 1, marginTop: '8px' }}>
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={crimeDistribution} layout="vertical" margin={{ left: -15, right: 15, bottom: 15 }}>
+            <BarChart data={crimeDistribution} layout="vertical" margin={{ left: 10, right: 15, bottom: 15 }}>
               <CartesianGrid stroke={gridColor} strokeDasharray="1 3" horizontal={false} />
               <XAxis type="number" stroke={mutedTextColor} tickLine={false} axisLine={false} style={{ fontSize: '11px', fontFamily: 'Consolas, monospace' }} label={{ value: 'TOTAL CASE WORKLOAD', position: 'insideBottom', offset: -8, fill: mutedTextColor, fontSize: '9px', fontFamily: 'Consolas, monospace', letterSpacing: '1px' }} />
-              <YAxis type="category" dataKey="name" width={180} stroke={mutedTextColor} tickLine={false} axisLine={false} style={{ fontSize: '11px', fontFamily: 'Consolas, monospace' }} />
+              <YAxis
+                type="category"
+                dataKey="name"
+                width={190}
+                interval={0}
+                stroke={mutedTextColor}
+                tickLine={false}
+                axisLine={false}
+                tick={{ fontSize: 11, fontFamily: 'Consolas, monospace' }}
+              />
               <Tooltip content={<ChartTooltip />} />
               <Legend verticalAlign="top" height={36} wrapperStyle={{ fontFamily: 'Consolas, monospace', fontSize: '10px' }} />
               <Bar dataKey="value" name="Cases Recorded" radius={0}>

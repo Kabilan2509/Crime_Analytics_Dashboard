@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { MdSend, MdSmartToy, MdAutoAwesome, MdRefresh } from 'react-icons/md';
 import CopilotMessage from '../features/copilot/CopilotMessage';
+import { useSecurity } from '../context/SecurityContext';
 
 const API_BASE = '/server/crime_api/api';
 
@@ -37,6 +38,7 @@ async function fetchLocalFallback(message, history) {
 }
 
 function Copilot() {
+  const { isCommandMode } = useSecurity();
   const [messages, setMessages] = useState([
     {
       id: 'welcome',
@@ -67,6 +69,10 @@ function Copilot() {
   const handleSend = useCallback(async (text) => {
     const queryText = (text || input).trim();
     if (!queryText || isThinking) return;
+    if (!isCommandMode) {
+      window.alert('PII-protected AI queries require an unlocked Command session. Use the header lock control to verify access.');
+      return;
+    }
 
     const userMsg = {
       id: `u-${Date.now()}`,
@@ -131,7 +137,7 @@ function Copilot() {
 
     setMessages(prev => [...prev, aiResponse]);
     setIsThinking(false);
-  }, [input, isThinking, messages]);
+  }, [input, isThinking, messages, isCommandMode]);
 
   const handleClear = () => {
     setMessages(prev => [prev[0]]); // keep welcome message

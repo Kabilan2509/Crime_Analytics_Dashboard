@@ -35,6 +35,7 @@ function BriefingPage() {
   const [filters, setFilters] = useState(initialFilters);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [activeKpiFilter, setActiveKpiFilter] = useState('all');
 
   // App theme context retrieved from html attribute
   const [theme, setTheme] = useState(() => document.documentElement.getAttribute('data-theme') || 'dark');
@@ -120,6 +121,7 @@ function BriefingPage() {
     } else {
       setFilters(initialFilters);
     }
+    setActiveKpiFilter('all');
   };
 
   const handleDistrictDrillDown = (districtID) => {
@@ -281,7 +283,7 @@ function BriefingPage() {
         <div style={{ display: 'flex', flexDirection: 'column', animation: 'fadeIn 0.3s ease' }}>
           
           {/* 3. Executive Summary KPI Row */}
-          <ExecutiveSummaryKpiRow summary={data.summary} />
+          <ExecutiveSummaryKpiRow summary={data.summary} onKpiClick={setActiveKpiFilter} />
 
           {/* 4. Narrative Summary (Key Findings) */}
           {filters.viewMode === 'analyst' && (
@@ -289,13 +291,15 @@ function BriefingPage() {
           )}
 
           {/* 5. Threat & Incident Alert Row */}
-          <AlertCardRow incidents={data.incidents} />
+          <AlertCardRow incidents={data.incidents} viewMode={filters.viewMode} />
 
           {/* 6. Situational Map + Hotspot List (split layout) */}
           <SituationalMapSection
             mapData={data.mapData}
             theme={theme}
             onDistrictClick={handleDistrictDrillDown}
+            activeKpiFilter={activeKpiFilter}
+            setActiveKpiFilter={setActiveKpiFilter}
           />
 
           {/* 7. Trend Charts Section */}
@@ -307,16 +311,18 @@ function BriefingPage() {
           {/* 9 & 10. Demographics, Resource Readiness & Actions */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))',
+            gridTemplateColumns: filters.viewMode === 'analyst' ? 'repeat(auto-fit, minmax(450px, 1fr))' : '1fr',
             gap: '20px',
             marginBottom: '20px'
           }}>
             <CategoryDemographicsOpsSection categoriesData={data.categories} operations={data.operations} />
-            <RecommendationsPane recommendations={data.recommendations} />
+            {filters.viewMode === 'analyst' && (
+              <RecommendationsPane recommendations={data.recommendations} />
+            )}
           </div>
 
           {/* 11 & 12. Upcoming Events & Footers */}
-          <UpcomingEventsInterAgencySection eventsData={data.events} />
+          <UpcomingEventsInterAgencySection eventsData={data.events} viewMode={filters.viewMode} />
           
           <BriefingFooter summary={data.summary} onExport={handleExportPDF} />
         </div>
@@ -327,13 +333,59 @@ function BriefingPage() {
         /* ----------------------------------------------------
            COMMAND CENTER THEME COPIED TO BRIEFING
            ---------------------------------------------------- */
-        .briefing-page {
+         .briefing-page {
           background-color: #faf8f5 !important;
           color: #1e293b !important;
           font-family: 'Consolas', 'Courier New', Courier, monospace !important;
         }
         .briefing-page * {
           font-family: 'Consolas', 'Courier New', Courier, monospace !important;
+        }
+        .briefing-page {
+          font-size: 14px !important;
+          line-height: 1.5 !important;
+        }
+        .briefing-page .briefing-section-heading {
+          font-size: 16px !important;
+          line-height: 1.4 !important;
+          letter-spacing: 0.06em !important;
+        }
+        .briefing-page .section-eyebrow {
+          font-size: 15px !important;
+          line-height: 1.4 !important;
+          letter-spacing: 0.06em !important;
+        }
+        .briefing-page .card-title,
+        .briefing-page h3.card-title,
+        .briefing-page h4.card-title {
+          font-size: 18px !important;
+          line-height: 1.4 !important;
+        }
+        .briefing-page .card p,
+        .briefing-page .card li,
+        .briefing-page .card td,
+        .briefing-page .card label {
+          font-size: 14px !important;
+          line-height: 1.55 !important;
+        }
+        .briefing-page .card th {
+          font-size: 13px !important;
+          line-height: 1.4 !important;
+        }
+        .briefing-page select,
+        .briefing-page input,
+        .briefing-page button,
+        .briefing-page .stats-btn {
+          font-size: 14px !important;
+          line-height: 1.35 !important;
+        }
+        .briefing-page .kpi-card > div:last-child {
+          font-size: 13px !important;
+          line-height: 1.4 !important;
+        }
+        .briefing-page .recharts-text,
+        .briefing-page .recharts-legend-item-text {
+          font-size: 12px !important;
         }
         .briefing-page .card,
         .briefing-page .kpi-card,

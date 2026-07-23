@@ -11,6 +11,7 @@ import 'leaflet/dist/leaflet.css';
 import { caseViews } from '../data/schemaSelectors';
 import { playAlertSound } from '../utils/audioAlert';
 import { useSecurity } from '../context/SecurityContext';
+import { getSecureCaseView } from '../security/securityUtils';
 import { downloadCsv, downloadJpegSummary, downloadPdf } from '../utils/fileExports';
 
 // Deterministic locality reverse geocoding
@@ -220,8 +221,9 @@ function EvidenceWorkspace() {
   // Find active case
   const activeCase = useMemo(() => {
     if (!caseId) return null;
-    return caseViews.find(c => String(c.CaseMasterID) === String(caseId));
-  }, [caseId]);
+    const found = caseViews.find(c => String(c.CaseMasterID) === String(caseId));
+    return getSecureCaseView(found, session.accessLevel);
+  }, [caseId, session.accessLevel]);
 
   // Scoped list of evidence
   const [evidenceList, setEvidenceList] = useState([]);
@@ -238,11 +240,7 @@ function EvidenceWorkspace() {
   // Simulated upload queue state
   const [uploadQueue, setUploadQueue] = useState([]);
 
-  // Step-up authentication states
-  const [showStepUp, setShowStepUp] = useState(false);
-  const [stepUpAction, setStepUpAction] = useState(null);
-  const [stepUpBadge, setStepUpBadge] = useState('');
-  const [stepUpError, setStepUpError] = useState('');
+
 
   // Canvas drawing state
   const canvasRef = useRef(null);
@@ -267,9 +265,8 @@ function EvidenceWorkspace() {
 
   // Determine if a particular item is restricted for this user
   const isItemRestricted = (item) => {
-    if (!item.isRestricted) return false;
-    // Gated from support roles/redacted modes
-    return session.accessLevel !== 'command' || session.role === 'Support Staff';
+    if (session.accessLevel !== 'command') return true;
+    return item.isRestricted && session.role === 'Support Staff';
   };
 
   // Filter & sort evidence
@@ -323,30 +320,7 @@ function EvidenceWorkspace() {
     return counts;
   }, [evidenceList]);
 
-  // Trigger step-up modal
-  const requestStepUp = (actionName, onVerified) => {
-    setStepUpAction({ name: actionName, execute: onVerified });
-    setStepUpBadge('');
-    setStepUpError('');
-    setShowStepUp(true);
-  };
 
-  const handleVerifyStepUp = (e) => {
-    e.preventDefault();
-    if (session.accessLevel === 'command' && stepUpBadge.trim() === session.badgeId) {
-      playAlertSound(600, 0.05);
-      stepUpAction.execute();
-      setShowStepUp(false);
-    } else if (session.accessLevel !== 'command' && stepUpBadge.trim().length >= 4) {
-      // Allow simulation in redacted mode for testing
-      playAlertSound(600, 0.05);
-      stepUpAction.execute();
-      setShowStepUp(false);
-    } else {
-      playAlertSound(300, 0.15);
-      setStepUpError('Re-authentication failed. Incorrect Badge ID.');
-    }
-  };
 
   // Log audit event to a specific item
   const logCustodyEvent = (itemId, action) => {
@@ -477,31 +451,27 @@ function EvidenceWorkspace() {
   // Court Approval
   const handleApproveCourt = () => {
     if (!isAuthorized) return;
-    requestStepUp('Approve evidence for court presentation', () => {
-      setEvidenceList(prev => prev.map(item => {
-        if (item.id === selectedItem.id) {
-          return { ...item, status: 'Ready' };
-        }
-        return item;
-      }));
-      setSelectedItem(prev => ({ ...prev, status: 'Ready' }));
-      logCustodyEvent(selectedItem.id, 'Evidence approved for court registry');
-    });
+    setEvidenceList(prev => prev.map(item => {
+      if (item.id === selectedItem.id) {
+        return { ...item, status: 'Ready' };
+      }
+      return item;
+    }));
+    setSelectedItem(prev => ({ ...prev, status: 'Ready' }));
+    logCustodyEvent(selectedItem.id, 'Evidence approved for court registry');
   };
 
   // Release to Prosecutor
   const handleReleaseProsecutor = () => {
     if (!isAuthorized) return;
-    requestStepUp('Release evidence package to Prosecutor portal', () => {
-      setEvidenceList(prev => prev.map(item => {
-        if (item.id === selectedItem.id) {
-          return { ...item, status: 'Ready' }; // updates status
-        }
-        return item;
-      }));
-      setSelectedItem(prev => ({ ...prev, status: 'Ready' }));
-      logCustodyEvent(selectedItem.id, 'Released and transferred to Prosecutor Portal (AES-256 handshake)');
-    });
+    setEvidenceList(prev => prev.map(item => {
+      if (item.id === selectedItem.id) {
+        return { ...item, status: 'Ready' }; // updates status
+      }
+      return item;
+    }));
+    setSelectedItem(prev => ({ ...prev, status: 'Ready' }));
+    logCustodyEvent(selectedItem.id, 'Released and transferred to Prosecutor Portal (AES-256 handshake)');
   };
 
   // Download trigger with immediate log
@@ -569,14 +539,12 @@ function EvidenceWorkspace() {
     const reason = prompt('Specify operational reason for purging this file from CCTNS catalog (this action is irreversible):');
     if (!reason) return;
 
-    requestStepUp('Purge and delete case evidence file', () => {
-      playAlertSound(300, 0.2);
-      setEvidenceList(prev => prev.filter(f => f.id !== item.id));
-      if (selectedItem && selectedItem.id === item.id) {
-        setSelectedItem(null);
-      }
-      alert(`Purged log entry committed to audit registry. File catalog records updated.`);
-    });
+    playAlertSound(300, 0.2);
+    setEvidenceList(prev => prev.filter(f => f.id !== item.id));
+    if (selectedItem && selectedItem.id === item.id) {
+      setSelectedItem(null);
+    }
+    alert(`Purged log entry committed to audit registry. File catalog records updated.`);
   };
 
   // Export Bundle with Custody
@@ -1494,76 +1462,7 @@ function EvidenceWorkspace() {
 
       </div>
 
-      {/* STEP-UP AUTHENTICATION DIALOG MODAL */}
-      {showStepUp && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000 }}>
-          <div style={{ background: 'var(--bg-panel)', border: '1px solid var(--border-strong)', padding: '24px', width: '340px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-danger)', marginBottom: '14px' }}>
-              <MdLock size={20} />
-              <strong style={{ fontSize: '14px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Step-Up Authorization Required</strong>
-            </div>
-            
-            <p style={{ margin: '0 0 16px 0', fontSize: '12px', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
-              Action: <strong style={{ color: 'var(--text-primary)' }}>{stepUpAction?.name}</strong><br/>
-              Enter your secure Badge ID to commit this transaction to CCTNS audit trail.
-            </p>
 
-            <form onSubmit={handleVerifyStepUp} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <input
-                type="password"
-                placeholder="Enter Badge ID"
-                value={stepUpBadge}
-                onChange={e => setStepUpBadge(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  background: 'var(--bg-panel-alt)',
-                  color: 'var(--text-primary)',
-                  border: '1px solid var(--border-strong)',
-                  fontSize: '13px'
-                }}
-                autoFocus
-              />
-              
-              {stepUpError && (
-                <span style={{ fontSize: '11px', color: 'var(--accent-danger)' }}>{stepUpError}</span>
-              )}
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '6px' }}>
-                <button
-                  type="button"
-                  onClick={() => setShowStepUp(false)}
-                  style={{
-                    padding: '6px 12px',
-                    fontSize: '12px',
-                    background: 'transparent',
-                    border: '1px solid var(--border-color)',
-                    color: 'var(--text-primary)',
-                    cursor: 'pointer',
-                    minHeight: '34px'
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  style={{
-                    padding: '6px 12px',
-                    fontSize: '12px',
-                    background: 'var(--accent-primary)',
-                    color: '#fff',
-                    border: 'none',
-                    cursor: 'pointer',
-                    minHeight: '34px'
-                  }}
-                >
-                  Authorize
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
     </div>
   );

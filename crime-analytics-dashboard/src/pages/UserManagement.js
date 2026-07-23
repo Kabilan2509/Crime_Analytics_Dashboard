@@ -651,6 +651,22 @@ function UserManagement() {
     );
   };
 
+  if (session.accessLevel !== 'command') {
+    return (
+      <div className="page-content animate-fade-in text-inverse">
+        <article className="card" role="alert" style={{ padding: '32px', textAlign: 'center', maxWidth: '720px', margin: '40px auto' }}>
+          <h2 style={{ marginTop: 0 }}>PII-protected administration area</h2>
+          <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+            Officer directory, contact details, active-session addresses, audit identities, and clearance records are hidden in Restricted Mode.
+          </p>
+          <p style={{ color: 'var(--text-muted)', marginBottom: 0 }}>
+            Unlock PII access from the header to open the User Management &amp; Security Console.
+          </p>
+        </article>
+      </div>
+    );
+  }
+
   return (
     <div className="page-content user-management-page text-inverse">
       

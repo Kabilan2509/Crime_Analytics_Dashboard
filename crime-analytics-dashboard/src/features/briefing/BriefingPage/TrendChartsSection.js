@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
 import { ResponsiveContainer, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, LineChart, Line } from 'recharts';
 import { MdTrendingUp, MdBarChart, MdTimeline } from 'react-icons/md';
+import GrafanaPanel from '../../../components/ui/GrafanaPanel';
+import { useNavigate } from 'react-router-dom';
 
 function TrendChartsSection({ trends }) {
+  const navigate = useNavigate();
   const { trendData = [], sparklines = [], hourData = [] } = trends;
 
   const [visibleSeries, setVisibleSeries] = useState({
@@ -19,8 +22,7 @@ function TrendChartsSection({ trends }) {
   };
 
   const handleStatsRedirect = () => {
-    alert('Navigating to full Crime Statistics Console...');
-    window.location.hash = '#/statistics';
+    navigate('/statistics');
   };
 
   return (
@@ -36,7 +38,7 @@ function TrendChartsSection({ trends }) {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <span style={{ width: '4px', height: '14px', background: 'var(--accent-primary)', display: 'inline-block' }} />
-          <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+          <span className="briefing-section-heading" style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
             TEMPORAL INTEL & TREND ANALYSIS
           </span>
         </div>

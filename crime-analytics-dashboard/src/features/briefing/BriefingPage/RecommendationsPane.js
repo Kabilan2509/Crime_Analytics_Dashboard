@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { MdAssignment, MdAssignmentTurnedIn, MdCheckCircle, MdLaunch } from 'react-icons/md';
+import { useNavigate } from 'react-router-dom';
 
 function RecommendationsPane({ recommendations }) {
+  const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [activeTab, setActiveTab] = useState('pending'); // 'pending' vs 'actioned'
 
@@ -29,8 +31,7 @@ function RecommendationsPane({ recommendations }) {
   };
 
   const handleOpenCopilot = () => {
-    alert('Deep linking to Copilot details window...');
-    window.location.hash = '#/copilot';
+    navigate('/copilot');
   };
 
   return (
