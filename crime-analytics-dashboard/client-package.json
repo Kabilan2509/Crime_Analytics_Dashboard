@@ -1,6 +1,6 @@
 {
     "name": "crime-analytics-dashboard",
-    "version": "0.0.1",
-    "homepage": "/__catalyst/auth/login",
+    "version": "0.0.2",
+    "homepage": "index.html",
     "login_redirect": "index.html"
 }

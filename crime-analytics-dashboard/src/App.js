@@ -1,5 +1,6 @@
 import React, { useEffect, useState, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import './DashboardTheme.css';
 
 /* Layout components */
 import Sidebar from './components/Sidebar';
@@ -9,7 +10,7 @@ import EmergencyTicker from './components/EmergencyTicker';
 import AccessibilityToolbar from './components/AccessibilityToolbar';
 
 /* Core Pages (eagerly loaded) */
-import Dashboard from './pages/Dashboard';
+import Dashboard from './pages/DashboardModern';
 import CrimeMap from './pages/CrimeMap';
 import Statistics from './pages/Statistics';
 import Reports from './pages/Reports';
@@ -73,7 +74,7 @@ function MainContentWrapper({ children }) {
 }
 
 function App() {
-  const [theme, setTheme] = useState(() => localStorage.getItem('ksp-theme') || 'dark');
+  const [theme, setTheme] = useState(() => localStorage.getItem('ksp-theme-v2') || 'light');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('ksp-sidebar-collapsed') === 'true');
   const [dataReady, setDataReady] = useState(false);
@@ -87,7 +88,7 @@ function App() {
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('ksp-theme', theme);
+    localStorage.setItem('ksp-theme-v2', theme);
   }, [theme]);
 
   useEffect(() => {

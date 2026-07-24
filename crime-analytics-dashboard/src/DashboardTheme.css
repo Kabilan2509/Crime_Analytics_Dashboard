@@ -1,0 +1,129 @@
+/* Shared visual system for every routed dashboard page. */
+.app-shell {
+  --page-surface: #f3f6fa;
+  --panel-surface: #ffffff;
+  --panel-border: #d8e1ec;
+  --heading-ink: #172a43;
+  --body-ink: #42556d;
+  --muted-ink: #718198;
+  --brand-blue: #245fa8;
+}
+
+.app-main {
+  min-width: 0;
+  max-width: 100vw;
+  overflow-x: clip;
+  background: var(--page-surface);
+}
+
+.main-content,
+.main-content-map {
+  min-width: 0;
+  max-width: 100%;
+  background: var(--page-surface);
+}
+
+.page-content {
+  color: var(--body-ink);
+  font-family: "Public Sans", "Segoe UI", sans-serif;
+  font-size: 14px;
+}
+
+.page-content :where(h1, h2, h3, .page-title, .card-title) {
+  color: var(--heading-ink);
+  font-family: "Public Sans", "Segoe UI", sans-serif;
+}
+
+.page-content :where(.card, .panel, .stat-card, .brief-card, .glass-card) {
+  border-color: var(--panel-border);
+  border-radius: 8px;
+  background: var(--panel-surface);
+  box-shadow: 0 3px 12px rgba(28, 49, 77, .05);
+}
+
+.page-content :where(p, td, label, input, select, textarea, button) {
+  font-size: max(12px, .86em);
+}
+
+.page-content :where(th, .section-eyebrow, .field-hint, small) {
+  font-size: max(10px, .72em);
+}
+
+.page-content :where(input, select, textarea) {
+  border-color: var(--panel-border);
+  border-radius: 6px;
+  background: var(--panel-surface);
+  color: var(--heading-ink);
+}
+
+.header,
+.header-main,
+.header-right,
+.header-left {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.header-main { width: 100%; }
+
+.header-left {
+  flex: 1 1 230px;
+  overflow: hidden;
+}
+
+.header-right {
+  flex: 0 1 auto;
+  overflow: hidden;
+}
+
+.header-search-shell {
+  flex: 1 1 180px;
+  min-width: 130px;
+  max-width: 230px;
+}
+
+.command-banner-indicator {
+  flex: 0 1 230px !important;
+  min-width: 0 !important;
+  max-width: 230px !important;
+  overflow: hidden !important;
+}
+
+.command-banner-label { flex: 0 0 auto; }
+.command-banner-details {
+  min-width: 0;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.header-profile {
+  flex: 0 1 160px;
+  min-width: 44px;
+  max-width: 160px;
+  overflow: hidden;
+}
+
+.header-profile > div { min-width: 0; overflow: hidden; }
+.profile-name, .profile-role { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+@media (max-width: 1650px) {
+  .command-banner-details { display: none; }
+  .command-banner-indicator { flex-basis: auto !important; width: auto !important; }
+}
+
+@media (max-width: 1280px) {
+  .header-right { overflow: visible; }
+  .header-profile { max-width: 190px; }
+  .command-banner-indicator { max-width: 190px !important; }
+}
+
+html[data-theme='dark'] .app-shell {
+  --page-surface: #0d1724;
+  --panel-surface: #142132;
+  --panel-border: rgba(173, 193, 214, .18);
+  --heading-ink: #edf3fb;
+  --body-ink: #cfdae6;
+  --muted-ink: #9fb0c3;
+  --brand-blue: #62a9dc;
+}
