@@ -73,7 +73,14 @@
 
 .header-right {
   flex: 0 1 auto;
-  overflow: hidden;
+  /* Header popovers extend below this row; clipping here hides the security
+     and notification menus behind the dashboard content. */
+  overflow: visible;
+}
+
+.header {
+  /* Keep interactive header popovers above filter bars and page panels. */
+  z-index: 1000;
 }
 
 .header-search-shell {
