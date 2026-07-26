@@ -2,7 +2,7 @@ import React from 'react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip } from 'recharts';
 
 function TemporalPatternsSection({ temporalData, onTimeFilter }) {
-  const { heatmap = [], dayOfWeek = [] } = temporalData;
+  const { heatmap = [], dayOfWeek = [], hasHourlyData = true } = temporalData;
 
   const daysName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const hoursLabel = Array.from({ length: 24 }, (_, i) => i);
@@ -49,6 +49,11 @@ function TemporalPatternsSection({ temporalData, onTimeFilter }) {
           <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
             Hourly concentration of incidents across the week. Click cell to filter by hour.
           </span>
+          {!hasHourlyData && (
+            <div style={{ marginTop: '8px', color: 'var(--warning, #d6a84b)', fontSize: '12px' }}>
+              Hourly breakdown unavailable: these records contain dates without a reliable time of day.
+            </div>
+          )}
         </div>
 
         {/* Heatmap Grid Wrapper */}

@@ -130,12 +130,12 @@ function DashboardModern({
       <div className="md-bottom-grid">
         <Panel eyebrow="Case classification" title="Crime by category" className="md-category-panel">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data.crimeDistribution.slice(0, 7)} layout="vertical" margin={{ top: 3, right: 12, left: 2, bottom: 0 }}>
+            <BarChart data={data.crimeDistribution.slice(0, 7)} layout="vertical" margin={{ top: 8, right: 18, left: 8, bottom: 8 }}>
               <CartesianGrid stroke="#edf1f6" horizontal={false} />
               <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: '#8a97a9', fontSize: 10 }} />
-              <YAxis type="category" dataKey="name" width={126} axisLine={false} tickLine={false} tick={{ fill: '#526278', fontSize: 10 }} />
+              <YAxis type="category" dataKey="name" width={142} axisLine={false} tickLine={false} tick={{ fill: '#526278', fontSize: 11 }} />
               <Tooltip content={<DashboardTooltip />} />
-              <Bar dataKey="value" name="Cases" radius={[0, 3, 3, 0]} barSize={8}>
+              <Bar dataKey="value" name="Cases" radius={[0, 4, 4, 0]} barSize={10}>
                 {data.crimeDistribution.slice(0, 7).map((item, index) => <Cell key={item.name} fill={index === 0 ? '#173f78' : index < 4 ? '#3777c8' : '#e19a25'} />)}
               </Bar>
             </BarChart>

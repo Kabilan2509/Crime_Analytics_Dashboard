@@ -66,6 +66,16 @@ function getStatusName(caseItem) {
     || caseItem.statusName || '';
 }
 
+// Local sample data uses M/F/T, while Catalyst stores GenderID as 1/2/3.
+// Normalize both representations before filtering or aggregating demographics.
+function normalizeGender(value) {
+  const key = String(value ?? '').trim().toUpperCase();
+  if (key === '1' || key === 'M' || key === 'MALE') return 'M';
+  if (key === '2' || key === 'F' || key === 'FEMALE') return 'F';
+  if (key === '3' || key === 'T' || key === 'TRANSGENDER' || key === 'OTHER') return 'T';
+  return '';
+}
+
 // Helper: parse date filter
 function parseDateRange(range, customStart, customEnd) {
   const latestCaseTime = Math.max(0, ...caseViews.map(item => item.registeredDateObj?.getTime() || 0));
@@ -160,7 +170,7 @@ function getFilteredDataset(filters) {
     if (gender !== 'all' || ageGroup !== 'all') {
       // check if any victim matches
       const hasMatchingVictim = item.victims && item.victims.some(v => {
-        const matchesGender = gender === 'all' || v.GenderID === gender;
+        const matchesGender = gender === 'all' || normalizeGender(v.GenderID) === normalizeGender(gender);
         let matchesAge = true;
         if (ageGroup !== 'all') {
           const age = v.AgeYear || 0;
@@ -457,8 +467,9 @@ export const statisticsApi = {
     dataset.forEach(c => {
       if (c.victims && c.victims.length > 0) {
         c.victims.forEach(v => {
-          if (v.GenderID === 'M') male++;
-          else if (v.GenderID === 'F') female++;
+          const victimGender = normalizeGender(v.GenderID);
+          if (victimGender === 'M') male++;
+          else if (victimGender === 'F') female++;
           else other++;
         });
       } else {
@@ -529,11 +540,30 @@ export const statisticsApi = {
     );
 
     const weekdayCounts = Array(7).fill(0);
+    const temporalRecords = dataset.map(c => {
+      // The heatmap describes when incidents occurred, not when FIRs were
+      // registered. Catalyst's CrimeRegisteredDate may be date-only, while
+      // IncidentFromDate contains the actual occurrence time.
+      const dateObj = c.incidentFromDateObj || c.registeredDateObj;
+      const rawDate = String(c.incidentFromDate || c.IncidentFromDate || c.CrimeRegisteredDate || '');
+      const isUtc = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(rawDate);
+      const dIdx = isUtc ? dateObj.getUTCDay() : dateObj.getDay();
+      const hIdx = isUtc ? dateObj.getUTCHours() : dateObj.getHours();
+      const minute = isUtc ? dateObj.getUTCMinutes() : dateObj.getMinutes();
+      return { dIdx, hIdx, minute };
+    }).filter(({ dIdx, hIdx, minute }) =>
+      Number.isInteger(dIdx) && Number.isInteger(hIdx) && Number.isInteger(minute)
+    );
 
-    dataset.forEach(c => {
-      const dIdx = c.registeredDateObj.getDay();
-      const hIdx = c.registeredDateObj.getHours();
-      matrix[dIdx][hIdx].count += 1;
+    // A whole result set at one identical clock time is a database DATE value
+    // rendered with a default time (commonly 05:30 in IST), not incident-hour data.
+    const distinctTimes = new Set(temporalRecords.map(({ hIdx, minute }) => `${hIdx}:${minute}`));
+    const hasHourlyData = temporalRecords.length > 0 && distinctTimes.size > 1;
+
+    temporalRecords.forEach(({ dIdx, hIdx }) => {
+      if (hasHourlyData) {
+        matrix[dIdx][hIdx].count += 1;
+      }
       weekdayCounts[dIdx] += 1;
     });
 
@@ -552,7 +582,8 @@ export const statisticsApi = {
 
     return delay({
       heatmap: heatmapData,
-      dayOfWeek: dayOfWeekData
+      dayOfWeek: dayOfWeekData,
+      hasHourlyData
     });
   },
 
