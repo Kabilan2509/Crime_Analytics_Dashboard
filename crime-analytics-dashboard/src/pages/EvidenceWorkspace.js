@@ -696,10 +696,13 @@ function EvidenceWorkspace() {
           border-radius: 4px !important;
         }
         .flat-section {
-          background: var(--bg-app) !important;
-          border: none !important;
+          background: var(--bg-panel) !important;
+          border: 1px solid var(--border-color) !important;
           border-bottom: 1px solid var(--border-color) !important;
-          padding: 16px 0px !important;
+          border-radius: 12px !important;
+          box-shadow: var(--shadow-card) !important;
+          padding: 18px !important;
+          margin-bottom: 18px !important;
         }
         .section-label {
           font-size: 11px !important;
@@ -799,6 +802,11 @@ function EvidenceWorkspace() {
           border-top: 1px solid var(--border-color);
           padding-top: 24px;
           margin-top: 24px;
+          padding: 20px;
+          border: 1px solid var(--border-color);
+          border-radius: 12px;
+          background: var(--bg-panel);
+          box-shadow: var(--shadow-card);
         }
 
         /* Stats metrics grid */
@@ -807,6 +815,10 @@ function EvidenceWorkspace() {
           grid-template-columns: repeat(4, 1fr);
           border: 1px solid var(--border-color);
           margin-bottom: 24px;
+          border-radius: 12px !important;
+          overflow: hidden;
+          background: var(--bg-panel);
+          box-shadow: var(--shadow-card);
         }
         .metric-block {
           padding: 14px 16px;
@@ -828,6 +840,20 @@ function EvidenceWorkspace() {
           color: var(--text-muted);
           display: block;
           margin-top: 4px;
+        }
+        @media (max-width: 960px) {
+          .viewer-split { grid-template-columns: 1fr; gap: 18px; padding-top: 18px; margin-top: 18px; }
+          .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+          .metric-block:nth-child(2) { border-right: none; }
+          .metric-block:nth-child(-n+2) { border-bottom: 1px solid var(--border-color); }
+        }
+        @media (max-width: 640px) {
+          .evidence-workspace .flat-section { padding-block: 14px !important; }
+          .metrics-grid { grid-template-columns: 1fr; }
+          .metric-block { border-right: none !important; border-bottom: 1px solid var(--border-color); }
+          .metric-block:last-child { border-bottom: none; }
+          .flat-table { min-width: 680px; }
+          .waveform-container { min-width: 360px; }
         }
       `}</style>
 

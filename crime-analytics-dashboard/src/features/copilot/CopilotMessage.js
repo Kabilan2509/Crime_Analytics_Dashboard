@@ -87,24 +87,68 @@ function PredictionCard({ predictions }) {
   );
 }
 
-// Renders markdown-style bold (**text**) inline
+function InlineMarkdown({ text }) {
+  return String(text || '').split(/\*\*(.*?)\*\*/g).map((part, index) =>
+    index % 2 ? <strong key={index}>{part}</strong> : <React.Fragment key={index}>{part}</React.Fragment>
+  );
+}
+
+function isTableSeparator(line) {
+  return /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(line);
+}
+
+// Render the Copilot's structured Markdown as readable briefing content.
 function MarkdownText({ text }) {
   if (!text) return null;
-  const parts = text.split(/\*\*(.*?)\*\*/g);
-  return (
-    <>
-      {parts.map((p, i) =>
-        i % 2 === 1
-          ? <strong key={i} style={{ color: 'var(--text-primary)' }}>{p}</strong>
-          : p.split('\n').map((line, li, arr) => (
-              <React.Fragment key={`${i}-${li}`}>
-                {line}
-                {li < arr.length - 1 && <br />}
-              </React.Fragment>
-            ))
-      )}
-    </>
-  );
+  const lines = String(text).replace(/\r/g, '').split('\n');
+  const blocks = [];
+  let index = 0;
+
+  while (index < lines.length) {
+    const line = lines[index].trim();
+    if (!line) { index += 1; continue; }
+
+    if (line.includes('|') && index + 1 < lines.length && isTableSeparator(lines[index + 1])) {
+      const headers = line.split('|').map(cell => cell.trim()).filter(Boolean);
+      index += 2;
+      const rows = [];
+      while (index < lines.length && lines[index].includes('|')) {
+        const cells = lines[index].split('|').map(cell => cell.trim()).filter(Boolean);
+        if (cells.length) rows.push(cells);
+        index += 1;
+      }
+      blocks.push(
+        <div key={`table-${index}`} className="copilot-markdown-table-wrap">
+          <table className="copilot-markdown-table">
+            <thead><tr>{headers.map((header, cell) => <th key={cell}><InlineMarkdown text={header} /></th>)}</tr></thead>
+            <tbody>{rows.map((row, rowIndex) => <tr key={rowIndex}>{headers.map((_, cell) => <td key={cell}><InlineMarkdown text={row[cell] || '—'} /></td>)}</tr>)}</tbody>
+          </table>
+        </div>
+      );
+      continue;
+    }
+
+    const heading = line.match(/^(#{1,3}\s+)?([^:]{2,80}):\s*$/);
+    if (heading) {
+      blocks.push(<h4 key={`heading-${index}`} className="copilot-markdown-heading"><InlineMarkdown text={heading[2]} /></h4>);
+      index += 1;
+      continue;
+    }
+
+    if (/^(\*|-|•)\s+/.test(line)) {
+      const items = [];
+      while (index < lines.length && /^(\*|-|•)\s+/.test(lines[index].trim())) {
+        items.push(lines[index].trim().replace(/^(\*|-|•)\s+/, ''));
+        index += 1;
+      }
+      blocks.push(<ul key={`list-${index}`} className="copilot-markdown-list">{items.map((item, itemIndex) => <li key={itemIndex}><InlineMarkdown text={item} /></li>)}</ul>);
+      continue;
+    }
+
+    blocks.push(<p key={`paragraph-${index}`} className="copilot-markdown-paragraph"><InlineMarkdown text={line} /></p>);
+    index += 1;
+  }
+  return <div className="copilot-markdown">{blocks}</div>;
 }
 
 function CopilotMessage({ msg, onSuggestionClick }) {
@@ -144,6 +188,20 @@ function CopilotMessage({ msg, onSuggestionClick }) {
             <div style={{ fontSize: '13px', lineHeight: '1.6', color: 'var(--text-primary)' }}>
               <MarkdownText text={msg.content} />
             </div>
+
+            <style>{`
+              .copilot-markdown-heading { margin: 12px 0 5px; color: var(--text-primary); font-size: 12px; font-weight: 800; }
+              .copilot-markdown-heading:first-child { margin-top: 0; font-size: 14px; }
+              .copilot-markdown-paragraph { margin: 0 0 8px; color: var(--text-secondary); }
+              .copilot-markdown-list { margin: 6px 0 10px; padding-left: 18px; color: var(--text-secondary); }
+              .copilot-markdown-list li { margin: 4px 0; padding-left: 2px; }
+              .copilot-markdown strong { color: var(--text-primary); font-weight: 750; }
+              .copilot-markdown-table-wrap { width: 100%; margin: 8px 0 12px; overflow-x: auto; border: 1px solid var(--border-color); border-radius: 6px; }
+              .copilot-markdown-table { width: 100%; min-width: 420px; border-collapse: collapse; font-size: 11px; }
+              .copilot-markdown-table th { padding: 8px 10px; background: var(--bg-panel-alt); color: var(--text-muted); font-size: 10px; font-weight: 800; letter-spacing: .03em; text-align: left; text-transform: uppercase; white-space: nowrap; }
+              .copilot-markdown-table td { padding: 8px 10px; border-top: 1px solid var(--border-color); color: var(--text-secondary); white-space: nowrap; }
+              .copilot-markdown-table tbody tr:nth-child(even) { background: color-mix(in srgb, var(--bg-panel-alt) 45%, transparent); }
+            `}</style>
 
             {/* Summary block */}
             {isAi && msg.summary && msg.summary !== msg.content && (

@@ -564,12 +564,13 @@ function CaseOverview() {
 
         /* Command Center visual style: Flat panels with hairline dividers */
         .flat-section {
-          background: var(--bg-app) !important;
-          border: none !important;
+          background: var(--bg-panel) !important;
+          border: 1px solid var(--border-color) !important;
           border-bottom: 1px solid var(--border-color) !important;
-          padding: 24px 0px !important;
-          border-radius: 0px !important;
-          box-shadow: none !important;
+          padding: 20px !important;
+          border-radius: 12px !important;
+          box-shadow: var(--shadow-card) !important;
+          margin-bottom: 18px !important;
         }
         .section-label {
           font-size: 11px !important;
@@ -586,12 +587,11 @@ function CaseOverview() {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 20px 0px !important;
-          background: var(--bg-app) !important;
-          border: none !important;
-          border-top: 1px solid var(--border-color) !important;
-          border-bottom: 1px solid var(--border-color) !important;
-          border-radius: 0px !important;
+          padding: 20px !important;
+          background: var(--bg-panel) !important;
+          border: 1px solid var(--border-color) !important;
+          border-radius: 12px !important;
+          box-shadow: var(--shadow-card) !important;
           margin-bottom: 24px !important;
           overflow-x: auto;
         }
@@ -686,6 +686,22 @@ function CaseOverview() {
           border: 1px solid var(--border-color) !important;
           border-radius: 0px !important;
           overflow: hidden !important;
+        }
+
+        .case-content-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 40px; margin-bottom: 20px; }
+        .case-subject-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        @media (max-width: 900px) {
+          .search-container-sticky { padding: 10px 16px; margin: -20px -16px 16px; }
+          .case-content-grid, .case-subject-grid { grid-template-columns: 1fr !important; gap: 20px; }
+          .milestone-strip { justify-content: flex-start; padding-inline: 8px !important; }
+          .evidence-grid { grid-template-columns: 1fr !important; }
+          .evidence-tile { border-right: none !important; border-bottom: 1px solid var(--border-color); }
+          .evidence-tile:last-child { border-bottom: none; }
+        }
+        @media (max-width: 560px) {
+          .suggestion-row { align-items: flex-start; flex-direction: column; gap: 6px; }
+          .milestone-item { min-width: 104px; }
+          .flat-section { padding-block: 16px !important; }
         }
 
         .skeleton-row {
@@ -1007,7 +1023,7 @@ function CaseOverview() {
               </div>
 
               {/* TWO-COLUMN LAYOUT */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '40px', marginBottom: '20px' }}>
+              <div className="case-content-grid">
                 
                 {/* LEFT COLUMN: DETAIL PANELS */}
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -1052,7 +1068,7 @@ function CaseOverview() {
                   <div className="flat-section">
                     <span className="section-label">Subjects Involved ({victims.filter(v => v.CaseMasterID === activeCase.CaseMasterID).length} Victims, {suspectsList.length} Suspects)</span>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    <div className="case-subject-grid">
                       {/* Suspects column */}
                       <div>
                         <span style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>Suspect Dossiers</span>

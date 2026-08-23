@@ -1,15 +1,17 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import {
   MdMenu, MdOutlineLightMode, MdOutlineDarkMode,
   MdNotificationsNone, MdSearch, MdShield, MdOutlineShield,
   MdAccountCircle, MdLock, MdVerifiedUser,
   MdHome, MdMap, MdBarChart, MdHub,
-  MdTrendingUp, MdDescription, MdSmartToy, MdVpnKey,
+  MdTrendingUp, MdDescription, MdSmartToy, MdVpnKey, MdLogout,
 } from 'react-icons/md';
 import { useSecurity } from '../context/SecurityContext';
 import CommandPalette from './ui/CommandPalette';
 import PIIUnlockModal from './ui/PIIUnlockModal';
+
+const IDLE_LOGOUT_SECONDS = 150;
 
 /**
  * Header — Compact 2-row layout (ribbon + controls)
@@ -31,7 +33,7 @@ function Header({ theme, onToggleTheme, onToggleSidebar, sidebarCollapsed, sideb
   const location = useLocation();
   const navigate = useNavigate();
   const page = PAGE_TITLES[location.pathname] || PAGE_TITLES['/'];
-  const { session, isCommandMode, lockSession } = useSecurity();
+  const { session, isCommandMode, lockSession, logout } = useSecurity();
 
   const [showNotifications, setShowNotifications] = useState(false);
   const [showPiiModal, setShowPiiModal] = useState(false);
@@ -39,6 +41,8 @@ function Header({ theme, onToggleTheme, onToggleSidebar, sidebarCollapsed, sideb
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [showProfileSummary, setShowProfileSummary] = useState(false);
   const [showInvestigationHub, setShowInvestigationHub] = useState(false);
+  const [idleSecondsRemaining, setIdleSecondsRemaining] = useState(IDLE_LOGOUT_SECONDS);
+  const investigationHubRef = useRef(null);
   const [elapsedTime, setElapsedTime] = useState('just now');
   const [currentTime, setCurrentTime] = useState(() => new Date());
   const [compactViewport, setCompactViewport] = useState(() => window.matchMedia('(max-width: 1080px)').matches);
@@ -54,6 +58,61 @@ function Header({ theme, onToggleTheme, onToggleSidebar, sidebarCollapsed, sideb
     const clockInterval = window.setInterval(() => setCurrentTime(new Date()), 1000);
     return () => window.clearInterval(clockInterval);
   }, []);
+
+  useEffect(() => {
+    let idleDeadline = Date.now() + (IDLE_LOGOUT_SECONDS * 1000);
+    let hasTimedOut = false;
+    const resetIdleDeadline = () => {
+      if (hasTimedOut) return;
+      idleDeadline = Date.now() + (IDLE_LOGOUT_SECONDS * 1000);
+      setIdleSecondsRemaining(IDLE_LOGOUT_SECONDS);
+    };
+    const updateCountdown = () => {
+      const seconds = Math.max(0, Math.ceil((idleDeadline - Date.now()) / 1000));
+      setIdleSecondsRemaining(seconds);
+      if (seconds === 0 && !hasTimedOut) {
+        hasTimedOut = true;
+        logout();
+        window.sessionStorage.removeItem('ksp-catalyst-browser-session');
+        const loginUrl = `${window.location.origin}/__catalyst/auth/login`;
+        try {
+          if (window.catalyst?.auth?.signOut) {
+            window.catalyst.auth.signOut(loginUrl);
+            return;
+          }
+        } catch (error) {
+          console.error('Catalyst idle sign out failed; returning to hosted login.', error);
+        }
+        window.location.replace(loginUrl);
+      }
+    };
+    const activityEvents = ['mousemove', 'mousedown', 'click', 'keydown', 'scroll', 'touchstart', 'pointerdown'];
+    activityEvents.forEach(eventName => window.addEventListener(eventName, resetIdleDeadline, { passive: true }));
+    const interval = window.setInterval(updateCountdown, 1000);
+    updateCountdown();
+    return () => {
+      window.clearInterval(interval);
+      activityEvents.forEach(eventName => window.removeEventListener(eventName, resetIdleDeadline));
+    };
+  }, [logout]);
+
+  useEffect(() => {
+    if (!showInvestigationHub) return undefined;
+    const closeOnOutsideInteraction = event => {
+      if (investigationHubRef.current && !investigationHubRef.current.contains(event.target)) {
+        setShowInvestigationHub(false);
+      }
+    };
+    const closeOnEscape = event => {
+      if (event.key === 'Escape') setShowInvestigationHub(false);
+    };
+    document.addEventListener('mousedown', closeOnOutsideInteraction);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('mousedown', closeOnOutsideInteraction);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [showInvestigationHub]);
 
   const clockTime = currentTime.toLocaleTimeString('en-GB', {
     timeZone: 'Asia/Kolkata',
@@ -189,6 +248,21 @@ function Header({ theme, onToggleTheme, onToggleSidebar, sidebarCollapsed, sideb
 
   const t = TRANSLATIONS[lang];
 
+  const endAuthenticatedSession = () => {
+    logout();
+    window.sessionStorage.removeItem('ksp-catalyst-browser-session');
+    const loginUrl = `${window.location.origin}/__catalyst/auth/login`;
+    try {
+      if (window.catalyst?.auth?.signOut) {
+        window.catalyst.auth.signOut(loginUrl);
+        return;
+      }
+    } catch (error) {
+      console.error('Catalyst sign out failed; returning to hosted login.', error);
+    }
+    window.location.replace(loginUrl);
+  };
+
   return (
     <header className="header ksp-portal-header">
       {/* Scope styling block for self-contained, clean government visual elements */}
@@ -202,7 +276,8 @@ function Header({ theme, onToggleTheme, onToggleSidebar, sidebarCollapsed, sideb
           box-shadow: none !important;
           position: sticky;
           top: 0;
-          z-index: 1000;
+          /* Stay above page-level sticky search panels and their suggestion lists. */
+          z-index: 1100;
         }
 
         .portal-top-banner {
@@ -264,6 +339,25 @@ function Header({ theme, onToggleTheme, onToggleSidebar, sidebarCollapsed, sideb
           padding: 4px 10px;
           border-radius: 2px;
           border: 1px solid rgba(255, 255, 255, 0.25);
+        }
+
+        .portal-idle-timer {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          padding: 4px 9px;
+          border: 1px solid rgba(255, 255, 255, 0.25);
+          border-radius: 2px;
+          background: rgba(255, 255, 255, 0.1);
+          color: #ffffff;
+          font-size: 10px;
+          font-weight: 700;
+          white-space: nowrap;
+        }
+        .portal-idle-timer.warning {
+          border-color: #fca5a5;
+          background: rgba(185, 28, 28, 0.32);
+          color: #fee2e2;
         }
 
         .portal-lang-toggle {
@@ -358,7 +452,7 @@ function Header({ theme, onToggleTheme, onToggleSidebar, sidebarCollapsed, sideb
           position: absolute;
           top: calc(100% - 1px);
           left: 0;
-          z-index: 1002;
+          z-index: 1102;
           width: 230px;
           margin: 0;
           padding: 6px;
@@ -561,6 +655,13 @@ function Header({ theme, onToggleTheme, onToggleSidebar, sidebarCollapsed, sideb
         </div>
 
         <div className="portal-top-right">
+          <span
+            className={`portal-idle-timer${idleSecondsRemaining <= 30 ? ' warning' : ''}`}
+            title="Automatic logout after 2 minutes 30 seconds without activity"
+            aria-label={`Automatic logout in ${String(Math.floor(idleSecondsRemaining / 60)).padStart(2, '0')}:${String(idleSecondsRemaining % 60).padStart(2, '0')}`}
+          >
+            Session {String(Math.floor(idleSecondsRemaining / 60)).padStart(2, '0')}:{String(idleSecondsRemaining % 60).padStart(2, '0')}
+          </span>
           <a href="#helplines" className="portal-helplines" onClick={e => e.preventDefault()}>
             {t.helplines}
           </a>
@@ -619,7 +720,7 @@ function Header({ theme, onToggleTheme, onToggleSidebar, sidebarCollapsed, sideb
               <MdSmartToy size={15} /> {t.copilot} <span className="portal-nav-arrow">▼</span>
             </Link>
           </li>
-          <li className="portal-menu-item">
+          <li className="portal-menu-item" ref={investigationHubRef}>
             <button
               type="button"
               className={`portal-nav-link portal-investigation-trigger ${['/case-overview', '/cases', '/suspect-timeline', '/evidence-workspace', '/evidence'].some(path => location.pathname.startsWith(path)) ? 'active-link' : ''}`}
@@ -835,6 +936,27 @@ function Header({ theme, onToggleTheme, onToggleSidebar, sidebarCollapsed, sideb
                 }}
               >
                 {t.closeBtn}
+              </button>
+              <button
+                type="button"
+                onClick={endAuthenticatedSession}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  padding: '8px 16px',
+                  background: '#b91c1c',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  flex: 1
+                }}
+              >
+                <MdLogout size={15} /> Logout
               </button>
             </div>
           </div>

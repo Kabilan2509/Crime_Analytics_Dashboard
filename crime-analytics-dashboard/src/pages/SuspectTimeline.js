@@ -464,10 +464,13 @@ function SuspectTimeline() {
           border-radius: 4px !important;
         }
         .flat-section {
-          background: var(--bg-app) !important;
-          border: none !important;
+          background: var(--bg-panel) !important;
+          border: 1px solid var(--border-color) !important;
           border-bottom: 1px solid var(--border-color) !important;
-          padding: 16px 0px !important;
+          border-radius: 12px !important;
+          box-shadow: var(--shadow-card) !important;
+          padding: 18px !important;
+          margin-bottom: 18px !important;
         }
         .section-label {
           font-size: 11px !important;
@@ -549,8 +552,8 @@ function SuspectTimeline() {
         /* Network Graph visuals */
         .network-graph-container {
           height: 200px;
-          border: 1px solid var(--border-color);
-          background: #090e17;
+          border: 1px solid color-mix(in srgb, var(--accent-primary) 38%, var(--border-color));
+          background: radial-gradient(circle at 50% 20%, color-mix(in srgb, var(--accent-primary) 20%, #090e17), #090e17 70%);
           position: relative;
           overflow: hidden;
         }
@@ -576,10 +579,22 @@ function SuspectTimeline() {
 
         /* Slide-in drawer container layout */
         .detail-drawer {
-          border: 1px solid var(--border-color);
-          background: var(--bg-panel-alt);
+          border: 1px solid color-mix(in srgb, var(--accent-primary) 32%, var(--border-color));
+          background: linear-gradient(135deg, var(--bg-panel-alt), var(--bg-panel));
+          border-radius: 10px !important;
           padding: 16px;
           margin-top: 14px;
+        }
+        .suspect-workspace-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 30px; margin-top: 14px; }
+        @media (max-width: 900px) {
+          .suspect-workspace-grid { grid-template-columns: 1fr !important; gap: 20px; }
+          .detail-drawer { padding: 14px; }
+          .network-graph-container { min-height: 240px; }
+        }
+        @media (max-width: 560px) {
+          .suspect-timeline-page .flat-section { padding-block: 14px !important; }
+          .filter-chip { flex: 1 1 calc(50% - 6px); justify-content: center; }
+          .lollipop-list { padding-left: 18px; }
         }
       `}</style>
 
@@ -733,7 +748,7 @@ function SuspectTimeline() {
       )}
 
       {/* TWO COLUMN MAIN CONTENT SCREEN */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '30px', marginTop: '14px' }}>
+      <div className="suspect-workspace-grid">
         
         {/* LEFT COLUMN: TIMELINE AXIS & AI INSIGHTS */}
         <div>

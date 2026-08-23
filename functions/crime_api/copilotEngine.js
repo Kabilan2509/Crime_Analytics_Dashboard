@@ -53,20 +53,25 @@ function buildMaps(tables) {
   const caseStatuses = tables.CaseStatusMaster || [];
 
   const districtByName = {};
-  const districtByRowId = {};
+  const districtById = {};
   districts.forEach(d => {
     districtByName[(d.DistrictName || '').toLowerCase().trim()] = d;
-    districtByRowId[String(d.ROWID)] = d.DistrictName;
+    // Catalyst lookups may contain a ROWID while seeded records use DistrictID.
+    // Keep both keys so district resolution does not collapse to "Unknown".
+    if (d.ROWID != null) districtById[String(d.ROWID)] = d.DistrictName;
+    if (d.DistrictID != null) districtById[String(d.DistrictID)] = d.DistrictName;
   });
 
-  const stationByRowId = {};
-  const stationRowIdsByDistrictRowId = {};
+  const stationById = {};
+  const stationIdsByDistrictId = {};
   units.forEach(u => {
-    stationByRowId[String(u.ROWID)] = u;
-    const dRowId = String(u.DistrictID);
-    if (dRowId && dRowId !== 'undefined') {
-      if (!stationRowIdsByDistrictRowId[dRowId]) stationRowIdsByDistrictRowId[dRowId] = new Set();
-      stationRowIdsByDistrictRowId[dRowId].add(String(u.ROWID));
+    if (u.ROWID != null) stationById[String(u.ROWID)] = u;
+    if (u.UnitID != null) stationById[String(u.UnitID)] = u;
+    const districtId = String(u.DistrictID);
+    if (districtId && districtId !== 'undefined' && districtId !== 'null') {
+      if (!stationIdsByDistrictId[districtId]) stationIdsByDistrictId[districtId] = new Set();
+      if (u.ROWID != null) stationIdsByDistrictId[districtId].add(String(u.ROWID));
+      if (u.UnitID != null) stationIdsByDistrictId[districtId].add(String(u.UnitID));
     }
   });
 
@@ -87,8 +92,8 @@ function buildMaps(tables) {
   caseStatuses.forEach(s => { statusByRowId[String(s.ROWID)] = s; });
 
   return {
-    districtByName, districtByRowId,
-    stationByRowId, stationRowIdsByDistrictRowId,
+    districtByName, districtById,
+    stationById, stationIdsByDistrictId,
     heinousRowId, employeeByRowId, statusByRowId,
   };
 }
@@ -124,7 +129,10 @@ function filterByDistrict(cases, districtName, maps) {
     Object.values(maps.districtByName).find(d =>
       (d.DistrictName || '').toLowerCase().includes(lower));
   if (!dist) return cases;
-  const stationSet = maps.stationRowIdsByDistrictRowId[String(dist.ROWID)] || new Set();
+  const stationSet = new Set([
+    ...(maps.stationIdsByDistrictId[String(dist.ROWID)] || []),
+    ...(maps.stationIdsByDistrictId[String(dist.DistrictID)] || []),
+  ]);
   return cases.filter(c => stationSet.has(String(c.PoliceStationID)));
 }
 
@@ -144,9 +152,9 @@ function filterByCrimeType(cases, crimeType, tables) {
 }
 
 function getDistrictForCase(c, maps) {
-  const station = maps.stationByRowId[String(c.PoliceStationID)];
+  const station = maps.stationById[String(c.PoliceStationID)];
   if (!station) return null;
-  return maps.districtByRowId[String(station.DistrictID)] || null;
+  return maps.districtById[String(station.DistrictID)] || null;
 }
 
 // ─── QuickML Risk Prediction ──────────────────────────────────────────────────
@@ -316,7 +324,7 @@ function makeExecuteTool(tables, maps) {
 
         const stCounts = {};
         cases.forEach(c => {
-          const n = maps.stationByRowId[String(c.PoliceStationID)]?.UnitName || 'Unknown';
+          const n = maps.stationById[String(c.PoliceStationID)]?.UnitName || 'Unknown';
           stCounts[n] = (stCounts[n] || 0) + 1;
         });
         const topStations = Object.entries(stCounts)
@@ -447,7 +455,7 @@ function makeExecuteTool(tables, maps) {
           if (/pending|investigation|under/i.test(JSON.stringify(status || {}))) stCounts[sid].pending++;
         });
         const ranked = Object.entries(stCounts)
-          .map(([sid, d]) => ({ name: maps.stationByRowId[sid]?.UnitName || `Station ${sid}`, ...d }))
+          .map(([sid, d]) => ({ name: maps.stationById[sid]?.UnitName || `Station ${sid}`, ...d }))
           .sort((a,b) => b.total - a.total).slice(0, args.limit || 10);
 
         return {
@@ -479,7 +487,7 @@ function makeExecuteTool(tables, maps) {
         }
 
         const emp = maps.employeeByRowId[String(found.PolicePersonID)];
-        const station = maps.stationByRowId[String(found.PoliceStationID)];
+        const station = maps.stationById[String(found.PoliceStationID)];
         const io = emp ? `${emp.FirstName || ''} ${emp.LastName || ''}`.trim() : `ID ${found.PolicePersonID}`;
 
         return {

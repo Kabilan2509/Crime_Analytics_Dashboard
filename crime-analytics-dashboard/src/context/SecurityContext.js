@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
 
 const STORAGE_KEY = 'ksp-secure-session';
+const IDLE_LOGOUT_MS = 2.5 * 60 * 1000;
 
 const defaultSession = {
   officerName: '',
@@ -115,22 +116,15 @@ export function SecurityProvider({ children }) {
     const resetIdleTimer = () => {
       if (idleTimer) clearTimeout(idleTimer);
 
-      const timeoutMinutes = parseInt(localStorage.getItem('ksp-settings-idle-timeout') || '15', 10);
-      const timeoutMs = timeoutMinutes * 60 * 1000;
-
       idleTimer = setTimeout(() => {
         setSession(prev => {
           if (prev.accessLevel === 'command') {
-            logAuditEvent(prev.officerName, prev.badgeId, prev.unitName, 'auto-locked due to inactivity');
-            return {
-              ...prev,
-              accessLevel: 'redacted',
-              role: 'Redacted Analyst'
-            };
+            logAuditEvent(prev.officerName, prev.badgeId, prev.unitName, 'ended session automatically after 2 minutes 30 seconds of inactivity');
+            return defaultSession;
           }
           return prev;
         });
-      }, timeoutMs);
+      }, IDLE_LOGOUT_MS);
     };
 
     const activityEvents = ['mousemove', 'keydown', 'mousedown', 'scroll', 'click'];
