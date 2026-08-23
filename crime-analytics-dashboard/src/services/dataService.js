@@ -440,3 +440,21 @@ export function getEnvironment() {
     hostname: typeof window !== 'undefined' ? window.location.hostname : 'unknown',
   };
 }
+
+export async function triggerCronThreatAssess() {
+  const url = new URL(`${API_BASE}/cron/threat-assess`, window.location.origin);
+  const res = await fetch(url.toString(), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' }
+  });
+  if (!res.ok) throw new Error('Failed to run threat assess cron');
+  return res.json();
+}
+
+export async function getCronThreatAlerts() {
+  try {
+    return await apiFetch('/cron/threat-alerts');
+  } catch (err) {
+    return { alerts: [] };
+  }
+}

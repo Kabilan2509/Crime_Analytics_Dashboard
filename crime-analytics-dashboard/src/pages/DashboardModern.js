@@ -13,7 +13,7 @@ import {
 import { Link, useNavigate } from 'react-router-dom';
 import { useSecurity } from '../context/SecurityContext';
 import KarnatakaMap from '../features/dashboard/KarnatakaMap';
-import { getCaseViews } from '../services/dataService';
+import { getCaseViews, getCronThreatAlerts, triggerCronThreatAssess } from '../services/dataService';
 import { buildDashboardViewModel, filterDashboardCases } from '../features/dashboard/dashboardUtils';
 import './DashboardModern.css';
 
@@ -107,7 +107,8 @@ function DashboardModern({
       colCrimeNo: "Crime no.",
       colDistrict: "District / station",
       colOffence: "Offence",
-      colStatus: "Status"
+      colStatus: "Status",
+      cardCronTitle: "Run Catalyst Cron Audit"
     },
     kn: {
       kicker: "ರಾಜ್ಯ ಕಾರ್ಯಾಚರಣೆ ಕೇಂದ್ರ",
@@ -151,19 +152,50 @@ function DashboardModern({
       colCrimeNo: "ಪ್ರಕರಣ ಸಂಖ್ಯೆ",
       colDistrict: "ಜಿಲ್ಲೆ / ಪೊಲೀಸ್ ಠಾಣೆ",
       colOffence: "ಅಪರಾಧದ ವಿವರ",
-      colStatus: "ಸ್ಥಿತಿ"
+      colStatus: "ಸ್ಥಿತಿ",
+      cardCronTitle: "ಕ್ರಾನ್ ಆಡಿಟ್ ರನ್ ಮಾಡಿ"
     }
   };
 
   const t = TRANSLATIONS[lang];
+
+  const [cronAlerts, setCronAlerts] = useState([]);
+  const [isRunningCron, setIsRunningCron] = useState(false);
 
   useEffect(() => {
     let mounted = true;
     getCaseViews()
       .then(rows => mounted && setCases(rows))
       .catch(error => mounted && setLoadError(error.message || 'Unable to load operational data'));
+
+    getCronThreatAlerts()
+      .then(res => {
+        if (mounted && res?.alerts) setCronAlerts(res.alerts);
+      })
+      .catch(() => {});
+
     return () => { mounted = false; };
   }, []);
+
+  const runSchedulerCron = async () => {
+    if (isRunningCron) return;
+    setIsRunningCron(true);
+    try {
+      const res = await triggerCronThreatAssess();
+      if (res?.success) {
+        const updated = await getCronThreatAlerts();
+        setCronAlerts(updated.alerts || []);
+        alert(lang === 'kn' 
+          ? `ಕ್ರಾನ್ ಯಶಸ್ವಿಯಾಗಿದೆ! ${res.alertsGenerated} ವಿಳಂಬ ಎಚ್ಚರಿಕೆಗಳನ್ನು ಕ್ಯಾಶ್ ಮಾಡಲಾಗಿದೆ.` 
+          : `Catalyst Cron Run Successful!\nGenerated & cached ${res.alertsGenerated} critical delay alerts from Datastore.`
+        );
+      }
+    } catch (err) {
+      alert(`Cron execution failed: ${err.message}`);
+    } finally {
+      setIsRunningCron(false);
+    }
+  };
 
   const filteredCases = useMemo(() => filterDashboardCases({
     cases, selectedDistrict, selectedCrimeType, searchQuery, dateRange,
@@ -449,6 +481,12 @@ function DashboardModern({
                 <div className="gov-item-icon-circle"><MdDescription /></div>
                 <span className="gov-item-label">{t.cardReportsTitle}</span>
               </div>
+              <div className="gov-service-item" onClick={runSchedulerCron}>
+                <div className="gov-item-icon-circle" style={isRunningCron ? { background: '#ea580c', color: '#ffffff' } : {}}>
+                  <MdAccessTime />
+                </div>
+                <span className="gov-item-label">{t.cardCronTitle}</span>
+              </div>
             </div>
           )}
 
@@ -609,16 +647,35 @@ function DashboardModern({
               <span>{t.alertsPanelEyebrow}</span>
               <h3>{t.alertsPanelTitle}</h3>
             </div>
-            <span className="md-new-count" style={{ background: '#fee2e2', color: '#ef4444' }}>{data.alerts.length} {t.newAlerts}</span>
+            <span className="md-new-count" style={{ background: '#fee2e2', color: '#ef4444' }}>
+              {cronAlerts.length > 0 ? cronAlerts.length : data.alerts.length} {t.newAlerts}
+            </span>
           </div>
           <div className="md-panel-body">
             <div className="md-alert-list">
-              {data.alerts.slice(0, 5).map(alert => (
-                <article className={`md-alert md-alert-${alert.severity}`} key={alert.id} style={{ borderLeftColor: alert.severity === 'critical' ? '#dc2626' : alert.severity === 'warning' ? '#ea580c' : '#3b82f6' }}>
-                  <MdWarningAmber style={{ color: alert.severity === 'critical' ? '#dc2626' : alert.severity === 'warning' ? '#ea580c' : '#3b82f6' }} />
-                  <div><p style={{ color: '#1e293b' }}>{alert.text}</p><time style={{ color: '#64748b' }}>{alert.age}</time></div>
-                </article>
-              ))}
+              {cronAlerts.length > 0 ? (
+                cronAlerts.slice(0, 5).map(alert => (
+                  <article className="md-alert md-alert-critical" key={alert.alert_id} style={{ borderLeftColor: '#dc2626' }}>
+                    <MdWarningAmber style={{ color: '#dc2626' }} />
+                    <div style={{ flex: 1, textAlign: 'left' }}>
+                      <p style={{ color: '#1e293b', margin: 0, fontWeight: 'bold' }}>
+                        {lang === 'kn' ? 'ತನಿಖೆ ವಿಳಂಬ' : 'INVESTIGATION DELAY'} (FIR: {alert.crimeNo})
+                      </p>
+                      <p style={{ color: '#475569', fontSize: '11px', margin: '3px 0' }}>{alert.message}</p>
+                      <time style={{ color: '#dc2626', fontSize: '10px', fontWeight: '600' }}>
+                        ⚠️ {lang === 'kn' ? `${alert.delayDays} ದಿನಗಳ ವಿಳಂಬ` : `${alert.delayDays} Days Delayed`}
+                      </time>
+                    </div>
+                  </article>
+                ))
+              ) : (
+                data.alerts.slice(0, 5).map(alert => (
+                  <article className={`md-alert md-alert-${alert.severity}`} key={alert.id} style={{ borderLeftColor: alert.severity === 'critical' ? '#dc2626' : alert.severity === 'warning' ? '#ea580c' : '#3b82f6' }}>
+                    <MdWarningAmber style={{ color: alert.severity === 'critical' ? '#dc2626' : alert.severity === 'warning' ? '#ea580c' : '#3b82f6' }} />
+                    <div style={{ flex: 1, textAlign: 'left' }}><p style={{ color: '#1e293b', margin: 0 }}>{alert.text}</p><time style={{ color: '#64748b' }}>{alert.age}</time></div>
+                  </article>
+                ))
+              )}
             </div>
           </div>
         </div>

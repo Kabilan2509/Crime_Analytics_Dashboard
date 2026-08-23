@@ -501,5 +501,115 @@ app.post('/api/copilot/chat', async (req, res) => {
   }
 });
 
+// ═══════════════════════════════════════════════════════════════════════════
+// ROUTE: Catalyst Cron Webhook Trigger - Threat & Investigation Audit
+// ═══════════════════════════════════════════════════════════════════════════
+let localCronAlerts = null;
+
+app.post('/api/cron/threat-assess', async (req, res) => {
+  try {
+    const host = String(req.headers.host || '').split(':')[0].toLowerCase();
+    const isLocal = ['localhost', '127.0.0.1', '::1'].includes(host);
+    
+    if (!isLocal) {
+      const clientKey = req.query.cron_key || req.headers['x-catalyst-cron-key'];
+      const secureKey = process.env.CRON_SECRET_KEY;
+      if (secureKey && clientKey !== secureKey) {
+        return res.status(401).json({ error: 'Unauthorized: Invalid cron key parameter' });
+      }
+    }
+
+    const catalystApp = catalyst.initialize(req);
+    
+    // 1. Fetch fresh tables through cache
+    const tables = await dataCache.fetchAll(catalystApp);
+    const cases = tables.CaseMaster || [];
+    const accused = tables.Accused || [];
+    const chargesheets = tables.ChargesheetDetails || [];
+    
+    const heinouses = cases.filter(c => Number(c.GravityOffenceID) === 1);
+    
+    const alerts = [];
+    const limitDate = new Date();
+    limitDate.setDate(limitDate.getDate() - 30); // 30 days ago
+    
+    for (const c of heinouses) {
+      // Find if chargesheet has been filed
+      const cs = chargesheets.find(sheet => String(sheet.CaseMasterID) === String(c.CaseMasterID));
+      const isPending = !cs;
+      
+      const regDate = new Date(c.CrimeRegisteredDate || c.CREATEDTIME);
+      if (isPending && regDate < limitDate) {
+        // Find accused count
+        const caseAccused = accused.filter(a => String(a.CaseMasterID) === String(c.CaseMasterID));
+        
+        alerts.push({
+          alert_id: `alert_${c.ROWID || Math.floor(1000 + Math.random() * 9000)}`,
+          caseMasterId: c.CaseMasterID,
+          crimeNo: c.CrimeNo || 'N/A',
+          registeredDate: c.CrimeRegisteredDate,
+          districtId: c.DistrictID,
+          delayDays: Math.floor((Date.now() - regDate.getTime()) / (1000 * 60 * 60 * 24)),
+          accusedCount: caseAccused.length,
+          severity: 'CRITICAL',
+          message: `Heinous offence FIR ${c.CrimeNo || ''} has been pending for ${Math.floor((Date.now() - regDate.getTime()) / (1000 * 60 * 60 * 24))} days without a chargesheet.`
+        });
+      }
+    }
+    
+    // Sort alerts by delay length descending
+    alerts.sort((a, b) => b.delayDays - a.delayDays);
+    
+    // Store in Catalyst Cache
+    try {
+      const cache = catalystApp.cache();
+      const segment = cache.segment();
+      await segment.put('ksp-cron-threat-alerts', JSON.stringify(alerts), 1440);
+      console.log(`[Cron] Stored ${alerts.length} threat alerts to Catalyst Cache.`);
+    } catch (cacheErr) {
+      console.warn('[Cron] Catalyst Cache Segment unavailable, falling back to local memory:', cacheErr.message);
+      localCronAlerts = alerts;
+    }
+    
+    return res.status(200).json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      evaluatedCases: cases.length,
+      alertsGenerated: alerts.length,
+      alerts: alerts.slice(0, 10) // return top 10
+    });
+  } catch (err) {
+    console.error('[Cron Route] Threat Assessment Error:', err);
+    return res.status(500).json({ error: errorMessage(err) });
+  }
+});
+
+// ROUTE: GET /api/cron/threat-alerts — Retrieves cached alerts for the dashboard
+app.get('/api/cron/threat-alerts', async (req, res) => {
+  try {
+    const catalystApp = catalyst.initialize(req);
+    let alerts = [];
+    
+    try {
+      const cache = catalystApp.cache();
+      const segment = cache.segment();
+      const cached = await segment.get('ksp-cron-threat-alerts');
+      if (cached) {
+        alerts = JSON.parse(cached);
+      } else if (localCronAlerts) {
+        alerts = localCronAlerts;
+      }
+    } catch (err) {
+      if (localCronAlerts) {
+        alerts = localCronAlerts;
+      }
+    }
+    
+    return res.status(200).json({ alerts });
+  } catch (err) {
+    return res.status(500).json({ error: errorMessage(err) });
+  }
+});
+
 // ─── Express listener for Catalyst ────────────────────────────────────────
 module.exports = app;
