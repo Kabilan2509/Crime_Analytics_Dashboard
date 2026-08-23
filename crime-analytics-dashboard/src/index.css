@@ -3778,6 +3778,13 @@ font-weight: 700;
   line-height: 1.5;
 }
 
+/* CopilotMessage applies the shared text colour inline; keep user prompts
+   readable on the violet bubble in light theme. */
+.chat-bubble-user,
+.chat-bubble-user * {
+  color: #ffffff !important;
+}
+
 .chat-bubble-ai {
   background: var(--bg-panel-alt);
   border: 1px solid var(--border-color);
