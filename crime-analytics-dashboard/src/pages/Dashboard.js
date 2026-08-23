@@ -254,17 +254,17 @@ function Dashboard({
            ---------------------------------------------------- */
         .theme-dark .dashboard-page,
         [data-theme="dark"] .dashboard-page {
-          background-color: #0B0E11 !important;
-          color: #edf3fb !important;
+          background-color: var(--bg-app) !important;
+          color: var(--text-primary) !important;
         }
         .theme-dark .dashboard-page .card,
         [data-theme="dark"] .dashboard-page .card {
-          background-color: #0B0E11 !important;
-          border: 1px solid rgba(173, 193, 214, 0.15) !important;
+          background-color: var(--bg-panel) !important;
+          border: 1px solid var(--border-color) !important;
         }
         .theme-dark .dashboard-page .card-header,
         [data-theme="dark"] .dashboard-page .card-header {
-          border-bottom: 1px solid rgba(173, 193, 214, 0.15) !important;
+          border-bottom: 1px solid var(--border-color) !important;
         }
         .theme-dark .dashboard-page .card-title,
         [data-theme="dark"] .dashboard-page .card-title {
@@ -288,18 +288,26 @@ function Dashboard({
         [data-theme="dark"] .dashboard-page .data-table tbody tr:hover td {
           background-color: rgba(255, 255, 255, 0.02) !important;
         }
+        .theme-dark .dashboard-page .case-station,
+        [data-theme="dark"] .dashboard-page .case-station {
+          color: var(--text-muted) !important;
+        }
+        .theme-dark .dashboard-page .case-inspect-link,
+        [data-theme="dark"] .dashboard-page .case-inspect-link {
+          color: var(--accent-secondary) !important;
+        }
         .theme-dark .ops-stat-strip,
         [data-theme="dark"] .ops-stat-strip {
-          border: 1px solid rgba(173, 193, 214, 0.15) !important;
-          background-color: #0B0E11 !important;
+          border: 1px solid var(--border-color) !important;
+          background-color: var(--bg-panel) !important;
         }
         .theme-dark .ops-stat-block,
         [data-theme="dark"] .ops-stat-block {
-          background-color: #0B0E11 !important;
+          background-color: var(--bg-panel) !important;
         }
         .theme-dark .ops-stat-block:not(:last-child),
         [data-theme="dark"] .ops-stat-block:not(:last-child) {
-          border-right: 1px solid rgba(173, 193, 214, 0.15) !important;
+          border-right: 1px solid var(--border-color) !important;
         }
         .theme-dark .ops-stat-label,
         [data-theme="dark"] .ops-stat-label {
@@ -327,8 +335,8 @@ function Dashboard({
         }
         .theme-dark .chart-tooltip,
         [data-theme="dark"] .chart-tooltip {
-          background-color: #0B0E11 !important;
-          border: 1px solid rgba(30, 144, 255, 0.3) !important;
+          background-color: var(--bg-panel) !important;
+          border: 1px solid var(--border-color) !important;
         }
         .theme-dark .chart-tooltip-label,
         [data-theme="dark"] .chart-tooltip-label {
@@ -336,8 +344,8 @@ function Dashboard({
         }
         .theme-dark .chart-tooltip,
         [data-theme="dark"] .chart-tooltip {
-          background-color: #0B0E11 !important;
-          border: 1px solid rgba(30, 144, 255, 0.3) !important;
+          background-color: var(--bg-panel) !important;
+          border: 1px solid var(--border-color) !important;
         }
         .theme-dark .chart-tooltip-label,
         [data-theme="dark"] .chart-tooltip-label {

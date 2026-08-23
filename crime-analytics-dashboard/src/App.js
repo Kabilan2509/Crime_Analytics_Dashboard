@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-route
 import './DashboardTheme.css';
 
 /* Layout components */
-import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import FilterBar from './components/FilterBar';
 import EmergencyTicker from './components/EmergencyTicker';
@@ -143,7 +142,6 @@ function App() {
         <Router basename="/app">
           <div className={`app-shell theme-${theme}${sidebarCollapsed ? ' sidebar-collapsed' : ''}`}>
             <a className="skip-link" href="#main-content">Skip to main content</a>
-            <Sidebar isOpen={sidebarOpen} isCollapsed={sidebarCollapsed} onClose={() => setSidebarOpen(false)} />
             <div className="app-main">
               <EmergencyTicker />
               <Header

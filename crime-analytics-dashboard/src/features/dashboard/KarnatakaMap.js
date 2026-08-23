@@ -121,7 +121,7 @@ function KarnatakaMap({ cases, selectedDistrict, setSelectedDistrict }) {
     return {
       fillColor: '#2563eb', // Informational primary blue
       fillOpacity: count > 0 ? (0.15 + opacity * 0.7) : 0.03,
-      color: isSelected ? '#1e293b' : '#cbd5e1', // Stronger border if selected
+      color: isSelected ? (theme === 'dark' ? '#edf3fb' : '#1e293b') : (theme === 'dark' ? '#8fa2b8' : '#cbd5e1'),
       weight: isSelected ? 2.5 : 1,
     };
   };
@@ -140,7 +140,7 @@ function KarnatakaMap({ cases, selectedDistrict, setSelectedDistrict }) {
       mouseover: (e) => {
         const l = e.target;
         l.setStyle({
-          color: '#1e293b',
+          color: theme === 'dark' ? '#edf3fb' : '#1e293b',
           weight: 2,
           fillOpacity: count > 0 ? 0.9 : 0.15
         });

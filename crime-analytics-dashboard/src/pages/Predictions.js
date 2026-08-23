@@ -539,6 +539,19 @@ function Predictions({
 
   return (
     <div className="page-content predictive-brief-page text-inverse">
+      <section className="prediction-hero" aria-labelledby="prediction-hero-title">
+        <div>
+          <span className="prediction-hero-eyebrow">KSP intelligence command · predictive operations</span>
+          <h1 id="prediction-hero-title">Crime Risk Forecast Centre</h1>
+          <p>Prioritised district risk signals, projected case volume, and deployment guidance for the next operational window.</p>
+        </div>
+        <div className="prediction-hero-meta">
+          <span><i className="prediction-live-dot" /> Model active</span>
+          <span>Last run {lastRunTime} IST</span>
+          <strong>{predictionTableData[0]?.name || 'Statewide'} priority</strong>
+        </div>
+      </section>
+
       {/* 0. Access Ribbon / Session Header */}
       {isAnalystMode ? (
         <div style={{
@@ -1287,7 +1300,7 @@ function Predictions({
         .predictive-brief-page input,
         .predictive-brief-page [style*="borderRadius"],
         .predictive-brief-page [style*="border-radius"] {
-          border-radius: 0px !important;
+          border-radius: 10px !important;
         }
 
         .predictive-brief-page .card,
@@ -1320,6 +1333,68 @@ function Predictions({
 
         .predictive-brief-page .data-table tr:hover td {
           background-color: var(--bg-panel-alt) !important;
+        }
+
+        .prediction-hero {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 24px;
+          margin-bottom: 20px;
+          padding: 24px;
+          border: 1px solid color-mix(in srgb, var(--accent-primary) 42%, var(--border-color));
+          border-radius: 14px;
+          background: linear-gradient(118deg, color-mix(in srgb, var(--bg-panel) 82%, var(--accent-primary) 18%), var(--bg-panel));
+          box-shadow: var(--shadow-card);
+        }
+        .prediction-hero-eyebrow {
+          display: block;
+          margin-bottom: 8px;
+          color: var(--accent-primary);
+          font-size: 10px;
+          font-weight: 800;
+          letter-spacing: .12em;
+          text-transform: uppercase;
+        }
+        .prediction-hero h1 {
+          margin: 0;
+          color: var(--text-primary);
+          font-size: clamp(22px, 3vw, 32px);
+          line-height: 1.1;
+        }
+        .prediction-hero p {
+          max-width: 720px;
+          margin: 9px 0 0;
+          color: var(--text-secondary);
+          font-size: 12px;
+          line-height: 1.55;
+        }
+        .prediction-hero-meta {
+          display: grid;
+          flex: 0 0 220px;
+          gap: 8px;
+          padding: 14px;
+          border: 1px solid var(--border-color);
+          border-radius: 10px;
+          background: color-mix(in srgb, var(--bg-panel) 88%, transparent);
+          color: var(--text-secondary);
+          font-size: 10px;
+        }
+        .prediction-hero-meta strong { color: var(--text-primary); font-size: 12px; }
+        .prediction-live-dot { display: inline-block; width: 7px; height: 7px; margin-right: 5px; border-radius: 50%; background: var(--accent-success); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-success) 20%, transparent); }
+
+        @media (max-width: 760px) {
+          .prediction-hero { align-items: flex-start; flex-direction: column; padding: 18px; }
+          .prediction-hero-meta { width: 100%; flex-basis: auto; }
+          .predictive-brief-page .ops-stat-strip { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+          .predictive-brief-page .ops-stat-block:nth-child(2) { border-right: none !important; }
+          .predictive-brief-page .ops-stat-block:nth-child(-n+2) { border-bottom: 1px solid var(--border-color); }
+        }
+
+        @media (max-width: 480px) {
+          .predictive-brief-page .ops-stat-strip { grid-template-columns: 1fr !important; }
+          .predictive-brief-page .ops-stat-block { border-right: none !important; border-bottom: 1px solid var(--border-color); }
+          .predictive-brief-page .ops-stat-block:last-child { border-bottom: none; }
         }
 
         /* Direct CSS Hides to isolate pages content and enforce page scope */

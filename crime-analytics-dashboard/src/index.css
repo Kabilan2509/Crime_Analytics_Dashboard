@@ -1,7 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800&display=swap');
 
 :root {
-  --sidebar-width: 286px;
+  --sidebar-width: 0px;
   --header-height: 208px;
   --header-ribbon-height: 38px;
   --radius-sm: 10px;
@@ -16,28 +16,28 @@
 html[data-theme='light'] {
   --bg-app: #f4f7fb;
   --bg-panel: #ffffff;
-  --bg-panel-alt: #eef3f9;
-  --bg-panel-strong: #005B96;
-  --bg-sidebar: linear-gradient(180deg, #17365f 0%, #0d2340 100%);
-  --bg-ribbon: #0b1f39;
+  --bg-panel-alt: #f3e8ff;
+  --bg-panel-strong: #5c2e91;
+  --bg-sidebar: linear-gradient(180deg, #1e1b4b 0%, #0f172a 100%);
+  --bg-ribbon: #5c2e91;
   --bg-header: rgba(244, 247, 251, 0.92);
   --bg-overlay: rgba(8, 19, 34, 0.38);
-  --text-primary: #16283f;
-  --text-secondary: #3f536a;
-  --text-muted: #52677d;
+  --text-primary: #1e293b;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
   --text-inverse: #f8fbff;
   --text-on-accent: #ffffff;
-  --border-color: #d6dfeb;
-  --border-strong: #b8c7d8;
-  --accent-primary: #005B96;
-  --accent-secondary: #2f6fb0;
-  --accent-gold: #bb8a2f;
-  --accent-success: #008000;
-  --accent-danger: #C80000;
-  --accent-warning: #FF8C00;
-  --chart-blue: #005B96;
-  --chart-green: #008000;
-  --chart-red: #C80000;
+  --border-color: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --accent-primary: #5c2e91;
+  --accent-secondary: #7c3aed;
+  --accent-gold: #d97706;
+  --accent-success: #16a34a;
+  --accent-danger: #dc2626;
+  --accent-warning: #ea580c;
+  --chart-blue: #5c2e91;
+  --chart-green: #16a34a;
+  --chart-red: #dc2626;
   --chart-gold: #FF8C00;
   --chart-indigo: #5c67b8;
   --chart-cyan: #2f88a6;
@@ -221,10 +221,6 @@ button {
 }
 
 @media (min-width: 1081px) {
-  .app-shell.sidebar-collapsed {
-    --sidebar-width: 76px;
-  }
-
   .sidebar {
     transition: width 220ms ease;
   }
@@ -4804,3 +4800,27 @@ html[data-font-size='x-large'] :where(.header-right, .page-actions, .action-row,
   border-color: var(--border-strong) !important;
 }
 
+/* Accessibility - Font Size Adjustments */
+html[data-font-size='large'] {
+  font-size: 16px !important;
+}
+
+html[data-font-size='large'] :where(h1, h2, h3, .page-title, .card-title, .portal-title-main) {
+  font-size: 120% !important;
+}
+
+html[data-font-size='large'] :where(p, td, label, input, select, textarea, button, .gov-item-label, .portal-nav-link) {
+  font-size: 15px !important;
+}
+
+html[data-font-size='x-large'] {
+  font-size: 18px !important;
+}
+
+html[data-font-size='x-large'] :where(h1, h2, h3, .page-title, .card-title, .portal-title-main) {
+  font-size: 140% !important;
+}
+
+html[data-font-size='x-large'] :where(p, td, label, input, select, textarea, button, .gov-item-label, .portal-nav-link) {
+  font-size: 17px !important;
+}

@@ -47,6 +47,12 @@ function AccessibilityToolbar() {
     return () => document.removeEventListener('keydown', closeOnEscape);
   }, [expanded]);
 
+  useEffect(() => {
+    const handleFontSizeChange = (e) => setFontSize(e.detail);
+    window.addEventListener('madhukar-font-size-change', handleFontSizeChange);
+    return () => window.removeEventListener('madhukar-font-size-change', handleFontSizeChange);
+  }, []);
+
   const toggleContrast = () => {
     const next = !highContrast;
     setHighContrast(next);
