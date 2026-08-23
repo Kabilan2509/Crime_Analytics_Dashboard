@@ -1,14 +1,24 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { MdWarning, MdNotificationsActive } from 'react-icons/md';
-import { caseViews } from '../data/schemaSelectors';
+import { getCaseViews } from '../services/dataService';
 
 /**
  * Emergency Alert Ticker — scrolling heinous crime alerts
  * Mimics government SOC (Security Operations Center) real-time feeds
  */
 function EmergencyTicker() {
+  const [cases, setCases] = useState([]);
+
+  useEffect(() => {
+    let active = true;
+    getCaseViews().then(rows => {
+      if (active) setCases(rows);
+    });
+    return () => { active = false; };
+  }, []);
+
   const alerts = useMemo(() => {
-    return caseViews
+    return cases
       .filter(c => c.isHeinous)
       .sort((a, b) => (b.registeredDateObj || 0) - (a.registeredDateObj || 0))
       .slice(0, 12)
@@ -23,7 +33,7 @@ function EmergencyTicker() {
           : '',
         status: c.statusName,
       }));
-  }, []);
+  }, [cases]);
 
   if (!alerts.length) return null;
 

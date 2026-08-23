@@ -125,6 +125,7 @@ function Reports() {
   const theme = useActiveTheme();
   const { isCommandMode } = useSecurity();
 
+
   // Active template selector state
   const [activeTemplate, setActiveTemplate] = useState('executive');
 
@@ -154,7 +155,6 @@ function Reports() {
   const [submittedQuery, setSubmittedQuery] = useState(DEFAULT_REPORT_QUERY);
   const [activeTab, setActiveTab] = useState('briefing');
   const [exporting, setExporting] = useState(false);
-
   // Filter stations based on selected district
   const filteredStations = useMemo(() => {
     if (selectedDistrict === 'all') return [];
@@ -174,11 +174,8 @@ function Reports() {
     if (selectedAct === 'all') return [];
     return sections.filter(s => idsMatch(s.ActCode, selectedAct));
   }, [selectedAct]);
-
   // Initialize pills with DateRange, Geography, and Offense to help guide the user
   useEffect(() => {
-    const initialDateLabel = `January 2024 - December 2026`;
-    const initialDateVal = { fromMonth: 0, fromYear: 2024, toMonth: 11, toYear: 2026 };
     setPills(DEFAULT_REPORT_QUERY);
   }, []);
 

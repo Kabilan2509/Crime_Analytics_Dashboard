@@ -290,7 +290,6 @@ export const statisticsApi = {
     if (diffDays <= 31) granularity = 'daily';
     else if (diffDays <= 180) granularity = 'weekly';
 
-    const categories = ['Violent', 'Property', 'Cybercrime', 'Narcotics', 'Other'];
     const catMap = {
       'Violent': [1, 2, 3],       // Murder, Rape, Kidnapping / Assault
       'Property': [4, 5],         // Theft, Robbery
@@ -332,7 +331,6 @@ export const statisticsApi = {
       // Group by week
       const weeklyBins = {};
       for (let i = 0; i <= diffDays; i += 7) {
-        const d = new Date(start.getTime() + i * 24 * 3600 * 1000);
         const key = `Wk ${Math.ceil((i+1)/7)}`;
         weeklyBins[key] = { name: key, count: 0, Violent: 0, Property: 0, Cybercrime: 0, Narcotics: 0, Other: 0 };
       }
@@ -508,7 +506,6 @@ export const statisticsApi = {
       }
     });
 
-    const totalAge = age17 + age30 + age45 + age60 + age60Plus || 1;
     const ageData = [
       { name: '0-17', count: Math.round(age17) },
       { name: '18-30', count: Math.round(age30) },
