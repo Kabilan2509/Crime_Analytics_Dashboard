@@ -563,7 +563,7 @@ app.post('/api/cron/threat-assess', async (req, res) => {
     // Store in Catalyst Cache
     try {
       const cache = catalystApp.cache();
-      const segment = cache.segment();
+      const segment = cache.segment('56064000000013067');
       await segment.put('ksp-cron-threat-alerts', JSON.stringify(alerts), 1440);
       console.log(`[Cron] Stored ${alerts.length} threat alerts to Catalyst Cache.`);
     } catch (cacheErr) {
@@ -592,8 +592,8 @@ app.get('/api/cron/threat-alerts', async (req, res) => {
     
     try {
       const cache = catalystApp.cache();
-      const segment = cache.segment();
-      const cached = await segment.get('ksp-cron-threat-alerts');
+      const segment = cache.segment('56064000000013067');
+      const cached = await segment.getValue('ksp-cron-threat-alerts');
       if (cached) {
         alerts = JSON.parse(cached);
       } else if (localCronAlerts) {
@@ -607,6 +607,122 @@ app.get('/api/cron/threat-alerts', async (req, res) => {
     
     return res.status(200).json({ alerts });
   } catch (err) {
+    return res.status(500).json({ error: errorMessage(err) });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ROUTES: Catalyst MFA Security OTP (Break-Glass PII Access Control)
+// ═══════════════════════════════════════════════════════════════════════════
+const localOtpStorage = new Map();
+
+app.post('/api/security/request-otp', async (req, res) => {
+  try {
+    const catalystApp = catalyst.initialize(req);
+    const { email: emailAddress, badgeId, officerName } = req.body;
+    
+    if (!emailAddress || !badgeId) {
+      return res.status(400).json({ error: 'Email and Badge ID are required' });
+    }
+    
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    try {
+      const cache = catalystApp.cache();
+      const segment = cache.segment('56064000000013067');
+      await segment.put(`pii-otp-${badgeId.toUpperCase()}`, otp, 5);
+      console.log(`[OTP] Saved OTP for badge ${badgeId} to cache.`);
+    } catch (cacheErr) {
+      console.warn('[OTP] Cache segment unavailable, storing in memory:', cacheErr.message);
+      localOtpStorage.set(badgeId.toUpperCase(), { otp, expires: Date.now() + 5 * 60 * 1000 });
+    }
+    
+    let emailSent = false;
+    let mailError = null;
+    try {
+      const email = catalystApp.email();
+      const emailConfig = {
+        from_email: 'kabilanka2509@gmail.com',
+        to_email: [emailAddress],
+        subject: 'KSP Command Center - PII Unlock Verification',
+        html_mode: true,
+        content: `
+          <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #cbd5e1; border-radius: 6px; max-width: 500px; color: #1e293b;">
+            <h2 style="color: #5c2e91; margin: 0 0 15px 0; font-size: 20px; border-bottom: 2px solid #5c2e91; padding-bottom: 8px;">KSP PII ACCESS VERIFICATION</h2>
+            <p style="font-size: 14px;">Officer <strong>${officerName || 'Officer'} (${badgeId})</strong> has requested PII access for this command session.</p>
+            <div style="background: #f1f5f9; padding: 15px; border-radius: 4px; text-align: center; margin: 20px 0;">
+              <span style="font-size: 28px; font-weight: bold; color: #5c2e91; font-family: monospace; letter-spacing: 3px;">${otp}</span>
+            </div>
+            <p style="font-size: 12px; color: #64748b;">This OTP code is valid for 5 minutes. Do not share this with unauthorized personnel.</p>
+          </div>
+        `
+      };
+      await email.sendMail(emailConfig);
+      emailSent = true;
+    } catch (err) {
+      mailError = err.message || err;
+      console.warn('[OTP] Catalyst Mail sending failed:', mailError);
+    }
+    
+    return res.status(200).json({
+      success: true,
+      emailSent,
+      debugOtp: !emailSent ? otp : null,
+      message: emailSent 
+        ? 'OTP sent successfully to your registered email.' 
+        : `Email delivery failed (${mailError}). For demo purposes, enter OTP: ${otp}`
+    });
+  } catch (err) {
+    console.error('[OTP Route] Request Error:', err);
+    return res.status(500).json({ error: errorMessage(err) });
+  }
+});
+
+app.post('/api/security/verify-otp', async (req, res) => {
+  try {
+    const catalystApp = catalyst.initialize(req);
+    const { badgeId, otp } = req.body;
+    
+    if (!badgeId || !otp) {
+      return res.status(400).json({ error: 'Badge ID and OTP code are required' });
+    }
+    
+    let savedOtp = null;
+    
+    try {
+      const cache = catalystApp.cache();
+      const segment = cache.segment('56064000000013067');
+      savedOtp = await segment.getValue(`pii-otp-${badgeId.toUpperCase()}`);
+    } catch (cacheErr) {
+      console.warn('[OTP] Cache read failed:', cacheErr.message);
+    }
+    
+    if (!savedOtp) {
+      const record = localOtpStorage.get(badgeId.toUpperCase());
+      if (record && record.expires > Date.now()) {
+        savedOtp = record.otp;
+      }
+    }
+    
+    if (!savedOtp) {
+      return res.status(400).json({ error: 'OTP code has expired or is invalid. Please request a new one.' });
+    }
+    
+    if (String(savedOtp).trim() !== String(otp).trim()) {
+      return res.status(400).json({ error: 'Invalid verification OTP code. Please try again.' });
+    }
+    
+    try {
+      const cache = catalystApp.cache();
+      const segment = cache.segment('56064000000013067');
+      await segment.delete(`pii-otp-${badgeId.toUpperCase()}`);
+    } catch (err) {
+      localOtpStorage.delete(badgeId.toUpperCase());
+    }
+    
+    return res.status(200).json({ success: true, message: 'OTP verified successfully.' });
+  } catch (err) {
+    console.error('[OTP Route] Verify Error:', err);
     return res.status(500).json({ error: errorMessage(err) });
   }
 });

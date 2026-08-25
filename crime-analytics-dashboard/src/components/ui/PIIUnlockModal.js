@@ -7,8 +7,14 @@ export default function PIIUnlockModal({ isOpen, onClose }) {
   const [form, setForm] = useState({
     officerName: '',
     badgeId: '',
-    unitName: ''
+    unitName: '',
+    email: ''
   });
+  const [step, setStep] = useState('input'); // 'input' or 'otp'
+  const [otpCode, setOtpCode] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [debugOtp, setDebugOtp] = useState('');
+  const [infoMsg, setInfoMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
   const nameInputRef = useRef(null);
@@ -20,8 +26,13 @@ export default function PIIUnlockModal({ isOpen, onClose }) {
       setForm({
         officerName: session.officerName || '',
         badgeId: session.badgeId || '',
-        unitName: session.unitName || ''
+        unitName: session.unitName || '',
+        email: ''
       });
+      setStep('input');
+      setOtpCode('');
+      setDebugOtp('');
+      setInfoMsg('');
       setErrorMsg('');
 
       // Focus on first input
@@ -71,14 +82,70 @@ export default function PIIUnlockModal({ isOpen, onClose }) {
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e) => {
+  const handleRequestOtp = async (e) => {
     e.preventDefault();
     setErrorMsg('');
+    setInfoMsg('');
+    setIsLoading(true);
+    
+    const badgePattern = /^KG\d{4,}$/i;
+    if (!badgePattern.test(form.badgeId)) {
+      setErrorMsg('Badge Number must start with "KG" followed by at least 4 digits (e.g. KG12345)');
+      setIsLoading(false);
+      return;
+    }
+
     try {
+      const res = await fetch('/server/crime_api/api/security/request-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: form.email,
+          badgeId: form.badgeId,
+          officerName: form.officerName
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to request verification code.');
+      }
+      
+      setStep('otp');
+      setInfoMsg(data.message);
+      if (data.debugOtp) {
+        setDebugOtp(data.debugOtp);
+      }
+    } catch (err) {
+      setErrorMsg(err.message || 'Error sending OTP. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e) => {
+    e.preventDefault();
+    setErrorMsg('');
+    setIsLoading(true);
+    try {
+      const res = await fetch('/server/crime_api/api/security/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          badgeId: form.badgeId,
+          otp: otpCode
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Verification failed.');
+      }
+
       verifyOfficer(form.officerName, form.badgeId, form.unitName);
       onClose();
     } catch (err) {
-      setErrorMsg(err.message || 'Verification failed. Please check inputs.');
+      setErrorMsg(err.message || 'Invalid OTP code. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -147,124 +214,249 @@ export default function PIIUnlockModal({ isOpen, onClose }) {
           Please verify your identity to unlock personally identifiable information (PII) for this command session.
         </p>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          <div>
-            <label style={{ display: 'block', fontSize: '9px', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', fontWeight: 'bold' }}>
-              Officer Name
-            </label>
-            <input 
-              ref={nameInputRef}
-              type="text"
-              value={form.officerName} 
-              onChange={e => handleFieldChange('officerName', e.target.value)} 
-              placeholder="e.g. Inspector Ramesh" 
-              required 
-              style={{
-                width: '100%',
-                padding: '8px 10px',
-                borderRadius: '4px',
-                border: '1px solid var(--border-color)',
-                background: 'var(--bg-panel-alt)',
-                color: 'var(--text-primary)',
-                fontSize: '12px',
-                boxSizing: 'border-box',
-                minHeight: '36px'
-              }} 
-            />
-          </div>
-
-          <div>
-            <label style={{ display: 'block', fontSize: '9px', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', fontWeight: 'bold' }}>
-              KGID / Badge Number
-            </label>
-            <input 
-              type="text"
-              value={form.badgeId} 
-              onChange={e => handleFieldChange('badgeId', e.target.value)} 
-              placeholder="e.g. KG12345" 
-              required 
-              style={{
-                width: '100%',
-                padding: '8px 10px',
-                borderRadius: '4px',
-                border: '1px solid var(--border-color)',
-                background: 'var(--bg-panel-alt)',
-                color: 'var(--text-primary)',
-                fontSize: '12px',
-                boxSizing: 'border-box',
-                minHeight: '36px'
-              }} 
-            />
-          </div>
-
-          <div>
-            <label style={{ display: 'block', fontSize: '9px', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', fontWeight: 'bold' }}>
-              Assigned Station
-            </label>
-            <input 
-              type="text"
-              value={form.unitName} 
-              onChange={e => handleFieldChange('unitName', e.target.value)} 
-              placeholder="e.g. Shivaji Nagar PS" 
-              required 
-              style={{
-                width: '100%',
-                padding: '8px 10px',
-                borderRadius: '4px',
-                border: '1px solid var(--border-color)',
-                background: 'var(--bg-panel-alt)',
-                color: 'var(--text-primary)',
-                fontSize: '12px',
-                boxSizing: 'border-box',
-                minHeight: '36px'
-              }} 
-            />
-          </div>
-
-          {errorMsg && (
-            <div style={{ fontSize: '11px', color: 'var(--accent-danger, #ff4d4d)', lineHeight: '1.4' }}>
-              ⚠️ {errorMsg}
+        {step === 'input' ? (
+          <form onSubmit={handleRequestOtp} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '9px', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', fontWeight: 'bold' }}>
+                Officer Name
+              </label>
+              <input 
+                ref={nameInputRef}
+                type="text"
+                value={form.officerName} 
+                onChange={e => handleFieldChange('officerName', e.target.value)} 
+                placeholder="e.g. Inspector Ramesh" 
+                required 
+                disabled={isLoading}
+                style={{
+                  width: '100%',
+                  padding: '8px 10px',
+                  borderRadius: '4px',
+                  border: '1px solid var(--border-color)',
+                  background: 'var(--bg-panel-alt)',
+                  color: 'var(--text-primary)',
+                  fontSize: '12px',
+                  boxSizing: 'border-box',
+                  minHeight: '36px'
+                }} 
+              />
             </div>
-          )}
 
-          <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
-            <button 
-              type="button"
-              onClick={onClose}
-              style={{
-                flex: 1,
-                background: 'var(--bg-panel-alt, #1f2e43)',
-                color: 'var(--text-primary)',
-                border: '1px solid var(--border-color)',
-                borderRadius: '4px',
-                padding: '8px 12px',
-                cursor: 'pointer',
-                fontSize: '12px',
-                fontWeight: 'bold',
-                minHeight: '36px'
-              }}
-            >
-              Cancel
-            </button>
-            <button 
-              type="submit" 
-              style={{
-                flex: 1.5,
-                background: 'var(--accent-primary, #3b82f6)',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: '4px',
-                padding: '8px 12px',
-                cursor: 'pointer',
-                fontSize: '12px',
-                fontWeight: 'bold',
-                minHeight: '36px'
-              }}
-            >
-              Unlock PII Data
-            </button>
-          </div>
-        </form>
+            <div>
+              <label style={{ display: 'block', fontSize: '9px', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', fontWeight: 'bold' }}>
+                KGID / Badge Number
+              </label>
+              <input 
+                type="text"
+                value={form.badgeId} 
+                onChange={e => handleFieldChange('badgeId', e.target.value)} 
+                placeholder="e.g. KG12345" 
+                required 
+                disabled={isLoading}
+                style={{
+                  width: '100%',
+                  padding: '8px 10px',
+                  borderRadius: '4px',
+                  border: '1px solid var(--border-color)',
+                  background: 'var(--bg-panel-alt)',
+                  color: 'var(--text-primary)',
+                  fontSize: '12px',
+                  boxSizing: 'border-box',
+                  minHeight: '36px'
+                }} 
+              />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '9px', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', fontWeight: 'bold' }}>
+                Assigned Station
+              </label>
+              <input 
+                type="text"
+                value={form.unitName} 
+                onChange={e => handleFieldChange('unitName', e.target.value)} 
+                placeholder="e.g. Shivaji Nagar PS" 
+                required 
+                disabled={isLoading}
+                style={{
+                  width: '100%',
+                  padding: '8px 10px',
+                  borderRadius: '4px',
+                  border: '1px solid var(--border-color)',
+                  background: 'var(--bg-panel-alt)',
+                  color: 'var(--text-primary)',
+                  fontSize: '12px',
+                  boxSizing: 'border-box',
+                  minHeight: '36px'
+                }} 
+              />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '9px', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', fontWeight: 'bold' }}>
+                Verification Email ID (for OTP)
+              </label>
+              <input 
+                type="email"
+                value={form.email} 
+                onChange={e => handleFieldChange('email', e.target.value)} 
+                placeholder="e.g. officer@ksp.gov.in" 
+                required 
+                disabled={isLoading}
+                style={{
+                  width: '100%',
+                  padding: '8px 10px',
+                  borderRadius: '4px',
+                  border: '1px solid var(--border-color)',
+                  background: 'var(--bg-panel-alt)',
+                  color: 'var(--text-primary)',
+                  fontSize: '12px',
+                  boxSizing: 'border-box',
+                  minHeight: '36px'
+                }} 
+              />
+            </div>
+
+            {errorMsg && (
+              <div style={{ fontSize: '11px', color: 'var(--accent-danger, #ff4d4d)', lineHeight: '1.4' }}>
+                ⚠️ {errorMsg}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+              <button 
+                type="button"
+                onClick={onClose}
+                disabled={isLoading}
+                style={{
+                  flex: 1,
+                  background: 'var(--bg-panel-alt, #1f2e43)',
+                  color: 'var(--text-primary)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '4px',
+                  padding: '8px 12px',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  fontWeight: 'bold',
+                  minHeight: '36px',
+                  opacity: isLoading ? 0.6 : 1
+                }}
+              >
+                Cancel
+              </button>
+              <button 
+                type="submit" 
+                disabled={isLoading}
+                style={{
+                  flex: 1.5,
+                  background: 'var(--accent-primary, #3b82f6)',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '4px',
+                  padding: '8px 12px',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  fontWeight: 'bold',
+                  minHeight: '36px',
+                  opacity: isLoading ? 0.6 : 1
+                }}
+              >
+                {isLoading ? 'Sending...' : 'Request OTP Code'}
+              </button>
+            </div>
+          </form>
+        ) : (
+          <form onSubmit={handleVerifyOtp} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            {infoMsg && (
+              <div style={{ fontSize: '11px', color: '#10b981', lineHeight: '1.4', background: 'rgba(16, 185, 129, 0.1)', padding: '8px', borderRadius: '4px' }}>
+                ✓ {infoMsg}
+              </div>
+            )}
+
+            {debugOtp && (
+              <div style={{ fontSize: '11px', color: '#f59e0b', padding: '8px', border: '1px dashed #f59e0b', borderRadius: '4px', background: 'rgba(245, 158, 11, 0.05)' }}>
+                ℹ️ <strong>Demo Bypass:</strong> Use code <code>{debugOtp}</code>
+              </div>
+            )}
+
+            <div>
+              <label style={{ display: 'block', fontSize: '9px', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', fontWeight: 'bold' }}>
+                Enter 6-Digit OTP Code
+              </label>
+              <input 
+                type="text"
+                maxLength={6}
+                value={otpCode} 
+                onChange={e => setOtpCode(e.target.value.replace(/\D/g, ''))} 
+                placeholder="e.g. 123456" 
+                required 
+                disabled={isLoading}
+                style={{
+                  width: '100%',
+                  padding: '8px 10px',
+                  borderRadius: '4px',
+                  border: '1px solid var(--border-color)',
+                  background: 'var(--bg-panel-alt)',
+                  color: 'var(--text-primary)',
+                  fontSize: '16px',
+                  textAlign: 'center',
+                  letterSpacing: '4px',
+                  fontWeight: 'bold',
+                  boxSizing: 'border-box',
+                  minHeight: '40px'
+                }} 
+              />
+            </div>
+
+            {errorMsg && (
+              <div style={{ fontSize: '11px', color: 'var(--accent-danger, #ff4d4d)', lineHeight: '1.4' }}>
+                ⚠️ {errorMsg}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+              <button 
+                type="button"
+                onClick={() => { setStep('input'); setErrorMsg(''); }}
+                disabled={isLoading}
+                style={{
+                  flex: 1,
+                  background: 'var(--bg-panel-alt, #1f2e43)',
+                  color: 'var(--text-primary)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '4px',
+                  padding: '8px 12px',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  fontWeight: 'bold',
+                  minHeight: '36px',
+                  opacity: isLoading ? 0.6 : 1
+                }}
+              >
+                Back
+              </button>
+              <button 
+                type="submit" 
+                disabled={isLoading}
+                style={{
+                  flex: 1.5,
+                  background: '#10b981',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '4px',
+                  padding: '8px 12px',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  fontWeight: 'bold',
+                  minHeight: '36px',
+                  opacity: isLoading ? 0.6 : 1
+                }}
+              >
+                {isLoading ? 'Verifying...' : 'Verify & Unlock'}
+              </button>
+            </div>
+          </form>
+        )}
       </div>
     </div>,
     document.body
