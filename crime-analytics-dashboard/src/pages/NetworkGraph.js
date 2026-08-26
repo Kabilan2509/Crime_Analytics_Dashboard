@@ -281,6 +281,7 @@ export default function NetworkGraph() {
       const dragged  = dragRef.current.node;
       const pinned   = pinnedRef.current;
       const cx = W / 2, cy = H / 2;
+      const cSet     = connSetRef.current;
 
       // Exact repulsion is intentionally limited to small filtered views. The complete
       // graph uses the deterministic large-graph layout to avoid an O(N²) frame cost.
@@ -288,8 +289,12 @@ export default function NetworkGraph() {
       for (let i = 0; runExactPhysics && i < nodes.length; i++) {
         const a = nodes[i];
         if (pinned.has(a.id) || a === dragged) continue;
+        if (cSet && !cSet.has(a.id)) continue; // Ignore hidden nodes in physics
+        
         for (let j = i + 1; j < nodes.length; j++) {
           const b  = nodes[j];
+          if (cSet && !cSet.has(b.id)) continue; // Ignore hidden nodes in physics
+          
           const dx = (b.x - a.x) || 0.01;
           const dy = (b.y - a.y) || 0.01;
           const d2 = dx * dx + dy * dy;
@@ -307,6 +312,8 @@ export default function NetworkGraph() {
       if (runExactPhysics) edges.forEach(edge => {
         const s = nm.get(edge.source), t = nm.get(edge.target);
         if (!s || !t) return;
+        if (cSet && (!cSet.has(s.id) || !cSet.has(t.id))) return; // Ignore spring if either end is hidden
+        
         const dx   = t.x - s.x, dy = t.y - s.y;
         const dist = Math.sqrt(dx * dx + dy * dy) || 1;
         const f    = (dist - IDEAL_LEN) * SPRING_K * (edge.strength || 1);
@@ -318,6 +325,8 @@ export default function NetworkGraph() {
       // Gravity + integrate
       if (runExactPhysics) nodes.forEach(n => {
         if (pinned.has(n.id) || n === dragged) return;
+        if (cSet && !cSet.has(n.id)) return; // Ignore gravity/movement for hidden nodes
+        
         n.vx += (cx - n.x) * GRAVITY;
         n.vy += (cy - n.y) * GRAVITY;
         n.x  += n.vx;  n.y  += n.vy;
@@ -349,7 +358,6 @@ export default function NetworkGraph() {
       ctx.scale(tz, tz);
 
       const sel    = selectedRef.current;
-      const cSet   = connSetRef.current;
 
       // ── Draw Edges ───────────────────────────────────────────────────────
       edges.forEach(edge => {
@@ -357,15 +365,13 @@ export default function NetworkGraph() {
         if (!s || !t) return;
         const connected = cSet && cSet.has(s.id) && cSet.has(t.id);
         const dimmed    = cSet && !connected;
+        if (dimmed) return; // Completely hide unconnected edges!
+        
         ctx.beginPath();
         ctx.moveTo(s.x, s.y);
         ctx.lineTo(t.x, t.y);
         ctx.lineWidth    = connected ? 2 : 0.85;
-        ctx.strokeStyle  = dimmed
-          ? 'rgba(255,255,255,0.10)'
-          : connected
-            ? 'rgba(255,255,255,0.92)'
-            : 'rgba(255,255,255,0.42)';
+        ctx.strokeStyle  = connected ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.42)';
         ctx.shadowBlur   = connected ? 6 : 0;
         ctx.shadowColor  = 'rgba(255,255,255,0.4)';
         ctx.stroke();
@@ -379,13 +385,15 @@ export default function NetworkGraph() {
         const isHovered  = hoveredRef.current && hoveredRef.current.id === n.id;
         const isPinned   = pinnedRef.current.has(n.id);
         const dimmed     = cSet && !cSet.has(n.id);
+        if (dimmed) return; // Completely hide unconnected nodes!
+        
         const nodeDeg    = deg[n.id] || 0;
         const largeGraph = nodes.length > 500;
         const r = largeGraph
           ? Math.max(2.4, n.radius * 0.42 + Math.min(nodeDeg * 0.18, 3.5))
           : n.radius + Math.min(nodeDeg * 1.2, 10);
 
-        ctx.globalAlpha = dimmed ? 0.18 : 1;
+        ctx.globalAlpha = 1;
 
         // Glow ring
         if ((isSelected || isHovered) && !dimmed) {
@@ -456,10 +464,11 @@ export default function NetworkGraph() {
 
   const nodeAt = useCallback((sx, sy) =>
     visNodes.find(n => {
+      if (connectedSet && !connectedSet.has(n.id)) return false;
       const dx = n.x - sx, dy = n.y - sy;
       return dx * dx + dy * dy <= (n.radius + 10) * (n.radius + 10);
     }) || null,
-  [visNodes]);
+  [visNodes, connectedSet]);
 
   // ── Pointer events ─────────────────────────────────────────────────────────
   const onMouseDown = useCallback((e) => {

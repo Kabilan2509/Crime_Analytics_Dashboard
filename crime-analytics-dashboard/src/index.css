@@ -2014,7 +2014,7 @@ button {
   right: 16px;
   top: 50%;
   transform: translateY(-50%);
-  z-index: 300;
+  z-index: 99999;
 }
 
 .a11y-toggle {
@@ -2033,7 +2033,7 @@ button {
 }
 
 .a11y-toggle:hover {
-  transform: translateY(-50%) scale(1.1);
+  transform: scale(1.1);
   box-shadow: var(--shadow-soft);
 }
 
