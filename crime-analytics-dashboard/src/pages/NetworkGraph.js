@@ -55,15 +55,26 @@ export default function NetworkGraph() {
   );
 
   // ── State ──────────────────────────────────────────────────────────────────
-  const [search,       setSearch]       = useState('');
-  const [filterType,   setFilterType]   = useState('all');
-  const [selectedNode, setSelectedNode] = useState(null);
-  const [hoveredNode,  setHoveredNode]  = useState(null);
-  const [pinnedNodes,  setPinnedNodes]  = useState(new Set());
-  const [labelMode,    setLabelMode]    = useState('smart'); // 'all' | 'smart' | 'none'
-  const [showLegend,   setShowLegend]   = useState(true);
-  const [viewMode,     setViewMode]     = useState('graph');
+  const [search,            setSearch]            = useState('');
+  const [filterType,        setFilterType]        = useState('all');
+  const [selectedCrimeType, setSelectedCrimeType] = useState('all');
+  const [selectedNode,      setSelectedNode]      = useState(null);
+  const [hoveredNode,       setHoveredNode]       = useState(null);
+  const [pinnedNodes,       setPinnedNodes]       = useState(new Set());
+  const [labelMode,         setLabelMode]         = useState('smart'); // 'all' | 'smart' | 'none'
+  const [showLegend,        setShowLegend]        = useState(true);
+  const [viewMode,          setViewMode]          = useState('graph');
+  const [activeListTab,     setActiveListTab]     = useState('criminal');
   const [, setKeyboardNode] = useState(0);
+
+  // ── Crime Category List ───────────────────────────────────────────────────
+  const crimeTypesList = useMemo(() => {
+    const types = new Set();
+    secureCases.forEach(c => {
+      if (c.majorHeadName) types.add(c.majorHeadName);
+    });
+    return ['all', ...Array.from(types).sort()];
+  }, [secureCases]);
 
   // ── Refs (no re-render on every frame) ────────────────────────────────────
   const canvasRef     = useRef(null);
@@ -88,8 +99,49 @@ export default function NetworkGraph() {
   const { visNodes, visEdges, nodeMap } = useMemo(() => {
     const lower = search.toLowerCase();
 
+    // 1. Identify which cases match the selected crime category
+    const matchingCaseIds = new Set();
+    rawGraph.nodes.forEach(n => {
+      if (n.type === 'case') {
+        const caseRecord = n.data;
+        const matchesCategory = selectedCrimeType === 'all' || caseRecord?.majorHeadName === selectedCrimeType;
+        if (matchesCategory) {
+          matchingCaseIds.add(n.id);
+        }
+      }
+    });
+
+    // 2. Identify neighbors of selectedNode in the raw graph to override filters for them
+    const selectedNodeNeighbors = new Set();
+    if (selectedNode) {
+      selectedNodeNeighbors.add(selectedNode.id);
+      rawGraph.edges.forEach(e => {
+        if (e.source === selectedNode.id) selectedNodeNeighbors.add(e.target);
+        if (e.target === selectedNode.id) selectedNodeNeighbors.add(e.source);
+      });
+    }
+
+    // 3. Filter nodes based on search query, entity filter, and crime category matching
     let nodes = rawGraph.nodes.filter(n => {
+      // Compulsorily keep selected node and all its direct connections
+      if (selectedNodeNeighbors.has(n.id)) return true;
+
       if (filterType !== 'all' && n.type !== filterType) return false;
+
+      // If filtering by crime category, keep non-case nodes only if connected to matching cases
+      if (selectedCrimeType !== 'all') {
+        if (n.type === 'case') {
+          if (!matchingCaseIds.has(n.id)) return false;
+        } else {
+          // Keep accused, victim, station, district only if connected to a matching case
+          const isConnected = rawGraph.edges.some(e => 
+            (e.source === n.id && matchingCaseIds.has(e.target)) ||
+            (e.target === n.id && matchingCaseIds.has(e.source))
+          );
+          if (!isConnected) return false;
+        }
+      }
+
       if (!lower) return true;
       return (
         n.label.toLowerCase().includes(lower) ||
@@ -103,7 +155,16 @@ export default function NetworkGraph() {
     const edges = rawGraph.edges.filter(e => ids.has(e.source) && ids.has(e.target));
     const map   = new Map(nodes.map(n => [n.id, n]));
     return { visNodes: nodes, visEdges: edges, nodeMap: map };
-  }, [rawGraph, filterType, search]);
+  }, [rawGraph, filterType, selectedCrimeType, search, selectedNode]);
+
+  // ── Group nodes by type for List View ──────────────────────────────────────
+  const groupedNodes = useMemo(() => {
+    const groups = { case: [], criminal: [], victim: [], station: [], district: [] };
+    visNodes.forEach(n => {
+      if (groups[n.type]) groups[n.type].push(n);
+    });
+    return groups;
+  }, [visNodes]);
 
   // ── Neighbour set for selected node ───────────────────────────────────────
   const connectedSet = useMemo(() => {
@@ -803,21 +864,154 @@ export default function NetworkGraph() {
         {viewMode === 'list' && (
           <section className="network-list-view" aria-labelledby="network-list-title">
             <div className="network-list-heading">
-              <h2 id="network-list-title">Network entities</h2>
-              <p>{visNodes.length} visible entities. Select one to inspect its direct connections.</p>
+              <h2 id="network-list-title">Network Database View</h2>
+              <p>Explore categorized entities matching search filters. Select any node to locate it in the visual graph.</p>
             </div>
+
+            {/* Entity Tabs Switcher */}
+            <div style={{ display: 'flex', gap: '4px', borderBottom: '1px solid var(--border-color)', marginBottom: '16px', overflowX: 'auto', paddingBottom: '2px' }}>
+              {[
+                { key: 'criminal', label: 'Accused', count: groupedNodes.criminal.length, color: ENTITY.criminal.color },
+                { key: 'case',     label: 'FIR Cases', count: groupedNodes.case.length,     color: ENTITY.case.color },
+                { key: 'victim',   label: 'Victims', count: groupedNodes.victim.length,   color: ENTITY.victim.color },
+                { key: 'location', label: 'Locations', count: groupedNodes.station.length + groupedNodes.district.length, color: ENTITY.station.color },
+              ].map(tab => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setActiveListTab(tab.key)}
+                  style={{
+                    padding: '8px 12px',
+                    borderRadius: '8px 8px 0 0',
+                    border: '1px solid transparent',
+                    borderBottom: 'none',
+                    background: activeListTab === tab.key ? 'var(--bg-panel-alt)' : 'transparent',
+                    borderColor: activeListTab === tab.key ? 'var(--border-color)' : 'transparent',
+                    color: activeListTab === tab.key ? 'var(--text-primary)' : 'var(--text-muted)',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    fontWeight: activeListTab === tab.key ? 700 : 400,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    whiteSpace: 'nowrap',
+                    transition: 'all 0.15s'
+                  }}
+                >
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: tab.color }} />
+                  {tab.label}
+                  <span style={{
+                    fontSize: '10px',
+                    padding: '2px 6px',
+                    borderRadius: '10px',
+                    background: activeListTab === tab.key ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.04)',
+                    color: 'var(--text-muted)'
+                  }}>
+                    {tab.count}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {/* Tab content rendering */}
             {visNodes.length ? (
-              <ul className="network-entity-list">
-                {visNodes.map(node => (
-                  <li key={node.id}>
-                    <button type="button" onClick={() => setSelectedNode(node)} aria-current={selectedNode?.id === node.id ? 'true' : undefined}>
-                      <span className="network-entity-marker" style={{ backgroundColor: ENTITY[node.type]?.color }} aria-hidden="true" />
-                      <span className="network-entity-copy"><strong>{node.label}</strong><span>{ENTITY[node.type]?.label || node.type}</span></span>
-                      <span className="network-entity-count">{graphStats.deg[node.id] || 0} connection{(graphStats.deg[node.id] || 0) === 1 ? '' : 's'}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
+              <div>
+                {/* 1. Accused Tab */}
+                {activeListTab === 'criminal' && (
+                  groupedNodes.criminal.length ? (
+                    <ul className="network-entity-list">
+                      {groupedNodes.criminal.map(node => (
+                        <li key={node.id}>
+                          <button type="button" onClick={() => setSelectedNode(node)} aria-current={selectedNode?.id === node.id ? 'true' : undefined}>
+                            <span className="network-entity-marker" style={{ backgroundColor: ENTITY.criminal.color }} />
+                            <span className="network-entity-copy">
+                              <strong>{node.label}</strong>
+                              <span>
+                                {node.data?.Gender || 'M'}&nbsp;·&nbsp;{node.data?.Age ? `Age ${node.data.Age}` : 'Age N/A'}&nbsp;·&nbsp;{node.data?.Occupation || 'Suspect'}
+                              </span>
+                            </span>
+                            <span className="network-entity-count">
+                              {graphStats.deg[node.id] || 0} link{(graphStats.deg[node.id] || 0) === 1 ? '' : 's'}
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : <div className="network-empty">No accused records found.</div>
+                )}
+
+                {/* 2. Cases Tab */}
+                {activeListTab === 'case' && (
+                  groupedNodes.case.length ? (
+                    <ul className="network-entity-list">
+                      {groupedNodes.case.map(node => (
+                        <li key={node.id}>
+                          <button type="button" onClick={() => setSelectedNode(node)} aria-current={selectedNode?.id === node.id ? 'true' : undefined}>
+                            <span className="network-entity-marker" style={{ backgroundColor: ENTITY.case.color }} />
+                            <span className="network-entity-copy">
+                              <strong>{node.label}</strong>
+                              <span>
+                                {node.data?.majorHeadName || 'Crime Case'}&nbsp;·&nbsp;{node.data?.FIRDate ? new Date(node.data.FIRDate).toLocaleDateString() : 'N/A'}
+                              </span>
+                            </span>
+                            <span className="network-entity-count">
+                              {graphStats.deg[node.id] || 0} link{(graphStats.deg[node.id] || 0) === 1 ? '' : 's'}
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : <div className="network-empty">No case records found.</div>
+                )}
+
+                {/* 3. Victims Tab */}
+                {activeListTab === 'victim' && (
+                  groupedNodes.victim.length ? (
+                    <ul className="network-entity-list">
+                      {groupedNodes.victim.map(node => (
+                        <li key={node.id}>
+                          <button type="button" onClick={() => setSelectedNode(node)} aria-current={selectedNode?.id === node.id ? 'true' : undefined}>
+                            <span className="network-entity-marker" style={{ backgroundColor: ENTITY.victim.color }} />
+                            <span className="network-entity-copy">
+                              <strong>{node.label}</strong>
+                              <span>
+                                Victim&nbsp;·&nbsp;{node.data?.Gender || 'F'}&nbsp;·&nbsp;{node.data?.Age ? `Age ${node.data.Age}` : 'Age N/A'}
+                              </span>
+                            </span>
+                            <span className="network-entity-count">
+                              {graphStats.deg[node.id] || 0} link{(graphStats.deg[node.id] || 0) === 1 ? '' : 's'}
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : <div className="network-empty">No victim records found.</div>
+                )}
+
+                {/* 4. Locations Tab */}
+                {activeListTab === 'location' && (
+                  (groupedNodes.station.length + groupedNodes.district.length) ? (
+                    <ul className="network-entity-list">
+                      {[...groupedNodes.station, ...groupedNodes.district].map(node => (
+                        <li key={node.id}>
+                          <button type="button" onClick={() => setSelectedNode(node)} aria-current={selectedNode?.id === node.id ? 'true' : undefined}>
+                            <span className="network-entity-marker" style={{ backgroundColor: ENTITY[node.type]?.color }} />
+                            <span className="network-entity-copy">
+                              <strong>{node.label}</strong>
+                              <span style={{ textTransform: 'capitalize' }}>
+                                {node.type === 'station' ? 'Police Station' : 'District'}
+                              </span>
+                            </span>
+                            <span className="network-entity-count">
+                              {graphStats.deg[node.id] || 0} link{(graphStats.deg[node.id] || 0) === 1 ? '' : 's'}
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : <div className="network-empty">No location records found.</div>
+                )}
+              </div>
             ) : (
               <div className="network-empty" role="status">No entities match the current search and filter. Clear them to view the network.</div>
             )}
@@ -849,6 +1043,37 @@ export default function NetworkGraph() {
                 <button onClick={() => setSearch('')} style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '16px', lineHeight: 1, padding: '2px' }}>×</button>
               )}
             </div>
+            
+            {/* Crime Category Select Dropdown */}
+            <div style={{ marginBottom: '12px' }}>
+              <label htmlFor="crime-type-select" style={{ display: 'block', fontSize: '10px', fontWeight: 'bold', color: 'var(--text-muted)', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Type of Crime
+              </label>
+              <select
+                id="crime-type-select"
+                value={selectedCrimeType}
+                onChange={e => setSelectedCrimeType(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '8px 10px',
+                  borderRadius: '8px',
+                  background: 'var(--bg-panel-alt)',
+                  border: '1px solid var(--border-color)',
+                  color: 'var(--text-primary)',
+                  fontSize: '12px',
+                  outline: 'none',
+                  cursor: 'pointer',
+                  minHeight: '34px'
+                }}
+              >
+                {crimeTypesList.map(type => (
+                  <option key={type} value={type}>
+                    {type === 'all' ? 'All Crime Categories' : type}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
               {FILTER_CHIPS.map(f => (
                 <button
@@ -899,8 +1124,8 @@ export default function NetworkGraph() {
             )}
           </div>
 
-          {/* Node detail panel */}
-          {selectedNode ? (
+          {/* Node detail panel (only in graph view mode) */}
+          {selectedNode && viewMode === 'graph' ? (
             <div style={{ ...card, border: `1px solid ${ENTITY[selectedNode.type]?.color || 'var(--border-color)'}35`, flex: 1 }}>
               {/* Header */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
@@ -958,7 +1183,7 @@ export default function NetworkGraph() {
                 CONNECTIONS &nbsp;
                 <span style={{ color: '#4fc3f7', fontWeight: 700 }}>({connItems.length})</span>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '220px', overflowY: 'auto', paddingRight: '2px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '200px', overflowY: 'auto', paddingRight: '2px' }}>
                 {connItems.length === 0 && (
                   <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '12px', padding: '16px' }}>No visible connections</div>
                 )}
@@ -988,20 +1213,159 @@ export default function NetworkGraph() {
             </div>
           ) : (
             <div style={{ ...card, flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', color: 'var(--text-muted)', gap: '12px', minHeight: '160px' }}>
-              <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: 'rgba(123,47,247,0.08)', border: '1px solid rgba(123,47,247,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <MdHub size={26} style={{ opacity: 0.4 }} />
+              <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: 'rgba(79,195,247,0.08)', border: '1px solid rgba(79,195,247,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <MdHub size={26} style={{ color: '#4fc3f7', opacity: 0.6 }} />
               </div>
               <div>
-                <div style={{ fontSize: '13px', marginBottom: '4px' }}>Click a node to inspect</div>
+                <div style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 600, marginBottom: '4px' }}>Criminal Intelligence Index</div>
                 <div style={{ fontSize: '11px', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-                  Neighbours highlight automatically<br />
-                  Double-click to pin nodes in place
+                  Click any node in the list or graph view to open the centralized inspection dossier.
                 </div>
               </div>
             </div>
           )}
         </div>
       </div>
+
+      {/* ── Centralized Dossier Detail Modal Popup (Only in List View) ───── */}
+      {selectedNode && viewMode === 'list' && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            backgroundColor: 'rgba(5, 12, 22, 0.82)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 999999,
+          }}
+          onClick={() => setSelectedNode(null)}
+        >
+          <div 
+            style={{
+              width: 'min(480px, calc(100vw - 32px))',
+              background: 'var(--bg-panel)',
+              border: `1px solid ${ENTITY[selectedNode.type]?.color || 'var(--border-color)'}45`,
+              borderRadius: '16px',
+              boxShadow: `0 24px 60px rgba(0,0,0,0.8), 0 0 35px ${(ENTITY[selectedNode.type]?.color || '#fff')}15`,
+              padding: '24px',
+              position: 'relative',
+              boxSizing: 'border-box',
+              animation: 'fadeInUp 200ms ease-out',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Corner Close Button */}
+            <button
+              type="button"
+              aria-label="Close details popup"
+              onClick={() => setSelectedNode(null)}
+              style={{
+                position: 'absolute',
+                top: '16px',
+                right: '16px',
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                color: 'var(--text-secondary)',
+                cursor: 'pointer',
+                padding: '6px',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.15s',
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
+            >
+              <MdClose size={18} />
+            </button>
+
+            {/* Modal Dossier Content */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '3px 10px', borderRadius: '20px', background: `${ENTITY[selectedNode.type]?.color || '#fff'}18`, border: `1px solid ${ENTITY[selectedNode.type]?.color || '#fff'}35`, marginBottom: '10px' }}>
+                <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: ENTITY[selectedNode.type]?.color, boxShadow: `0 0 6px ${ENTITY[selectedNode.type]?.color}` }} />
+                <span style={{ fontSize: '10px', fontWeight: 700, color: ENTITY[selectedNode.type]?.color, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  {ENTITY[selectedNode.type]?.label || selectedNode.type}
+                </span>
+              </div>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.3, paddingRight: '24px' }}>
+                {selectedNode.label}
+              </h3>
+            </div>
+
+            {/* Case details */}
+            {selectedNode.type === 'case' && selectedNode.data && (
+              <div style={{ marginBottom: '16px' }}>
+                {selectedNode.data.statusName && (
+                  <div style={{ display: 'inline-block', padding: '3px 10px', borderRadius: '6px', background: 'rgba(255,179,0,0.12)', color: '#FFB300', fontSize: '11px', fontWeight: 600, marginBottom: '10px', border: '1px solid rgba(255,179,0,0.2)' }}>
+                    {selectedNode.data.statusName}
+                  </div>
+                )}
+                {selectedNode.data.BriefFacts && (
+                  <div style={{ padding: '12px 14px', background: 'var(--bg-panel-alt)', borderRadius: '10px', fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: 1.6, maxHeight: '120px', overflowY: 'auto', borderLeft: '4px solid rgba(79,195,247,0.5)' }}>
+                    {selectedNode.data.BriefFacts}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Accused details */}
+            {selectedNode.type === 'criminal' && selectedNode.data && (
+              <div style={{ marginBottom: '16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                {[
+                  { label: 'Age',      value: selectedNode.data.Age || '—' },
+                  { label: 'Gender',   value: selectedNode.data.Gender || '—' },
+                  { label: 'Alias',    value: selectedNode.data.AccusedAliasName || '—' },
+                  { label: 'District', value: selectedNode.data.districtName || '—' },
+                ].map(f => (
+                  <div key={f.label} style={{ background: 'var(--bg-panel-alt)', borderRadius: '8px', padding: '8px 10px' }}>
+                    <div style={{ fontSize: '9px', color: 'var(--text-muted)', marginBottom: '3px', fontWeight: 'bold' }}>{f.label.toUpperCase()}</div>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.value}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Connections list */}
+            <div style={{ ...metaRow, marginBottom: '10px' }}>
+              CONNECTIONS &nbsp;
+              <span style={{ color: '#4fc3f7', fontWeight: 700 }}>({connItems.length})</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', maxHeight: '180px', overflowY: 'auto', paddingRight: '2px', marginBottom: '16px' }}>
+              {connItems.length === 0 && (
+                <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '12.5px', padding: '16px' }}>No visible connections</div>
+              )}
+              {connItems.map((item, i) => (
+                <button
+                  type="button"
+                  key={i}
+                  onClick={() => { const n = nodeMap.get(item.id); if (n) setSelectedNode(n); }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 12px', borderRadius: '8px', cursor: 'pointer', background: 'var(--bg-panel-alt)', border: '1px solid transparent', transition: 'all 0.15s', fontSize: '12.5px', width: '100%', textAlign: 'left' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = `${ENTITY[item.nodeType]?.color || '#fff'}12`; e.currentTarget.style.borderColor = `${ENTITY[item.nodeType]?.color || '#fff'}30`; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-panel-alt)'; e.currentTarget.style.borderColor = 'transparent'; }}
+                >
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: ENTITY[item.nodeType]?.color || '#888', boxShadow: `0 0 5px ${ENTITY[item.nodeType]?.color || '#888'}`, flexShrink: 0 }} />
+                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-primary)', fontWeight: 500 }}>{item.label}</span>
+                  <span style={{ fontSize: '10px', color: 'var(--text-muted)', flexShrink: 0, background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px' }}>
+                    {(item.edgeType || '').replace(/_/g, ' ')}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {/* Pin hint */}
+            <div style={{ padding: '8px 10px', borderRadius: '8px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+              <MdPushPin size={12} style={{ color: pinnedNodes.has(selectedNode.id) ? '#FFD54F' : 'var(--text-muted)' }} />
+              {pinnedNodes.has(selectedNode.id) ? 'Node pinned — double-click to release' : 'Double-click on canvas to pin this node'}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
