@@ -23,12 +23,18 @@ export default function PIIUnlockModal({ isOpen, onClose }) {
   // Pre-populate input fields if session already has officer details
   useEffect(() => {
     if (isOpen) {
-      setForm({
-        officerName: session.officerName || '',
-        badgeId: session.badgeId || '',
-        unitName: session.unitName || '',
-        email: ''
-      });
+      setForm(prev => ({
+        ...prev,
+        officerName: prev.officerName || session.officerName || '',
+        badgeId: prev.badgeId || session.badgeId || '',
+        unitName: prev.unitName || session.unitName || '',
+        email: session.email || prev.email || ''
+      }));
+    }
+  }, [isOpen, session.officerName, session.badgeId, session.unitName, session.email]);
+
+  useEffect(() => {
+    if (isOpen) {
       setStep('input');
       setOtpCode('');
       setDebugOtp('');
@@ -42,7 +48,7 @@ export default function PIIUnlockModal({ isOpen, onClose }) {
         }
       }, 50);
     }
-  }, [isOpen, session]);
+  }, [isOpen]);
 
   // Trap focus and listen for ESC key
   useEffect(() => {
@@ -302,17 +308,18 @@ export default function PIIUnlockModal({ isOpen, onClose }) {
                 onChange={e => handleFieldChange('email', e.target.value)} 
                 placeholder="e.g. officer@ksp.gov.in" 
                 required 
-                disabled={isLoading}
+                disabled={isLoading || !!session.email}
                 style={{
                   width: '100%',
                   padding: '8px 10px',
                   borderRadius: '4px',
                   border: '1px solid var(--border-color)',
-                  background: 'var(--bg-panel-alt)',
-                  color: 'var(--text-primary)',
+                  background: session.email ? 'rgba(255,255,255,0.05)' : 'var(--bg-panel-alt)',
+                  color: session.email ? 'var(--text-muted)' : 'var(--text-primary)',
                   fontSize: '12px',
                   boxSizing: 'border-box',
-                  minHeight: '36px'
+                  minHeight: '36px',
+                  cursor: session.email ? 'not-allowed' : 'text'
                 }} 
               />
             </div>

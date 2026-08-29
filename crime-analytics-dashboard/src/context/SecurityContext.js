@@ -9,6 +9,7 @@ const defaultSession = {
   unitName: '',
   role: 'Redacted Analyst',
   accessLevel: 'redacted',
+  email: '',
   unlockedAt: null
 };
 
@@ -56,20 +57,39 @@ export function SecurityProvider({ children }) {
     window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(session));
   }, [session]);
 
+  // Try to automatically grab the authenticated user's email from Catalyst
+  useEffect(() => {
+    async function fetchCatalystProfile() {
+      if (!session.email && window.catalyst && window.catalyst.auth) {
+        try {
+          const res = await window.catalyst.auth.isUserAuthenticated();
+          const email = res?.content?.email_id || res?.content?.email;
+          if (email) {
+            setSession(prev => ({ ...prev, email: email }));
+          }
+        } catch (err) {
+          console.warn('Could not retrieve Catalyst user profile for email auto-fill', err);
+        }
+      }
+    }
+    fetchCatalystProfile();
+  }, []);
+
   const verifyOfficer = useCallback((officerName, badgeId, station) => {
     const badgePattern = /^KG\d{4,}$/i;
     if (!badgePattern.test(badgeId)) {
       throw new Error('Badge Number must start with "KG" followed by at least 4 digits (e.g. KG12345)');
     }
 
-    setSession({
+    setSession(prev => ({
+      ...prev,
       officerName: officerName.trim(),
       badgeId: badgeId.trim().toUpperCase(),
       unitName: station.trim(),
       role: 'Command Level',
       accessLevel: 'command',
       unlockedAt: new Date().getTime()
-    });
+    }));
 
     logAuditEvent(officerName.trim(), badgeId.trim().toUpperCase(), station.trim(), 'unlocked');
   }, []);
@@ -96,12 +116,13 @@ export function SecurityProvider({ children }) {
     });
   }, []);
 
-  const startSecureSession = useCallback(({ officerName, badgeId, unitName, role }) => {
+  const startSecureSession = useCallback(({ officerName, badgeId, unitName, role, email }) => {
     setSession({
       officerName: officerName?.trim() || 'Duty Officer',
       badgeId: badgeId?.trim() || 'UNASSIGNED',
       unitName: unitName?.trim() || 'State Control Room',
       role: role || 'Field Officer',
+      email: email?.trim() || '',
       accessLevel: 'command',
       unlockedAt: new Date().getTime()
     });
@@ -119,8 +140,12 @@ export function SecurityProvider({ children }) {
       idleTimer = setTimeout(() => {
         setSession(prev => {
           if (prev.accessLevel === 'command') {
-            logAuditEvent(prev.officerName, prev.badgeId, prev.unitName, 'ended session automatically after 2 minutes 30 seconds of inactivity');
-            return defaultSession;
+            logAuditEvent(prev.officerName, prev.badgeId, prev.unitName, 'ended session automatically after 2.5 minutes of inactivity');
+            return {
+              ...prev,
+              accessLevel: 'redacted',
+              role: 'Redacted Analyst'
+            };
           }
           return prev;
         });
