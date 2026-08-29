@@ -997,10 +997,8 @@ function CrimeMap({ selectedDistrict: globalDistrict, selectedCrimeType: globalC
           >
             <TileLayer
               key={theme}
-              url={theme === 'dark' 
-                ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png' 
-                : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'}
-              attribution='&copy; CARTO'
+              url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution="&copy; OpenStreetMap contributors"
             />
             <MapController center={mapCenter} zoom={mapZoom} />
             <MapInteractionController enabled={mapInteractive} />

@@ -203,11 +203,9 @@ function KarnatakaMap({ cases, selectedDistrict, setSelectedDistrict }) {
         attributionControl={false}
       >
         <ResizeMap />
-        <TileLayer 
-          url={theme === 'dark' 
-            ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-            : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-          }
+        <TileLayer
+          url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution="&copy; OpenStreetMap contributors"
         />
         {geoJsonData && (
           <GeoJSON 

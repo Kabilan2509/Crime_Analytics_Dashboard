@@ -1538,8 +1538,8 @@ function Reports() {
           <div style={{ height: '240px', width: '100%', border: '1px solid #cbd5e1', position: 'relative', zIndex: 1 }}>
             <MapContainer center={mapCenter} zoom={6} style={{ height: '100%', width: '100%' }}>
               <TileLayer
-                url={theme === 'dark' ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png' : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'}
-                attribution='&copy; OpenStreetMap'
+                url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+                attribution="&copy; OpenStreetMap contributors"
               />
               {hotspotData.filter(h => h.count > 0).map(h => (
                 <CircleMarker
@@ -1760,7 +1760,10 @@ function Reports() {
             </h5>
             <div style={{ height: '180px', width: '100%', border: '1px solid #cbd5e1', position: 'relative', zIndex: 1 }}>
               <MapContainer center={stationCenter} zoom={11} style={{ height: '100%', width: '100%' }}>
-                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                <TileLayer
+                  url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  attribution="&copy; OpenStreetMap contributors"
+                />
                 <CircleMarker center={stationCenter} radius={12} fillColor="#16a34a" color="#16a34a" fillOpacity={0.3} />
               </MapContainer>
             </div>
@@ -1967,7 +1970,10 @@ function Reports() {
             </h5>
             <div style={{ height: '180px', width: '100%', border: '1px solid #cbd5e1', position: 'relative', zIndex: 1 }}>
               <MapContainer center={distCenter} zoom={9} style={{ height: '100%', width: '100%' }}>
-                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                <TileLayer
+                  url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  attribution="&copy; OpenStreetMap contributors"
+                />
                 <CircleMarker center={distCenter} radius={25} fillColor="#2563eb" color="#2563eb" fillOpacity={0.2} />
               </MapContainer>
             </div>

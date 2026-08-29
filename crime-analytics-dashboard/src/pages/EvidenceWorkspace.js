@@ -1322,10 +1322,8 @@ function EvidenceWorkspace() {
                         attributionControl={false}
                       >
                         <TileLayer
-                          url={document.documentElement.getAttribute('data-theme') === 'dark'
-                            ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-                            : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-                          }
+                          url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+                          attribution="&copy; OpenStreetMap contributors"
                         />
                         <CircleMarker
                           center={[selectedItem.gps.lat, selectedItem.gps.lng]}

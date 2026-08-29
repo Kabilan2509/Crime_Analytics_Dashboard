@@ -16,11 +16,8 @@ function SituationalMapSection({ mapData, theme, onDistrictClick, activeKpiFilte
   const mapCenter = [14.85, 75.8]; // Karnataka center
   const mapZoom = 6;
 
-  // Determine map tiles
-  const isDark = theme === 'dark';
-  const tileUrl = isDark
-    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-    : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+  // Public tiles need no API key and work in every deployed environment.
+  const tileUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 
   const handleOpenFullGis = () => {
     navigate('/map');
@@ -187,7 +184,7 @@ function SituationalMapSection({ mapData, theme, onDistrictClick, activeKpiFilte
             attributionControl={false}
             style={{ width: '100%', height: '100%', background: 'transparent' }}
           >
-            <TileLayer url={tileUrl} />
+            <TileLayer url={tileUrl} attribution="&copy; OpenStreetMap contributors" />
             
             {/* 1. Render bubbles representing district risk score */}
             {filteredDistrictsRisk.map(d => {

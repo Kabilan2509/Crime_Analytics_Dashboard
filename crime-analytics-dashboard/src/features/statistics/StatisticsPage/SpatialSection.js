@@ -120,10 +120,8 @@ function SpatialSection({ spatialData, theme, onDistrictClick }) {
           <MapContainer center={mapCenter} zoom={mapZoom} style={{ height: '100%', width: '100%' }} zoomControl={false}>
             <TileLayer
               key={theme}
-              url={theme === 'dark' 
-                ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png' 
-                : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'}
-              attribution='&copy; CARTO'
+              url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution="&copy; OpenStreetMap contributors"
             />
 
             {/* Render bubbles for district aggregates */}
