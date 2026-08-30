@@ -24,8 +24,8 @@ import {
   MdHub, MdSearch, MdZoomIn, MdZoomOut, MdCenterFocusStrong,
   MdPushPin, MdClose, MdViewList, MdAccountTree,
 } from 'react-icons/md';
-import { buildNetworkData, getNodeStats, ENTITY } from '../features/network/graphUtils';
-import { caseViews, accused, victims, districts, units } from '../data/schemaSelectors';
+import { buildNetworkData, ENTITY } from '../features/network/graphUtils';
+import { caseViews, districts, units } from '../data/schemaSelectors';
 import { useSecurity } from '../context/SecurityContext';
 import { getSecureCaseViews } from '../security/securityUtils';
 
@@ -183,7 +183,6 @@ export default function NetworkGraph() {
   useEffect(() => { labelModeRef.current = labelMode; },  [labelMode]);
 
   const intelligenceStats = useMemo(() => {
-    const totalCases = caseViews.length;
     const heinousCount = caseViews.filter(c => c.isHeinous).length;
     
     const accusedNamesMap = new Map();
@@ -318,6 +317,13 @@ export default function NetworkGraph() {
       const dpr  = window.devicePixelRatio || 1;
       const rect = canvas.getBoundingClientRect();
       const W = rect.width, H = rect.height;
+      
+      // Early exit if canvas is hidden/zero-size to prevent infinite loops
+      if (W === 0 || H === 0) {
+        animRef.current = requestAnimationFrame(frame);
+        return;
+      }
+
       if (canvas.width !== Math.round(W * dpr) || canvas.height !== Math.round(H * dpr)) {
         canvas.width  = Math.round(W * dpr);
         canvas.height = Math.round(H * dpr);
@@ -329,7 +335,8 @@ export default function NetworkGraph() {
         const ys = nodes.map(node => node.y);
         const minX = Math.min(...xs), maxX = Math.max(...xs);
         const minY = Math.min(...ys), maxY = Math.max(...ys);
-        const fitZoom = Math.min((W - 48) / Math.max(maxX - minX, 1), (H - 48) / Math.max(maxY - minY, 1), 1);
+        let fitZoom = Math.min((W - 48) / Math.max(maxX - minX, 1), (H - 48) / Math.max(maxY - minY, 1), 1);
+        fitZoom = Math.max(fitZoom, 0.05); // Prevent negative or zero zoom
         transformRef.current = {
           zoom: fitZoom,
           x: W / 2 - ((minX + maxX) / 2) * fitZoom,
@@ -402,7 +409,7 @@ export default function NetworkGraph() {
       ctx.save();
       ctx.strokeStyle = 'rgba(255,255,255,0.025)';
       ctx.lineWidth   = 1;
-      const step = 60 * tz;
+      const step = Math.max(60 * tz, 5); // Prevent infinite loop if tz is 0
       const ox   = ((tx % step) + step) % step;
       const oy   = ((ty % step) + step) % step;
       for (let gx = ox - step; gx < W + step; gx += step) {
@@ -632,7 +639,8 @@ export default function NetworkGraph() {
     const rect = canvas.getBoundingClientRect();
     const xs = visNodes.map(node => node.x), ys = visNodes.map(node => node.y);
     const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
-    const fitZoom = Math.min((rect.width - 48) / Math.max(maxX - minX, 1), (rect.height - 48) / Math.max(maxY - minY, 1), 1);
+    let fitZoom = Math.min((rect.width - 48) / Math.max(maxX - minX, 1), (rect.height - 48) / Math.max(maxY - minY, 1), 1);
+    fitZoom = Math.max(fitZoom, 0.05);
     transformRef.current = {
       zoom: fitZoom,
       x: rect.width / 2 - ((minX + maxX) / 2) * fitZoom,
@@ -659,6 +667,7 @@ export default function NetworkGraph() {
     } else if (event.key === 'Escape') {
       setSelectedNode(null);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visNodes]);
 
   // ── Styles ─────────────────────────────────────────────────────────────────

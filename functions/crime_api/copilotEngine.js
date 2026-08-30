@@ -1,6 +1,6 @@
-/**
- * copilotEngine.js — MADHUKAR AI Copilot (GLM-4.7-Flash Powered)
+* copilotEngine.js — MADHUKAR AI Copilot (GLM-4.7-Flash Powered)
  *
+/**
  * Uses Catalyst GLM-4.7-Flash (30B MoE) as the intelligence layer.
  * The LLM understands natural language queries and calls tools to fetch
  * live crime data from the shared dataCache. Responses are intelligent
