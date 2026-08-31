@@ -1,217 +1,111 @@
-# MADHUKAR — KSP Crime Analytics Dashboard
+# MADHUKAR - KSP Crime Intelligence Platform
 
 **Modern Analytics and Data Hub for User-Friendly Karnataka Anti-Crime Response**
 
-MADHUKAR is a secure, data-driven crime analytics and operational intelligence dashboard developed for the **Karnataka State Police (KSP) Datathon**, organized using **Zoho Catalyst**. It brings statewide crime data, geospatial intelligence, investigation workflows, predictive indicators, reports, and AI-assisted analysis into a single command interface.
+MADHUKAR is an AI-enabled crime intelligence and investigation platform developed for the Karnataka State Police Datathon. It brings FIR, case, suspect, evidence, geographic, and police-station data into one secure operational environment, enabling authorised users to move from statewide intelligence to case-level investigation.
 
-## Live Deployment
+## Live Prototype
 
-| Environment | URL |
+| Service | Link |
 | --- | --- |
-| Zoho Catalyst Development | [Open MADHUKAR Dashboard](https://ksp-crime-analytics-60076926826.development.catalystserverless.in/app/) |
-| Catalyst Hosted Login | [Open secure login](https://ksp-crime-analytics-60076926826.development.catalystserverless.in/__catalyst/auth/login) |
+| Dashboard | [Open MADHUKAR](https://ksp-crime-analytics-60076926826.development.catalystserverless.in/app/) |
+| Secure login | [Catalyst Hosted Login](https://ksp-crime-analytics-60076926826.development.catalystserverless.in/__catalyst/auth/login) |
 
-> The public link opens the Catalyst authentication flow. Access requires a user registered or permitted through the project's Catalyst Authentication configuration.
+> The hosted prototype is intended for hackathon demonstration accounts only. It uses demo data; credentials should be shared only with authorised evaluators.
 
 ## Problem Statement
 
-Crime information is often distributed across case records, geographic datasets, evidence systems, station-level reports, and historical statistics. This fragmentation slows situational awareness and makes correlations difficult to identify.
+Crime information is typically distributed across FIRs, station reports, case files, geographic systems, evidence stores, and historical records. This fragmentation delays situational awareness and makes it difficult to discover hotspots, case relationships, and emerging risks.
 
-MADHUKAR provides a unified operational view that helps authorized police personnel:
+MADHUKAR provides a unified command environment that supports authorised officers in monitoring crime, analysing geography and trends, investigating linked entities, producing briefings, and reviewing AI-assisted decision-support outputs.
 
-- Monitor statewide and district-level crime indicators.
-- Identify geographic concentrations and emerging patterns.
-- Inspect serious FIRs and case status information.
-- Correlate suspects, cases, evidence, and timelines.
-- Generate statistical and operational reports.
-- Review predictive risk indicators and AI-assisted insights.
-- Move from high-level alerts to case-level investigation workflows.
+## Core Capabilities
 
-## Key Capabilities
+- **Command dashboard:** statewide and district KPIs, trends, category breakdowns, serious cases, alerts, and performance views.
+- **GIS intelligence:** district maps, crime markers, heatmaps, hotspot analysis, filters, and drill-down.
+- **Investigation workspace:** linked cases, suspects, evidence, timelines, and criminal-network relationships.
+- **Predictive intelligence:** district risk scores, forecasts, anomalies, and priority indicators. QuickML risk inference is used when configured.
+- **MADHUKAR AI Copilot:** natural-language queries over the application dataset, with tool-assisted searches, analyses, and risk requests.
+- **Reports and briefing:** downloadable operational reports, situational summaries, alerts, and recommendations.
+- **Security controls:** Catalyst hosted authentication, role-oriented UI access, OTP-based PII verification, session controls, and audit-focused workflows.
+- **Automation:** scheduled threat assessment and threat-alert endpoints for recurring risk evaluation.
 
-- **Command dashboard:** Operational KPIs, alerts, crime distribution, trends, district performance, and serious FIR summaries.
-- **GIS intelligence:** Karnataka district choropleth, crime markers, heat layers, filters, timelines, and district drill-down.
-- **Statistical analytics:** Temporal patterns, category distributions, spatial comparisons, performance rankings, and AI insights.
-- **Case investigation:** Case overview, evidence workspace, suspect timeline, and evidence correlation.
-- **Criminal network analysis:** Relationship graph for connected suspects, cases, and entities.
-- **Predictive intelligence:** Regional risk scores, forecasts, anomalies, and priority indicators.
-- **Operational briefing:** Executive summaries, trend comparisons, recommendations, alerts, and situational maps.
-- **AI Copilot:** Natural-language assistance backed by the serverless crime API and configured model integration.
-- **Reports and exports:** PDF/image-based report generation and downloadable operational summaries.
-- **Administration:** User-management views, access indicators, security settings, and audit information.
-- **Accessibility:** Theme controls, high contrast, color-safe presentation, scalable text, keyboard support, and responsive layouts.
+The deployed prototype is backed by **1,501 FIR records across 26 structured tables**.
 
-## System Architecture
+## Architecture
 
 ```mermaid
 flowchart LR
-    U[Authorized KSP User] --> A[Catalyst Hosted Authentication]
-    A -->|Authenticated session| C[React Web Client]
-
-    subgraph Client[Zoho Catalyst Web Client]
-        C --> UI[Dashboard and Investigation Modules]
-        UI --> DS[Frontend Data Service]
-        UI --> SEC[Session, Role and PII Controls]
-    end
-
-    DS --> API[Crime API — Catalyst Advanced I/O Function]
-
-    subgraph Backend[Zoho Catalyst Serverless Backend]
-        API --> CACHE[Application Data Cache]
-        API --> ANALYTICS[Aggregation and Analytics]
-        API --> COPILOT[Copilot Engine]
-        COPILOT --> GLM[Configured Generative AI Endpoint]
-    end
-
-    API --> STORE[(Catalyst Data Store)]
-    STORE --> API
+    U[Authorised KSP User] --> A[Catalyst Hosted Authentication]
+    A --> C[React Web Client]
+    C --> API[Crime API: Catalyst Advanced I/O]
+    API --> D[(Catalyst Data Store / ZCQL)]
+    API --> Cache[Application Cache]
+    API --> ML[QuickML Risk Inference]
+    API --> AI[MADHUKAR AI Copilot]
+    API --> R[Dashboards, Maps, Cases, Reports]
 ```
 
-### Request Flow
+### Request flow
 
-1. A user opens the hosted `/app/` endpoint.
-2. The client checks for a valid browser session and Catalyst authentication.
-3. Unauthenticated users are redirected to Catalyst Hosted Login.
-4. After successful authentication, Catalyst returns the user to `/app/index.html`.
-5. The client validates the Catalyst user and opens the canonical `/app/` dashboard.
-6. Dashboard modules request operational data from `/server/crime_api/api/*`.
-7. The Catalyst function queries Data Store, applies joins/aggregations, and returns normalized JSON.
-8. React renders maps, charts, tables, investigation workspaces, and reports.
+1. The user opens the hosted `/app/` client and authenticates through Catalyst.
+2. React renders the command dashboard and calls `/server/crime_api/api/*`.
+3. The serverless API validates and normalises Data Store results, joins records, and caches application data.
+4. The client renders KPIs, maps, charts, case workspaces, reports, and Copilot responses.
 
 ## Technology Stack
 
 | Layer | Technology |
 | --- | --- |
-| Frontend | React 19, React Router |
-| Charts | Recharts |
-| Maps | Leaflet, React Leaflet, Turf, heat and marker-cluster plugins |
-| Icons | React Icons |
-| Reports | jsPDF, jsPDF AutoTable, html2canvas |
+| Frontend | React 19, React Router, React Icons |
+| Visualisation | Recharts, Leaflet, React Leaflet, Turf, heat and marker-cluster plugins |
+| Reporting | jsPDF, jsPDF AutoTable, html2canvas |
 | Backend | Node.js, Express, Zoho Catalyst Advanced I/O Function |
-| Database | Zoho Catalyst Data Store and ZCQL |
-| Authentication | Zoho Catalyst Hosted Authentication and Web SDK |
-| Hosting | Zoho Catalyst Web Client Hosting |
-| AI integration | Server-side Copilot engine and configured Zoho model endpoint |
+| Data | Zoho Catalyst Data Store, ZCQL, application cache |
+| AI/ML | MADHUKAR Copilot, configured GLM endpoint, Zoho Catalyst QuickML |
+| Security and hosting | Catalyst Hosted Authentication, Web SDK, Web Client Hosting |
 
-## Security and Session Controls
-
-- The deployed React application validates the current user through the Catalyst Web SDK before rendering protected content.
-- Direct access to `/app/` without a current browser session redirects to Catalyst Hosted Login.
-- A browser-scoped marker is stored in `sessionStorage`; it expires when the browser session closes.
-- An inactivity timer logs the user out after **2 minutes 30 seconds** without mouse, pointer, keyboard, scroll, click, or touch activity.
-- Manual logout and automatic timeout clear the local browser-session marker, end the Catalyst session, and return the user to the hosted login page.
-- PII access has a separate restricted/command-mode workflow and local audit trail.
-- Sensitive model credentials belong in Catalyst function environment variables and must never be committed to Git.
-
-> The client-side role and PII indicators support the demonstration workflow. Production authorization must also be enforced on every protected backend API and Data Store operation using Catalyst Security Rules and server-side role checks.
-
-## Project Structure
+## Repository Structure
 
 ```text
 .
-├── catalyst.json                         # Catalyst project resource configuration
-├── crime-analytics-dashboard/            # React web client
-│   ├── client-package.json               # Hosted client/login redirect configuration
-│   ├── public/                            # Static assets and KSP emblem
-│   └── src/
-│       ├── components/                    # Header, sidebar, filters and shared UI
-│       ├── context/                       # Security and date-filter contexts
-│       ├── data/                          # Schema adapters and sample data
-│       ├── features/                      # Feature-specific charts, maps and logic
-│       ├── pages/                         # Routed application pages
-│       ├── security/                      # Redaction and security utilities
-│       ├── services/                      # Catalyst/sample data service
-│       ├── App.js                         # Application shell and routes
-│       └── index.js                       # Authentication gate and React entry point
-├── functions/
-│   ├── crime_api/                         # Primary Catalyst Advanced I/O API
-│   │   ├── index.js                       # Express endpoints
-│   │   ├── dataCache.js                   # Server-side data cache
-│   │   ├── copilotEngine.js               # Copilot orchestration
-│   │   └── glmClient.js                   # Model endpoint client
-│   └── ksp_crime_analytics_function/      # Additional Catalyst function resource
-└── docs/                                  # Integration and technical notes
+|-- catalyst.json                          # Catalyst resource configuration
+|-- crime-analytics-dashboard/             # React web client
+|   |-- public/                            # Static assets
+|   |-- src/                               # Pages, features, components, services
+|   |-- client-package.json                # Client-hosting configuration
+|   `-- package.json
+`-- functions/
+    |-- crime_api/                         # Primary Advanced I/O API
+    |   |-- index.js                       # API routes
+    |   |-- dataCache.js                   # Cache and data access helpers
+    |   |-- copilotEngine.js               # Copilot orchestration and QuickML calls
+    |   `-- glmClient.js                   # Configured model endpoint client
+    `-- ksp_crime_analytics_function/      # Additional function resource
 ```
-
-## Backend API
-
-The client communicates with the Catalyst function through:
-
-```text
-/server/crime_api/api
-```
-
-Major routes include:
-
-| Method | Route | Purpose |
-| --- | --- | --- |
-| `GET` | `/api/app-data` | Retrieve the cached, normalized application dataset |
-| `GET` | `/api/dashboard` | Dashboard KPIs and chart-ready aggregates |
-| `GET` | `/api/cases` | Filtered and joined case records |
-| `GET` | `/api/statistics` | Statistical aggregates |
-| `GET` | `/api/predictions` | Risk scores, forecasts, and anomalies |
-| `GET` | `/api/reports` | Report metrics and summaries |
-| `GET` | `/api/lookup` | Quick FIR/case lookup |
-| `GET` | `/api/masters` | Master and reference data |
-| `GET` | `/api/districts` | District lookup data |
-| `GET` | `/api/crimeheads` | Crime taxonomy data |
-| `GET` | `/api/stations` | Police-station lookup data |
-| `GET` | `/api/employees` | Officer lookup data |
-| `POST` | `/api/copilot/chat` | AI Copilot requests |
-| `POST` | `/api/cache/invalidate` | Invalidate the server-side application cache |
-
-The local reset route is disabled unless its explicit development-only environment flag and confirmation header are present.
 
 ## Prerequisites
 
 - Node.js 18 or later
 - npm
 - Zoho Catalyst CLI
-- Access to the correct Catalyst project and Development environment
-- Catalyst Authentication and required Data Store tables configured
+- Access to the intended Catalyst project and Development environment
+- Catalyst Authentication and the required Data Store tables configured
 
-Install the Catalyst CLI if it is not already installed:
+Install and authenticate the Catalyst CLI:
 
 ```bash
 npm install -g zcatalyst-cli
-```
-
-Authenticate the CLI:
-
-```bash
 catalyst login
 ```
 
-## Local Development
+## Setup and Execution
 
-### UI with bundled sample data
-
-Use this mode when Catalyst services are not running.
-
-PowerShell:
-
-```powershell
-cd crime-analytics-dashboard
-npm install
-$env:REACT_APP_DATA_SOURCE = "sample"
-npm start
-```
-
-macOS/Linux:
+### 1. Clone and install dependencies
 
 ```bash
-cd crime-analytics-dashboard
-npm install
-REACT_APP_DATA_SOURCE=sample npm start
-```
-
-Open `http://localhost:3000`.
-
-### Full Catalyst development environment
-
-Install dependencies for the client and function:
-
-```bash
+git clone <repository-url>
+cd Crime_Analytics_Dashboard-main
 cd crime-analytics-dashboard
 npm install
 cd ../functions/crime_api
@@ -219,131 +113,110 @@ npm install
 cd ../..
 ```
 
-From the repository root, start the Catalyst development server:
+### 2. Run the UI locally with sample data
+
+This mode is suitable for reviewing the interface without Catalyst services.
+
+**PowerShell**
+
+```powershell
+cd crime-analytics-dashboard
+$env:REACT_APP_DATA_SOURCE = "sample"
+npm start
+```
+
+**macOS/Linux**
+
+```bash
+cd crime-analytics-dashboard
+REACT_APP_DATA_SOURCE=sample npm start
+```
+
+Open [http://localhost:3000](http://localhost:3000).
+
+### 3. Run the full Catalyst development environment
+
+From the repository root:
 
 ```bash
 catalyst serve
 ```
 
-The exact local URLs are printed by the Catalyst CLI. Hosted authentication behavior must be verified on the deployed Catalyst domain.
+The CLI prints the local client and function URLs. Catalyst Hosted Authentication should be verified on the deployed Catalyst domain.
 
-## Environment Variables
-
-The application can use the following optional variables. Configure secrets in Catalyst Function Environment Variables, not in committed `.env` files.
-
-| Variable | Scope | Description |
-| --- | --- | --- |
-| `REACT_APP_DATA_SOURCE=sample` | Client | Use bundled sample data for standalone UI development |
-| `REACT_APP_GRAFANA_BASE_URL` | Client | Optional Grafana integration URL |
-| `REACT_APP_GRAFANA_API_KEY` | Client | Optional client-side Grafana key; avoid this pattern for production secrets |
-| `ZOHO_ACCOUNTS_URL` | Function | Zoho accounts domain; defaults to the India domain |
-| `ZOHO_CLIENT_ID` | Function | OAuth client identifier |
-| `ZOHO_CLIENT_SECRET` | Function | OAuth client secret |
-| `ZOHO_REFRESH_TOKEN` | Function | OAuth refresh token |
-| `ZOHO_ACCESS_TOKEN` | Function | Optional temporary server-side access token |
-| `ENABLE_LOCAL_DATA_RESET` | Function | Explicitly enables the protected local reset route |
-
-## Build and Verification
-
-Build the production client:
+### 4. Build the production client
 
 ```bash
 cd crime-analytics-dashboard
 npm run build
 ```
 
-Run tests in non-interactive mode:
+### 5. Run frontend tests
 
 ```bash
+cd crime-analytics-dashboard
 npm test -- --watchAll=false
 ```
 
-## Deploy to Zoho Catalyst
+## Configuration
 
-Run deployment commands from the repository root—the directory containing `catalyst.json`.
+Never commit secrets, real PII, access tokens, or production datasets. Set function secrets in Catalyst environment variables.
 
-Deploy only the React client:
+| Variable | Scope | Purpose |
+| --- | --- | --- |
+| `REACT_APP_DATA_SOURCE=sample` | Client | Use bundled sample data for standalone UI work |
+| `REACT_APP_GRAFANA_BASE_URL` | Client | Optional Grafana URL |
+| `REACT_APP_GRAFANA_API_KEY` | Client | Optional Grafana key; do not use client-side secrets in production |
+| `ZOHO_ACCOUNTS_URL` | Function | Zoho accounts domain |
+| `ZOHO_CLIENT_ID` | Function | Model-service OAuth client ID |
+| `ZOHO_CLIENT_SECRET` | Function | Model-service OAuth client secret |
+| `ZOHO_REFRESH_TOKEN` | Function | Model-service OAuth refresh token |
+| `ZOHO_ACCESS_TOKEN` | Function | Optional temporary server-side access token |
+| `CRON_SECRET_KEY` | Function | Protects scheduled threat-assessment calls |
+| `ENABLE_LOCAL_DATA_RESET` | Function | Enables the development-only local reset route |
+
+## API Overview
+
+Base path: `/server/crime_api/api`
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| GET | `/dashboard` | Dashboard KPIs and aggregates |
+| GET | `/cases` | Filtered case records |
+| GET | `/statistics` | Statistical analysis |
+| GET | `/predictions` | Risk scores, forecasts, and hotspots |
+| GET | `/reports` | Report metrics and summaries |
+| GET | `/app-data` | Cached, normalised application dataset |
+| GET | `/lookup` | FIR and case lookup |
+| GET | `/masters`, `/districts`, `/crimeheads`, `/stations`, `/employees` | Reference data |
+| POST | `/copilot/chat` | AI Copilot query |
+| POST | `/security/request-otp` | Request PII verification OTP |
+| POST | `/security/verify-otp` | Verify PII verification OTP |
+| POST | `/cache/invalidate` | Invalidate server-side cache |
+| POST | `/cron/threat-assess` | Trigger scheduled threat assessment |
+| GET | `/cron/threat-alerts` | Retrieve generated threat alerts |
+
+## Deployment
+
+Run these commands from the repository root (the directory that contains `catalyst.json`):
 
 ```bash
+# Deploy the React client
 catalyst deploy --only client
-```
 
-Deploy only the primary function:
-
-```bash
+# Deploy the primary API function
 catalyst deploy --only functions:crime_api
-```
 
-Deploy all configured resources:
-
-```bash
+# Deploy all configured resources
 catalyst deploy
 ```
 
-After client deployment, verify the application in a fresh private/incognito browser window:
+After deployment, test in a private/incognito window: authenticate with the demo account, verify dashboard data, GIS views, cases, reports, and Copilot behaviour, then verify logout and session timeout.
 
-1. Open the [deployed dashboard](https://ksp-crime-analytics-60076926826.development.catalystserverless.in/app/).
-2. Confirm redirection to Catalyst Hosted Login.
-3. Sign in and confirm redirection to the dashboard.
-4. Verify that the live IST clock updates.
-5. Verify that user activity resets the `02:30` idle timer.
-6. Allow the timer to expire and confirm logout redirection.
-7. Sign in again, use the sidebar Logout button, and confirm session termination.
-8. Close the browser, reopen it, and confirm that a new login is required.
+## Responsible Use
 
-## Demonstration Story
+Predictions, alerts, and AI responses are decision-support outputs. They do not establish guilt, certainty, or an operational instruction. Any operational action must be reviewed and authorised by qualified personnel. Public demonstrations should use sample or approved demo data only.
 
-A concise hackathon demonstration can follow this sequence:
+## License
 
-```text
-Secure login
-→ Statewide command overview
-→ Identify a high-risk district or alert
-→ Explore the GIS and statistical pattern
-→ Open the related case and evidence workspace
-→ Inspect suspect/evidence relationships
-→ Review predictive or Copilot recommendations
-→ Generate an operational report
-```
-
-## Data and Responsible Use
-
-- Predictions are decision-support indicators, not determinations of guilt or certainty.
-- Operational actions must be reviewed and authorized by qualified KSP personnel.
-- Personally identifiable and sensitive law-enforcement data must follow applicable access-control, retention, audit, and legal requirements.
-- Sample or synthetic data should be used in public demonstrations unless explicit authorization exists for real records.
-- Do not commit credentials, production datasets, access tokens, exported reports, or PII to the repository.
-
-## Troubleshooting
-
-### The deployed dashboard does not contain the latest UI changes
-
-Run the client deployment from the repository root and hard-refresh the browser:
-
-```bash
-catalyst deploy --only client
-```
-
-### The application repeatedly returns to login
-
-- Confirm `login_redirect` is `index.html` in `crime-analytics-dashboard/client-package.json`.
-- Confirm the latest client build has been deployed.
-- Clear site data or use a fresh private/incognito window.
-- Confirm the user is active in Catalyst Authentication.
-
-### The standalone React server reports Catalyst API errors
-
-Run the client with `REACT_APP_DATA_SOURCE=sample`, or start the full project through `catalyst serve`.
-
-### The Copilot cannot authenticate with the model endpoint
-
-Verify the server-side OAuth environment variables in Catalyst. Never place these credentials in frontend code.
-
-## Hackathon Context
-
-This project was created for the **Karnataka State Police Datathon / Hackathon** using the **Zoho Catalyst** serverless platform.
-
-## License and Access
-
-No open-source license is currently declared. Unless a license is added, the source remains under its contributors' default copyright. Operational KSP data and project access remain subject to the policies and authorization of the relevant organizations.
-
+No open-source licence is currently declared. Unless a licence is added, the source remains under the contributors' default copyright.
