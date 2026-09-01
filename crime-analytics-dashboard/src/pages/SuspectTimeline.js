@@ -5,8 +5,9 @@ import {
   MdPhoneInTalk, MdAccountBalance, MdDirectionsCar, MdAdd, MdHistory,
   MdChevronRight, MdPeople
 } from 'react-icons/md';
-import { MapContainer, TileLayer, CircleMarker, Tooltip, Polyline } from 'react-leaflet';
+import { MapContainer, CircleMarker, Tooltip, Polyline } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
+import ThemeAwareTileLayer from '../components/ui/ThemeAwareTileLayer';
 
 import { caseViews } from '../data/schemaSelectors';
 import { playAlertSound } from '../utils/audioAlert';
@@ -905,10 +906,7 @@ function SuspectTimeline() {
                   zoomControl={false}
                   attributionControl={false}
                 >
-                  <TileLayer
-                    url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    attribution="&copy; OpenStreetMap contributors"
-                  />
+                  <ThemeAwareTileLayer />
                   {/* Draw markers */}
                   {filteredEvents.filter(ev => ev.location && !isEventRestricted(ev)).map((ev, i) => (
                     <CircleMarker

@@ -4,9 +4,10 @@ import {
   ResponsiveContainer, Legend, BarChart, Bar, Cell
 } from 'recharts';
 import {
-  MapContainer, TileLayer, CircleMarker, Tooltip as MapTooltip, useMap
+  MapContainer, CircleMarker, Tooltip as MapTooltip, useMap
 } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
+import ThemeAwareTileLayer from '../components/ui/ThemeAwareTileLayer';
 import {
   MdSecurity, MdInfo, MdAssignment, MdLocationOn, MdTrendingUp,
   MdLock, MdAnalytics, MdNotificationsActive
@@ -742,10 +743,7 @@ function Predictions({
               style={{ width: '100%', height: '100%', zIndex: 1 }}
               scrollWheelZoom={false}
             >
-              <TileLayer
-                url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-                attribution="&copy; OpenStreetMap contributors"
-              />
+              <ThemeAwareTileLayer />
               
               <ChangeMapView center={mapCenter} zoom={mapZoom} />
 

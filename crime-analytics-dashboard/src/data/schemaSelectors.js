@@ -249,14 +249,16 @@ export function hydrateCatalystSchema(caseRows, masters, tables) {
   replaceArray(caseCategories, masters.caseCategories);
   replaceArray(courts, masters.courts);
   replaceArray(employees, masters.employees);
-  replaceArray(states, tables.State);
-  replaceArray(unitTypes, tables.UnitType);
-  replaceArray(ranks, tables.Rank);
-  replaceArray(designations, tables.Designation);
-  replaceArray(casteMaster, tables.CasteMaster);
-  replaceArray(religionMaster, tables.ReligionMaster);
-  replaceArray(occupationMaster, tables.OccupationMaster);
-  replaceArray(acts, tables.Act);
+  // Master collections are already normalised by dataService and retain their
+  // safe catalog fallback when a Catalyst reference-table request is empty.
+  replaceArray(states, masters.states);
+  replaceArray(unitTypes, masters.unitTypes);
+  replaceArray(ranks, masters.ranks);
+  replaceArray(designations, masters.designations);
+  replaceArray(casteMaster, masters.casteMaster);
+  replaceArray(religionMaster, masters.religionMaster);
+  replaceArray(occupationMaster, masters.occupationMaster);
+  replaceArray(acts, masters.acts);
   replaceArray(sections, masters.sections);
   replaceArray(crimeHeadActSection, tables.CrimeHeadActSection);
   replaceArray(complainantDetails, tables.ComplainantDetails);

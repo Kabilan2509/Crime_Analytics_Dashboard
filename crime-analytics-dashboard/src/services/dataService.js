@@ -85,47 +85,60 @@ function getCatalystTables() {
 
 
 function toMasters(tables) {
-  const stateIndex = indexBy(tables.State, 'ROWID', 'StateID');
-  const districtIndex = indexBy(tables.District, 'ROWID', 'DistrictID');
-  const unitTypeIndex = indexBy(tables.UnitType, 'ROWID', 'UnitTypeID');
-  const crimeHeadIndex = indexBy(tables.CrimeHead, 'ROWID', 'CrimeHeadID');
-  const actIndex = indexBy(tables.Act, 'ROWID', 'ActCode');
-  const normalizedDistricts = tables.District.map(district => ({
+  // A failed or partially authorised master-table request must not erase the
+  // dashboard's filter catalog. The bundled catalog keeps filters selectable
+  // and preserves readable labels until Catalyst returns the full reference set.
+  const rowsOrFallback = (rows, fallback) => Array.isArray(rows) && rows.length ? rows : fallback;
+  const stateRows = rowsOrFallback(tables.State, sampleData.states);
+  const districtRows = rowsOrFallback(tables.District, sampleData.districts);
+  const unitTypeRows = rowsOrFallback(tables.UnitType, sampleData.unitTypes);
+  const unitRows = rowsOrFallback(tables.Unit, sampleData.units);
+  const crimeHeadRows = rowsOrFallback(tables.CrimeHead, sampleData.crimeHeads);
+  const crimeSubHeadRows = rowsOrFallback(tables.CrimeSubHead, sampleData.crimeSubHeads);
+  const actRows = rowsOrFallback(tables.Act, sampleData.acts);
+  const sectionRows = rowsOrFallback(tables.Section, sampleData.sections);
+
+  const stateIndex = indexBy(stateRows, 'ROWID', 'StateID');
+  const districtIndex = indexBy(districtRows, 'ROWID', 'DistrictID');
+  const unitTypeIndex = indexBy(unitTypeRows, 'ROWID', 'UnitTypeID');
+  const crimeHeadIndex = indexBy(crimeHeadRows, 'ROWID', 'CrimeHeadID');
+  const actIndex = indexBy(actRows, 'ROWID', 'ActCode');
+  const normalizedDistricts = districtRows.map(district => ({
     ...district,
     StateID: stateIndex[String(district.StateID)]?.StateID ?? district.StateID,
   }));
-  const normalizedStations = tables.Unit.map(unit => ({
+  const normalizedStations = unitRows.map(unit => ({
     ...unit,
     DistrictID: districtIndex[String(unit.DistrictID)]?.DistrictID ?? unit.DistrictID,
     StateID: stateIndex[String(unit.StateID)]?.StateID ?? unit.StateID,
     TypeID: unitTypeIndex[String(unit.TypeID)]?.UnitTypeID ?? unit.TypeID,
   }));
-  const normalizedCrimeSubHeads = tables.CrimeSubHead.map(subHead => ({
+  const normalizedCrimeSubHeads = crimeSubHeadRows.map(subHead => ({
     ...subHead,
     CrimeHeadID: crimeHeadIndex[String(subHead.CrimeHeadID)]?.CrimeHeadID ?? subHead.CrimeHeadID,
   }));
-  const normalizedSections = tables.Section.map(section => ({
+  const normalizedSections = sectionRows.map(section => ({
     ...section,
     ActCode: actIndex[String(section.ActCode)]?.ActCode ?? section.ActCode,
   }));
   return {
     districts: normalizedDistricts,
-    crimeHeads: tables.CrimeHead,
+    crimeHeads: crimeHeadRows,
     crimeSubHeads: normalizedCrimeSubHeads,
-    statuses: tables.CaseStatusMaster,
+    statuses: rowsOrFallback(tables.CaseStatusMaster, sampleData.caseStatusMaster),
     stations: normalizedStations,
-    ranks: tables.Rank,
-    gravityOffences: tables.GravityOffence,
-    caseCategories: tables.CaseCategory,
-    courts: tables.Court,
-    employees: tables.Employee,
-    states: tables.State,
-    unitTypes: tables.UnitType,
-    designations: tables.Designation,
-    casteMaster: tables.CasteMaster,
-    religionMaster: tables.ReligionMaster,
-    occupationMaster: tables.OccupationMaster,
-    acts: tables.Act,
+    ranks: rowsOrFallback(tables.Rank, sampleData.ranks),
+    gravityOffences: rowsOrFallback(tables.GravityOffence, sampleData.gravityOffences),
+    caseCategories: rowsOrFallback(tables.CaseCategory, sampleData.caseCategories),
+    courts: rowsOrFallback(tables.Court, sampleData.courts),
+    employees: rowsOrFallback(tables.Employee, sampleData.employees),
+    states: stateRows,
+    unitTypes: unitTypeRows,
+    designations: rowsOrFallback(tables.Designation, sampleData.designations),
+    casteMaster: rowsOrFallback(tables.CasteMaster, sampleData.casteMaster),
+    religionMaster: rowsOrFallback(tables.ReligionMaster, sampleData.religionMaster),
+    occupationMaster: rowsOrFallback(tables.OccupationMaster, sampleData.occupationMaster),
+    acts: actRows,
     sections: normalizedSections,
   };
 }

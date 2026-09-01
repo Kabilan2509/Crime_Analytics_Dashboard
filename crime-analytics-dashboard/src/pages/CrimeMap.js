@@ -22,6 +22,13 @@ import {
   MAP_LAYERS
 } from '../features/crimeMap/crimeMapUtils';
 
+const MAP_TILES = {
+  url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  attribution: '&copy; OpenStreetMap contributors',
+};
+
+const KARNATAKA_MAP_BOUNDS = [[11.3, 73.5], [18.6, 78.8]];
+
 // Bind window.L for Leaflet plugins (leaflet.heat) after all imports
 if (typeof window !== 'undefined') {
   window.L = L;
@@ -70,6 +77,18 @@ function MapInteractionController({ enabled }) {
     if (!enabled) map.setView(KARNATAKA_CENTER, KARNATAKA_ZOOM, { animate: true });
   }, [map, enabled]);
   return null;
+}
+
+function ThemeAwareTileLayer({ theme }) {
+  return (
+    <TileLayer
+      key={theme}
+      url={MAP_TILES.url}
+      attribution={MAP_TILES.attribution}
+      subdomains="abc"
+      maxZoom={20}
+    />
+  );
 }
 
 /* ---- Leaflet sub-components ---- */
@@ -860,7 +879,7 @@ function CrimeMap({ selectedDistrict: globalDistrict, selectedCrimeType: globalC
 
   return (
     <div 
-      className="page-content map-page"
+      className={`page-content map-page map-page-${theme}`}
       style={{ 
         height: '100%', 
         display: 'flex', 
@@ -871,6 +890,20 @@ function CrimeMap({ selectedDistrict: globalDistrict, selectedCrimeType: globalC
         margin: '0'
       }}
     >
+      <style>{`
+        /* OSM tiles need no API key. In dark mode, invert the neutral basemap
+           while retaining high-contrast roads, labels and incident overlays. */
+        .map-page-dark .leaflet-tile {
+          filter: invert(1) hue-rotate(180deg) brightness(.72) contrast(1.18) saturate(.55);
+        }
+        .map-page-dark .leaflet-control-zoom a,
+        .map-page-dark .leaflet-popup-content-wrapper,
+        .map-page-dark .leaflet-popup-tip {
+          background: #132238;
+          color: #e6edf7;
+          border-color: #334a67;
+        }
+      `}</style>
       {/* Spatiotemporal Trends Box repositioned to top-right below filters bar */}
       {emergingTrends.length > 0 && (
         <div style={{
@@ -986,6 +1019,10 @@ function CrimeMap({ selectedDistrict: globalDistrict, selectedCrimeType: globalC
           <MapContainer 
             center={KARNATAKA_CENTER} 
             zoom={KARNATAKA_ZOOM} 
+            minZoom={6}
+            maxZoom={17}
+            maxBounds={KARNATAKA_MAP_BOUNDS}
+            maxBoundsViscosity={1}
             style={{ height: '100%', width: '100%', zIndex: 1 }} 
             zoomControl={false}
             dragging={false}
@@ -995,11 +1032,7 @@ function CrimeMap({ selectedDistrict: globalDistrict, selectedCrimeType: globalC
             boxZoom={false}
             keyboard={false}
           >
-            <TileLayer
-              key={theme}
-              url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-              attribution="&copy; OpenStreetMap contributors"
-            />
+            <ThemeAwareTileLayer theme={theme} />
             <MapController center={mapCenter} zoom={mapZoom} />
             <MapInteractionController enabled={mapInteractive} />
             <MapZoomTracker setZoom={setLiveMapZoom} />

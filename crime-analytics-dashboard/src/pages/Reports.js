@@ -23,8 +23,9 @@ import {
   MdSearch,
   MdAddCircle,
 } from 'react-icons/md';
-import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet';
+import { MapContainer, CircleMarker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
+import ThemeAwareTileLayer from '../components/ui/ThemeAwareTileLayer';
 import {
   caseViews,
   districts,
@@ -1537,10 +1538,7 @@ function Reports() {
           </h4>
           <div style={{ height: '240px', width: '100%', border: '1px solid #cbd5e1', position: 'relative', zIndex: 1 }}>
             <MapContainer center={mapCenter} zoom={6} style={{ height: '100%', width: '100%' }}>
-              <TileLayer
-                url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-                attribution="&copy; OpenStreetMap contributors"
-              />
+              <ThemeAwareTileLayer />
               {hotspotData.filter(h => h.count > 0).map(h => (
                 <CircleMarker
                   key={h.id}
@@ -1760,10 +1758,7 @@ function Reports() {
             </h5>
             <div style={{ height: '180px', width: '100%', border: '1px solid #cbd5e1', position: 'relative', zIndex: 1 }}>
               <MapContainer center={stationCenter} zoom={11} style={{ height: '100%', width: '100%' }}>
-                <TileLayer
-                  url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  attribution="&copy; OpenStreetMap contributors"
-                />
+                <ThemeAwareTileLayer />
                 <CircleMarker center={stationCenter} radius={12} fillColor="#16a34a" color="#16a34a" fillOpacity={0.3} />
               </MapContainer>
             </div>
@@ -1970,10 +1965,7 @@ function Reports() {
             </h5>
             <div style={{ height: '180px', width: '100%', border: '1px solid #cbd5e1', position: 'relative', zIndex: 1 }}>
               <MapContainer center={distCenter} zoom={9} style={{ height: '100%', width: '100%' }}>
-                <TileLayer
-                  url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  attribution="&copy; OpenStreetMap contributors"
-                />
+                <ThemeAwareTileLayer />
                 <CircleMarker center={distCenter} radius={25} fillColor="#2563eb" color="#2563eb" fillOpacity={0.2} />
               </MapContainer>
             </div>

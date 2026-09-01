@@ -6,6 +6,7 @@ import {
   MdAccountCircle, MdLock, MdVerifiedUser,
   MdHome, MdMap, MdBarChart, MdHub,
   MdTrendingUp, MdDescription, MdSmartToy, MdVpnKey, MdLogout,
+  MdKeyboardArrowDown, MdArrowBack,
 } from 'react-icons/md';
 import { useSecurity } from '../context/SecurityContext';
 import CommandPalette from './ui/CommandPalette';
@@ -29,6 +30,52 @@ const PAGE_TITLES = {
   '/predictions':{ title: 'Predictions', subtitle: 'Predictive intelligence modeling and regional risk forecasts' },
 };
 
+const NAVIGATION_GROUPS = [
+  {
+    id: 'intelligence', label: 'Intelligence', icon: <MdBarChart size={15} />,
+    paths: ['/map', '/statistics', '/predictions', '/network', '/copilot'],
+    items: [
+      { path: '/map', label: 'GIS Intelligence Map', detail: 'Hotspots, heatmaps and district drill-down' },
+      { path: '/statistics', label: 'Crime Statistics', detail: 'Patterns, trends and comparative analysis' },
+      { path: '/predictions', label: 'Risk Forecasts', detail: 'Risk indicators and priority signals' },
+      { path: '/network', label: 'Criminal Network', detail: 'Relationships across cases and entities' },
+      { path: '/copilot', label: 'MADHUKAR AI Copilot', detail: 'Natural-language intelligence queries' },
+    ],
+  },
+  {
+    id: 'investigations', label: 'Investigations', icon: <MdOutlineShield size={15} />,
+    paths: ['/cases', '/case-overview', '/evidence', '/evidence-workspace', '/suspect-timeline'],
+    items: [
+      { path: '/cases', label: 'Case Registry', detail: 'Find and review FIR and case records' },
+      { path: '/evidence', label: 'Evidence Workspace', detail: 'Review linked evidence and case material' },
+      { path: '/suspect-timeline', label: 'Suspect Timeline', detail: 'Trace linked events and entities' },
+    ],
+  },
+  {
+    id: 'briefings', label: 'Briefings & Reports', icon: <MdDescription size={15} />,
+    paths: ['/briefing', '/reports'],
+    items: [
+      { path: '/briefing', label: 'Operational Briefing', detail: 'Situation summary and recommendations' },
+      { path: '/reports', label: 'Report Centre', detail: 'Generate and export operational reports' },
+    ],
+  },
+  {
+    id: 'administration', label: 'Administration', icon: <MdVpnKey size={15} />,
+    paths: ['/admin/users', '/settings'],
+    items: [
+      { path: '/admin/users', label: 'User Management', detail: 'Roles, users and access controls' },
+      { path: '/settings', label: 'System Settings', detail: 'Command-centre configuration' },
+    ],
+  },
+];
+
+function getRouteContext(pathname) {
+  if (pathname === '/') return { section: 'Command', label: 'Command Center', fallback: '/' };
+  const group = NAVIGATION_GROUPS.find(({ paths }) => paths.some(path => pathname === path || pathname.startsWith(`${path}/`)));
+  const item = group?.items.find(({ path }) => pathname === path || pathname.startsWith(`${path}/`));
+  return { section: group?.label || 'Command', label: item?.label || 'Operational Workspace', fallback: group?.items[0]?.path || '/' };
+}
+
 function Header({ theme, onToggleTheme, onToggleSidebar, sidebarCollapsed, sidebarOpen }) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -40,9 +87,9 @@ function Header({ theme, onToggleTheme, onToggleSidebar, sidebarCollapsed, sideb
   const [showLockDropdown, setShowLockDropdown] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [showProfileSummary, setShowProfileSummary] = useState(false);
-  const [showInvestigationHub, setShowInvestigationHub] = useState(false);
+  const [openNavigationGroup, setOpenNavigationGroup] = useState('');
   const [idleSecondsRemaining, setIdleSecondsRemaining] = useState(IDLE_LOGOUT_SECONDS);
-  const investigationHubRef = useRef(null);
+  const navigationMenuRef = useRef(null);
   const [elapsedTime, setElapsedTime] = useState('just now');
   const [currentTime, setCurrentTime] = useState(() => new Date());
   const [compactViewport, setCompactViewport] = useState(() => window.matchMedia('(max-width: 1080px)').matches);
@@ -97,14 +144,14 @@ function Header({ theme, onToggleTheme, onToggleSidebar, sidebarCollapsed, sideb
   }, [logout]);
 
   useEffect(() => {
-    if (!showInvestigationHub) return undefined;
+    if (!openNavigationGroup) return undefined;
     const closeOnOutsideInteraction = event => {
-      if (investigationHubRef.current && !investigationHubRef.current.contains(event.target)) {
-        setShowInvestigationHub(false);
+      if (navigationMenuRef.current && !navigationMenuRef.current.contains(event.target)) {
+        setOpenNavigationGroup('');
       }
     };
     const closeOnEscape = event => {
-      if (event.key === 'Escape') setShowInvestigationHub(false);
+      if (event.key === 'Escape') setOpenNavigationGroup('');
     };
     document.addEventListener('mousedown', closeOnOutsideInteraction);
     document.addEventListener('keydown', closeOnEscape);
@@ -112,7 +159,7 @@ function Header({ theme, onToggleTheme, onToggleSidebar, sidebarCollapsed, sideb
       document.removeEventListener('mousedown', closeOnOutsideInteraction);
       document.removeEventListener('keydown', closeOnEscape);
     };
-  }, [showInvestigationHub]);
+  }, [openNavigationGroup]);
 
   const clockTime = currentTime.toLocaleTimeString('en-GB', {
     timeZone: 'Asia/Kolkata',
@@ -247,6 +294,20 @@ function Header({ theme, onToggleTheme, onToggleSidebar, sidebarCollapsed, sideb
   };
 
   const t = TRANSLATIONS[lang];
+  const routeContext = getRouteContext(location.pathname);
+  const showBackButton = location.pathname !== '/';
+
+  const goBack = () => {
+    // React Router tracks an index for in-app history. A deep link should return
+    // to the relevant workflow hub rather than leave the protected dashboard.
+    if (Number(window.history.state?.idx) > 0) {
+      navigate(-1);
+      return;
+    }
+    navigate(routeContext.fallback);
+  };
+
+  const isGroupActive = group => group.paths.some(path => location.pathname === path || location.pathname.startsWith(`${path}/`));
 
   const endAuthenticatedSession = () => {
     logout();
@@ -384,7 +445,7 @@ function Header({ theme, onToggleTheme, onToggleSidebar, sidebarCollapsed, sideb
           display: flex;
           flex: 1 1 auto;
           min-width: 0;
-          gap: 20px;
+          gap: 18px;
           list-style: none;
           margin: 0;
           padding: 0;
@@ -397,6 +458,14 @@ function Header({ theme, onToggleTheme, onToggleSidebar, sidebarCollapsed, sideb
           display: flex;
           align-items: center;
           position: relative;
+        }
+
+        /* Replaced by the grouped workflow menu below. Keeping the old links
+           in the source avoids breaking bookmarked routes while removing the
+           crowded, flat navigation from the officer interface. */
+        .portal-menu-item:has(.portal-legacy-direct-link),
+        .portal-menu-item.portal-legacy-direct-link {
+          display: none;
         }
 
         .portal-nav-link {
@@ -453,7 +522,7 @@ function Header({ theme, onToggleTheme, onToggleSidebar, sidebarCollapsed, sideb
           top: calc(100% - 1px);
           left: 0;
           z-index: 1102;
-          width: 230px;
+          width: 290px;
           margin: 0;
           padding: 6px;
           list-style: none;
@@ -471,7 +540,82 @@ function Header({ theme, onToggleTheme, onToggleSidebar, sidebarCollapsed, sideb
           font-size: 12px;
           font-weight: 600;
           text-decoration: none;
-          white-space: nowrap;
+          white-space: normal;
+        }
+
+        .portal-investigation-option strong,
+        .portal-investigation-option small {
+          display: block;
+        }
+
+        .portal-investigation-option strong {
+          font-size: 12px;
+        }
+
+        .portal-investigation-option small {
+          margin-top: 3px;
+          color: #64748b;
+          font-size: 10px;
+          font-weight: 500;
+          line-height: 1.35;
+        }
+
+        .portal-back-button {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          height: 32px;
+          padding: 0 14px 0 10px;
+          border: 1px solid rgba(92, 46, 145, 0.15);
+          border-radius: 20px;
+          background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+          color: #475569;
+          cursor: pointer;
+          font-family: 'Public Sans', 'Segoe UI', sans-serif;
+          font-size: 12px;
+          font-weight: 700;
+          letter-spacing: 0.3px;
+          box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05), inset 0 1px 0 rgba(255,255,255,0.8);
+          transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .portal-back-button:hover,
+        .portal-back-button:focus-visible {
+          background: linear-gradient(180deg, #f3e8ff 0%, #faf5ff 100%);
+          border-color: #d8b4fe;
+          color: #5c2e91;
+          box-shadow: 0 3px 8px rgba(92, 46, 145, 0.15), inset 0 1px 0 #ffffff;
+          transform: translateY(-1px);
+          outline: none;
+        }
+
+        .portal-back-button:active {
+          transform: translateY(0);
+          box-shadow: 0 1px 2px rgba(92, 46, 145, 0.1);
+          background: #f3e8ff;
+        }
+
+        .portal-workflow-context {
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          min-width: 112px;
+          padding-right: 8px;
+          border-right: 1px solid #e2e8f0;
+          line-height: 1.15;
+        }
+
+        .portal-workflow-context span {
+          color: #64748b;
+          font-size: 9px;
+          font-weight: 800;
+          letter-spacing: .06em;
+          text-transform: uppercase;
+        }
+
+        .portal-workflow-context strong {
+          color: #1e293b;
+          font-size: 12px;
         }
 
         .portal-investigation-option:hover,
@@ -561,6 +705,34 @@ function Header({ theme, onToggleTheme, onToggleSidebar, sidebarCollapsed, sideb
           color: var(--accent-secondary) !important;
         }
 
+        html[data-theme='dark'] .portal-back-button {
+          background: linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.03) 100%);
+          border-color: rgba(255,255,255,0.1);
+          color: var(--text-primary);
+          box-shadow: 0 2px 5px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05);
+        }
+        
+        html[data-theme='dark'] .portal-back-button:hover,
+        html[data-theme='dark'] .portal-back-button:focus-visible {
+          background: linear-gradient(180deg, rgba(167, 139, 250, 0.15) 0%, rgba(167, 139, 250, 0.05) 100%);
+          border-color: rgba(167, 139, 250, 0.3);
+          color: #c4b5fd;
+          box-shadow: 0 4px 12px rgba(167, 139, 250, 0.15), inset 0 1px 0 rgba(255,255,255,0.1);
+        }
+
+        html[data-theme='dark'] .portal-back-button:active {
+          background: rgba(167, 139, 250, 0.1);
+          box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+
+        html[data-theme='dark'] .portal-workflow-context {
+          border-color: var(--border-color);
+        }
+
+        html[data-theme='dark'] .portal-workflow-context strong {
+          color: var(--text-primary);
+        }
+
         html[data-theme='dark'] .portal-search-bar,
         html[data-theme='dark'] .portal-sec-pill,
         html[data-theme='dark'] .portal-investigation-menu {
@@ -642,6 +814,14 @@ function Header({ theme, onToggleTheme, onToggleSidebar, sidebarCollapsed, sideb
             justify-content: center;
           }
         }
+
+        @media (max-width: 780px) {
+          .portal-nav-bar { padding: 0 12px; gap: 8px; }
+          .portal-workflow-context { display: none; }
+          .portal-menu-links { gap: 10px; overflow-x: auto; }
+          .portal-nav-link { white-space: nowrap; }
+          .portal-back-button span { display: none; }
+        }
       `}</style>
 
       {/* Row 1: Government Purple Banner */}
@@ -685,56 +865,95 @@ function Header({ theme, onToggleTheme, onToggleSidebar, sidebarCollapsed, sideb
       {/* Row 2: Horizontal Navigation Bar */}
       <div className="portal-nav-bar">
         <ul className="portal-menu-links">
-          <li className="portal-menu-item">
-            <Link to="/" className={`portal-nav-link ${location.pathname === '/' ? 'active-link' : ''}`}>
-              <MdHome size={15} /> {t.home}
-            </Link>
+          {showBackButton && (
+            <li className="portal-menu-item">
+              <button type="button" className="portal-back-button" onClick={goBack} aria-label={`Go back from ${routeContext.label}`} title="Return to the previous page">
+                <MdArrowBack size={16} /> <span>Back</span>
+              </button>
+            </li>
+          )}
+          <li className="portal-menu-item portal-workflow-context" aria-label={`Current workspace: ${routeContext.section}, ${routeContext.label}`}>
+            <span>{routeContext.section}</span>
+            <strong>{routeContext.label}</strong>
           </li>
           <li className="portal-menu-item">
-            <Link to="/map" className={`portal-nav-link ${location.pathname === '/map' ? 'active-link' : ''}`}>
+            <Link to="/" className={`portal-nav-link ${location.pathname === '/' ? 'active-link' : ''}`}>
+              <MdHome size={15} /> Command Center
+            </Link>
+          </li>
+          {NAVIGATION_GROUPS.map(group => {
+            const isOpen = openNavigationGroup === group.id;
+            return (
+              <li className="portal-menu-item" key={group.id} ref={isOpen ? navigationMenuRef : null}>
+                <button
+                  type="button"
+                  className={`portal-nav-link portal-investigation-trigger ${isGroupActive(group) ? 'active-link' : ''}`}
+                  onClick={() => setOpenNavigationGroup(current => current === group.id ? '' : group.id)}
+                  aria-expanded={isOpen}
+                  aria-haspopup="menu"
+                >
+                  {group.icon} {group.label} <MdKeyboardArrowDown className="portal-nav-arrow" size={15} />
+                </button>
+                {isOpen && (
+                  <ul className="portal-investigation-menu" role="menu" aria-label={`${group.label} navigation`}>
+                    {group.items.map(item => (
+                      <li role="none" key={item.path}>
+                        <Link role="menuitem" className="portal-investigation-option" to={item.path} onClick={() => setOpenNavigationGroup('')}>
+                          <strong>{item.label}</strong>
+                          <small>{item.detail}</small>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            );
+          })}
+          <li className="portal-menu-item">
+            <Link to="/map" className={`portal-nav-link portal-legacy-direct-link ${location.pathname === '/map' ? 'active-link' : ''}`}>
               <MdMap size={15} /> {t.map} <span className="portal-nav-arrow">▼</span>
             </Link>
           </li>
           <li className="portal-menu-item">
-            <Link to="/statistics" className={`portal-nav-link ${location.pathname === '/statistics' ? 'active-link' : ''}`}>
+            <Link to="/statistics" className={`portal-nav-link portal-legacy-direct-link ${location.pathname === '/statistics' ? 'active-link' : ''}`}>
               <MdBarChart size={15} /> {t.stats} <span className="portal-nav-arrow">▼</span>
             </Link>
           </li>
           <li className="portal-menu-item">
-            <Link to="/network" className={`portal-nav-link ${location.pathname === '/network' ? 'active-link' : ''}`}>
+            <Link to="/network" className={`portal-nav-link portal-legacy-direct-link ${location.pathname === '/network' ? 'active-link' : ''}`}>
               <MdHub size={15} /> {t.network} <span className="portal-nav-arrow">▼</span>
             </Link>
           </li>
           <li className="portal-menu-item">
-            <Link to="/predictions" className={`portal-nav-link ${location.pathname === '/predictions' ? 'active-link' : ''}`}>
+            <Link to="/predictions" className={`portal-nav-link portal-legacy-direct-link ${location.pathname === '/predictions' ? 'active-link' : ''}`}>
               <MdTrendingUp size={15} /> {t.predictions} <span className="portal-nav-arrow">▼</span>
             </Link>
           </li>
           <li className="portal-menu-item">
-            <Link to="/reports" className={`portal-nav-link ${location.pathname === '/reports' ? 'active-link' : ''}`}>
+            <Link to="/reports" className={`portal-nav-link portal-legacy-direct-link ${location.pathname === '/reports' ? 'active-link' : ''}`}>
               <MdDescription size={15} /> {t.reports} <span className="portal-nav-arrow">▼</span>
             </Link>
           </li>
           <li className="portal-menu-item">
-            <Link to="/copilot" className={`portal-nav-link ${location.pathname === '/copilot' ? 'active-link' : ''}`}>
+            <Link to="/copilot" className={`portal-nav-link portal-legacy-direct-link ${location.pathname === '/copilot' ? 'active-link' : ''}`}>
               <MdSmartToy size={15} /> {t.copilot} <span className="portal-nav-arrow">▼</span>
             </Link>
           </li>
-          <li className="portal-menu-item" ref={investigationHubRef}>
+          <li className="portal-menu-item portal-legacy-direct-link" ref={navigationMenuRef}>
             <button
               type="button"
               className={`portal-nav-link portal-investigation-trigger ${['/case-overview', '/cases', '/suspect-timeline', '/evidence-workspace', '/evidence'].some(path => location.pathname.startsWith(path)) ? 'active-link' : ''}`}
-              onClick={() => setShowInvestigationHub(open => !open)}
-              aria-expanded={showInvestigationHub}
+              onClick={() => setOpenNavigationGroup(current => current === 'legacy-investigation' ? '' : 'legacy-investigation')}
+              aria-expanded={openNavigationGroup === 'legacy-investigation'}
               aria-haspopup="menu"
             >
               <MdOutlineShield size={15} /> Investigation Hub <span className="portal-nav-arrow">▼</span>
             </button>
-            {showInvestigationHub && (
+            {openNavigationGroup === 'legacy-investigation' && (
               <ul className="portal-investigation-menu" role="menu" aria-label="Investigation Hub">
-                <li role="none"><Link role="menuitem" className="portal-investigation-option" to="/case-overview" onClick={() => setShowInvestigationHub(false)}>Case Registry Overview</Link></li>
-                <li role="none"><Link role="menuitem" className="portal-investigation-option" to="/suspect-timeline" onClick={() => setShowInvestigationHub(false)}>Suspect Timeline Tracker</Link></li>
-                <li role="none"><Link role="menuitem" className="portal-investigation-option" to="/evidence-workspace" onClick={() => setShowInvestigationHub(false)}>Evidence Workshop</Link></li>
+                <li role="none"><Link role="menuitem" className="portal-investigation-option" to="/case-overview" onClick={() => setOpenNavigationGroup('')}>Case Registry Overview</Link></li>
+                <li role="none"><Link role="menuitem" className="portal-investigation-option" to="/suspect-timeline" onClick={() => setOpenNavigationGroup('')}>Suspect Timeline Tracker</Link></li>
+                <li role="none"><Link role="menuitem" className="portal-investigation-option" to="/evidence-workspace" onClick={() => setOpenNavigationGroup('')}>Evidence Workshop</Link></li>
               </ul>
             )}
           </li>

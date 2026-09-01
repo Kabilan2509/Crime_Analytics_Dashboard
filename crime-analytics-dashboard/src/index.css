@@ -4831,3 +4831,11 @@ html[data-font-size='x-large'] :where(h1, h2, h3, .page-title, .card-title, .por
 html[data-font-size='x-large'] :where(p, td, label, input, select, textarea, button, .gov-item-label, .portal-nav-link) {
   font-size: 17px !important;
 }
+/* Shared Leaflet basemap treatment. Vector incident overlays stay untouched. */
+html[data-theme='dark'] .leaflet-tile {
+  filter: invert(1) hue-rotate(180deg) brightness(.72) contrast(1.18) saturate(.55);
+}
+
+html[data-theme='dark'] .leaflet-container {
+  background: #101b2b;
+}

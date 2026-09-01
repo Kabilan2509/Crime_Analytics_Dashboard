@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { MapContainer, TileLayer, GeoJSON, useMap } from 'react-leaflet';
+import { MapContainer, GeoJSON, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
+import ThemeAwareTileLayer from '../../components/ui/ThemeAwareTileLayer';
 
 const GEOJSON_TO_DB_MAP = {
   'Bangalore': 1,
@@ -203,10 +204,7 @@ function KarnatakaMap({ cases, selectedDistrict, setSelectedDistrict }) {
         attributionControl={false}
       >
         <ResizeMap />
-        <TileLayer
-          url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution="&copy; OpenStreetMap contributors"
-        />
+        <ThemeAwareTileLayer />
         {geoJsonData && (
           <GeoJSON 
             data={geoJsonData} 

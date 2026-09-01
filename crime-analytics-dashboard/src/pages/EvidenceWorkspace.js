@@ -5,8 +5,9 @@ import {
   MdPhoto, MdVideocam, MdSettingsVoice, MdInsertDriveFile,
   MdAdd, MdContentCopy, MdAssignment
 } from 'react-icons/md';
-import { MapContainer, TileLayer, CircleMarker, Tooltip } from 'react-leaflet';
+import { MapContainer, CircleMarker, Tooltip } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
+import ThemeAwareTileLayer from '../components/ui/ThemeAwareTileLayer';
 
 import { caseViews } from '../data/schemaSelectors';
 import { playAlertSound } from '../utils/audioAlert';
@@ -1321,10 +1322,7 @@ function EvidenceWorkspace() {
                         zoomControl={false}
                         attributionControl={false}
                       >
-                        <TileLayer
-                          url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-                          attribution="&copy; OpenStreetMap contributors"
-                        />
+                        <ThemeAwareTileLayer />
                         <CircleMarker
                           center={[selectedItem.gps.lat, selectedItem.gps.lng]}
                           radius={6}

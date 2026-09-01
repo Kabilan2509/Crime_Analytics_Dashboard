@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { MapContainer, TileLayer, CircleMarker, Popup, Tooltip } from 'react-leaflet';
+import { MapContainer, CircleMarker, Popup, Tooltip } from 'react-leaflet';
 import { ResponsiveContainer, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip } from 'recharts';
 import { districtCenters } from '../../../data/schemaSelectors';
 import 'leaflet/dist/leaflet.css';
+import ThemeAwareTileLayer from '../../../components/ui/ThemeAwareTileLayer';
 
 function SpatialSection({ spatialData, theme, onDistrictClick }) {
   const { districts = [], points = [] } = spatialData;
@@ -118,11 +119,7 @@ function SpatialSection({ spatialData, theme, onDistrictClick }) {
         {/* Map Container */}
         <div style={{ height: '360px', width: '100%', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-color)', position: 'relative', zIndex: 1 }}>
           <MapContainer center={mapCenter} zoom={mapZoom} style={{ height: '100%', width: '100%' }} zoomControl={false}>
-            <TileLayer
-              key={theme}
-              url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-              attribution="&copy; OpenStreetMap contributors"
-            />
+            <ThemeAwareTileLayer />
 
             {/* Render bubbles for district aggregates */}
             {mapMode === 'choropleth' && districts.map(d => {

@@ -1,8 +1,9 @@
 import React from 'react';
-import { MapContainer, TileLayer, CircleMarker, Tooltip as MapTooltip } from 'react-leaflet';
+import { MapContainer, CircleMarker, Tooltip as MapTooltip } from 'react-leaflet';
 import { MdMap, MdWarning, MdRefresh } from 'react-icons/md';
 import { districtCenters } from '../../../data/schemaSelectors';
 import { useNavigate } from 'react-router-dom';
+import ThemeAwareTileLayer from '../../../components/ui/ThemeAwareTileLayer';
 
 function SituationalMapSection({ mapData, theme, onDistrictClick, activeKpiFilter, setActiveKpiFilter }) {
   const navigate = useNavigate();
@@ -15,9 +16,6 @@ function SituationalMapSection({ mapData, theme, onDistrictClick, activeKpiFilte
 
   const mapCenter = [14.85, 75.8]; // Karnataka center
   const mapZoom = 6;
-
-  // Public tiles need no API key and work in every deployed environment.
-  const tileUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 
   const handleOpenFullGis = () => {
     navigate('/map');
@@ -184,7 +182,7 @@ function SituationalMapSection({ mapData, theme, onDistrictClick, activeKpiFilte
             attributionControl={false}
             style={{ width: '100%', height: '100%', background: 'transparent' }}
           >
-            <TileLayer url={tileUrl} attribution="&copy; OpenStreetMap contributors" />
+            <ThemeAwareTileLayer />
             
             {/* 1. Render bubbles representing district risk score */}
             {filteredDistrictsRisk.map(d => {
