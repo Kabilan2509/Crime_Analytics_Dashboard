@@ -1,37 +1,12 @@
-/**
- * NetworkGraph.js — Criminal Intelligence Network (Full Rewrite)
- *
- * Features:
- *  • Responsive canvas (DPR-aware, fills container)
- *  • Scroll / pinch zoom toward cursor
- *  • Drag nodes, pan canvas
- *  • Double-click to pin / unpin nodes
- *  • Hover tooltip overlay
- *  • Neighbour dimming when a node is selected
- *  • O(1) edge lookup via Map (no per-frame .find())
- *  • Degree-weighted node sizing + glow
- *  • Co-accused edges from graphUtils
- *  • Interactive connection list (click → navigate graph)
- *  • Graph density, hub metrics panel
- *  • Label display mode toggle: All / Smart / None
- *  • Filter chips for each entity type
- */
-
-import React, {
-  useState, useRef, useEffect, useMemo, useCallback,
-} from 'react';
-import {
-  MdHub, MdSearch, MdZoomIn, MdZoomOut, MdCenterFocusStrong,
-  MdPushPin, MdClose, MdViewList, MdAccountTree,
-} from 'react-icons/md';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { MdHub, MdSearch, MdZoomIn, MdZoomOut, MdCenterFocusStrong, MdPushPin, MdClose, MdSecurity } from 'react-icons/md';
 import { buildNetworkData, ENTITY } from '../features/network/graphUtils';
-import { caseViews, districts, units } from '../data/schemaSelectors';
+import { caseViews, districts, units, accused, victims } from '../data/schemaSelectors';
 import { useSecurity } from '../context/SecurityContext';
 import { getSecureCaseViews } from '../security/securityUtils';
 
-// ─── Filter chip definitions ──────────────────────────────────────────────────
 const FILTER_CHIPS = [
-  { key: 'all',      label: 'All' },
+  { key: 'all',      label: 'All Entities' },
   { key: 'criminal', label: 'Accused' },
   { key: 'case',     label: 'FIRs' },
   { key: 'victim',   label: 'Victims' },
@@ -39,134 +14,159 @@ const FILTER_CHIPS = [
   { key: 'station',  label: 'Stations' },
 ];
 
-// ─── Physics constants ────────────────────────────────────────────────────────
-const REPULSION   = 6000;
-const SPRING_K    = 0.004;
-const IDEAL_LEN   = 110;
-const GRAVITY     = 0.0007;
-const DAMPING     = 0.78;
+const REPULSION = 6000;
+const SPRING_K = 0.004;
+const IDEAL_LEN = 110;
+const GRAVITY = 0.0007;
+const DAMPING = 0.78;
 
-// ─────────────────────────────────────────────────────────────────────────────
+const nodeSprites = {};
+const generateSprites = () => {
+  Object.keys(ENTITY).forEach(type => {
+    const ent = ENTITY[type];
+    const canvas = document.createElement('canvas');
+    canvas.width = 64; canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+    const cx = 32, cy = 32, r = 24;
+
+    const gr = ctx.createRadialGradient(cx, cy, r * 0.4, cx, cy, 32);
+    gr.addColorStop(0, ent.glow || ent.color);
+    gr.addColorStop(1, 'transparent');
+    ctx.fillStyle = gr;
+    ctx.fillRect(0, 0, 64, 64);
+
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const angle = (Math.PI / 3) * i - (Math.PI / 6);
+      ctx.lineTo(cx + r * Math.cos(angle), cy + r * Math.sin(angle));
+    }
+    ctx.closePath();
+    ctx.fillStyle = ent.color;
+    ctx.fill();
+    
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const angle = (Math.PI / 3) * i - (Math.PI / 6);
+      ctx.lineTo(cx + r * Math.cos(angle), cy + r * Math.sin(angle));
+    }
+    ctx.closePath();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    nodeSprites[type] = canvas;
+  });
+};
+generateSprites();
+
 export default function NetworkGraph() {
   const { session } = useSecurity();
-  const secureCases = useMemo(
-    () => getSecureCaseViews(caseViews, session.accessLevel),
-    [session.accessLevel]
-  );
+  const secureCases = useMemo(() => getSecureCaseViews(caseViews, session.accessLevel), [session.accessLevel]);
 
-  // ── State ──────────────────────────────────────────────────────────────────
-  const [search,            setSearch]            = useState('');
-  const [filterType,        setFilterType]        = useState('all');
-  const [selectedCrimeType, setSelectedCrimeType] = useState('all');
-  const [selectedNode,      setSelectedNode]      = useState(null);
-  const [hoveredNode,       setHoveredNode]       = useState(null);
-  const [pinnedNodes,       setPinnedNodes]       = useState(new Set());
-  const [labelMode,         setLabelMode]         = useState('smart'); // 'all' | 'smart' | 'none'
-  const [showLegend,        setShowLegend]        = useState(true);
-  const [viewMode,          setViewMode]          = useState('graph');
-  const [activeListTab,     setActiveListTab]     = useState('criminal');
-  const [, setKeyboardNode] = useState(0);
+  const [hasQueried, setHasQueried] = useState(false);
+  
+  // Query Form State
+  const [qSearch, setQSearch] = useState('');
+  const [qCategory, setQCategory] = useState('all');
+  const [qDistrict, setQDistrict] = useState('all');
+  const [qStation, setQStation] = useState('all');
+  
+  // Graph State
+  const [filterType, setFilterType] = useState('all');
+  const [selectedNode, setSelectedNode] = useState(null);
+  const [hoveredNode, setHoveredNode] = useState(null);
+  const [pinnedNodes, setPinnedNodes] = useState(new Set());
 
-  // ── Crime Category List ───────────────────────────────────────────────────
   const crimeTypesList = useMemo(() => {
     const types = new Set();
-    secureCases.forEach(c => {
-      if (c.majorHeadName) types.add(c.majorHeadName);
-    });
+    secureCases.forEach(c => { if (c.majorHeadName) types.add(c.majorHeadName); });
     return ['all', ...Array.from(types).sort()];
   }, [secureCases]);
+  
+  const districtList = useMemo(() => {
+    const ds = new Set();
+    districts.forEach(d => { if(d.DistrictName) ds.add(d.DistrictName); });
+    return ['all', ...Array.from(ds).sort()];
+  }, []);
 
-  // ── Refs (no re-render on every frame) ────────────────────────────────────
-  const canvasRef     = useRef(null);
-  const transformRef  = useRef({ x: 0, y: 0, zoom: 1 });
-  const dragRef       = useRef({ node: null });
-  const panRef        = useRef({ active: false, ox: 0, oy: 0 });
-  const pinnedRef     = useRef(new Set());
-  const hoveredRef    = useRef(null);
-  const selectedRef   = useRef(null);
-  const connSetRef    = useRef(null);
-  const labelModeRef  = useRef('smart');
-  const animRef       = useRef(null);
-  const fittedRef     = useRef(false);
+  const stationList = useMemo(() => {
+    const st = new Set();
+    units.forEach(u => { 
+      if (!u.UnitName) return;
+      if (qDistrict !== 'all') {
+        const d = districts.find(d => String(d.DistrictID) === String(u.DistrictID));
+        if (d && d.DistrictName !== qDistrict) return;
+      }
+      st.add(u.UnitName);
+    });
+    return ['all', ...Array.from(st).sort()];
+  }, [qDistrict]);
 
-  // ── Build raw graph ────────────────────────────────────────────────────────
-  const rawGraph = useMemo(
-    () => buildNetworkData(secureCases, [], [], districts, units),
-    [secureCases],
-  );
+  const rawGraph = useMemo(() => {
+    if (!hasQueried) return { nodes: [], edges: [] };
+    
+    // Query-First Approach: Filter secureCases BEFORE building graph!
+    const filteredCases = secureCases.filter(c => {
+      let match = true;
+      if (qCategory !== 'all' && c.majorHeadName !== qCategory) match = false;
+      
+      const distName = c.districtName || c.district?.DistrictName;
+      if (qDistrict !== 'all' && distName !== qDistrict) match = false;
 
-  // ── Apply type filter + search filter ─────────────────────────────────────
+      const stName = c.policeStationName || c.unit?.UnitName || c.unit?.PoliceStationName;
+      if (qStation !== 'all' && stName !== qStation) match = false;
+      
+      if (qSearch) {
+        const term = qSearch.toLowerCase();
+        // Deep search across all case metadata (including nested unit, district, and arrays)
+        if (!JSON.stringify(c).toLowerCase().includes(term)) {
+          match = false;
+        }
+      }
+      return match;
+    });
+    
+    // Build network from heavily filtered list
+    return buildNetworkData(filteredCases, accused, victims, districts, units);
+  }, [hasQueried, secureCases, qCategory, qStation, qSearch]);
+
   const { visNodes, visEdges, nodeMap } = useMemo(() => {
-    const lower = search.toLowerCase();
-
-    // 1. Identify which cases match the selected crime category
-    const matchingCaseIds = new Set();
+    let nodes = rawGraph.nodes.filter(n => filterType === 'all' || n.type === filterType);
+    
+    // Core nodes are the actual data (Cases, Accused, Victims)
+    const coreNodeIds = new Set();
     rawGraph.nodes.forEach(n => {
-      if (n.type === 'case') {
-        const caseRecord = n.data;
-        const matchesCategory = selectedCrimeType === 'all' || caseRecord?.majorHeadName === selectedCrimeType;
-        if (matchesCategory) {
-          matchingCaseIds.add(n.id);
-        }
+      if (['case', 'criminal', 'victim'].includes(n.type)) {
+        coreNodeIds.add(n.id);
       }
     });
 
-    // 2. Identify neighbors of selectedNode in the raw graph to override filters for them
-    const selectedNodeNeighbors = new Set();
-    if (selectedNode) {
-      selectedNodeNeighbors.add(selectedNode.id);
-      rawGraph.edges.forEach(e => {
-        if (e.source === selectedNode.id) selectedNodeNeighbors.add(e.target);
-        if (e.target === selectedNode.id) selectedNodeNeighbors.add(e.source);
-      });
-    }
-
-    // 3. Filter nodes based on search query, entity filter, and crime category matching
-    let nodes = rawGraph.nodes.filter(n => {
-      // Compulsorily keep selected node and all its direct connections
-      if (selectedNodeNeighbors.has(n.id)) return true;
-
-      if (filterType !== 'all' && n.type !== filterType) return false;
-
-      // If filtering by crime category, keep non-case nodes only if connected to matching cases
-      if (selectedCrimeType !== 'all') {
-        if (n.type === 'case') {
-          if (!matchingCaseIds.has(n.id)) return false;
-        } else {
-          // Keep accused, victim, station, district only if connected to a matching case
-          const isConnected = rawGraph.edges.some(e => 
-            (e.source === n.id && matchingCaseIds.has(e.target)) ||
-            (e.target === n.id && matchingCaseIds.has(e.source))
-          );
-          if (!isConnected) return false;
-        }
-      }
-
-      if (!lower) return true;
-      return (
-        n.label.toLowerCase().includes(lower) ||
-        (n.data?.AccusedName  || '').toLowerCase().includes(lower) ||
-        (n.data?.VictimName   || '').toLowerCase().includes(lower) ||
-        (n.data?.CrimeNo      || '').toLowerCase().includes(lower)
-      );
+    // We only want to keep structural nodes (Stations, Districts) if they are directly linked to core data
+    const validNodeIds = new Set(coreNodeIds);
+    rawGraph.edges.forEach(e => {
+      if (coreNodeIds.has(e.source)) validNodeIds.add(e.target);
+      if (coreNodeIds.has(e.target)) validNodeIds.add(e.source);
     });
 
-    const ids   = new Set(nodes.map(n => n.id));
-    const edges = rawGraph.edges.filter(e => ids.has(e.source) && ids.has(e.target));
-    const map   = new Map(nodes.map(n => [n.id, n]));
+    // Filter out all the empty master stations/districts that have no cases
+    nodes = nodes.filter(n => validNodeIds.has(n.id));
+    
+    const finalIds = new Set(nodes.map(n => n.id));
+    const edges = rawGraph.edges.filter(e => finalIds.has(e.source) && finalIds.has(e.target));
+    const map = new Map(nodes.map(n => [n.id, n]));
+    
     return { visNodes: nodes, visEdges: edges, nodeMap: map };
-  }, [rawGraph, filterType, selectedCrimeType, search, selectedNode]);
+  }, [rawGraph, filterType]);
 
-  // ── Group nodes by type for List View ──────────────────────────────────────
-  const groupedNodes = useMemo(() => {
-    const groups = { case: [], criminal: [], victim: [], station: [], district: [] };
-    visNodes.forEach(n => {
-      if (groups[n.type]) groups[n.type].push(n);
+  const deg = useMemo(() => {
+    const d = {};
+    visEdges.forEach(e => {
+      d[e.source] = (d[e.source] || 0) + 1;
+      d[e.target] = (d[e.target] || 0) + 1;
     });
-    return groups;
-  }, [visNodes]);
+    return d;
+  }, [visEdges]);
 
-  // ── Neighbour set for selected node ───────────────────────────────────────
   const connectedSet = useMemo(() => {
     if (!selectedNode) return null;
     const s = new Set([selectedNode.id]);
@@ -177,351 +177,214 @@ export default function NetworkGraph() {
     return s;
   }, [selectedNode, visEdges]);
 
-  // keep refs in sync (used inside animation loop without re-creating it)
+  const canvasRef = useRef(null);
+  const transformRef = useRef({ x: 0, y: 0, zoom: 1 });
+  const dragRef = useRef({ node: null });
+  const panRef = useRef({ active: false, ox: 0, oy: 0 });
+  const pinnedRef = useRef(new Set());
+  const hoveredRef = useRef(null);
+  const selectedRef = useRef(null);
+  const connSetRef = useRef(null);
+  const animRef = useRef(null);
+
+  useEffect(() => { pinnedRef.current = pinnedNodes; }, [pinnedNodes]);
+  useEffect(() => { hoveredRef.current = hoveredNode; }, [hoveredNode]);
   useEffect(() => { selectedRef.current = selectedNode; }, [selectedNode]);
-  useEffect(() => { connSetRef.current  = connectedSet; }, [connectedSet]);
-  useEffect(() => { labelModeRef.current = labelMode; },  [labelMode]);
+  useEffect(() => { connSetRef.current = connectedSet; }, [connectedSet]);
 
-  const intelligenceStats = useMemo(() => {
-    const heinousCount = caseViews.filter(c => c.isHeinous).length;
-    
-    const accusedNamesMap = new Map();
-    caseViews.forEach(c => {
-      if (c.accused) {
-        c.accused.forEach(a => {
-          if (a.AccusedName) {
-            const name = a.AccusedName.trim().toLowerCase();
-            accusedNamesMap.set(name, (accusedNamesMap.get(name) || 0) + 1);
-          }
-        });
-      }
-    });
-    const repeatOffendersCount = [...accusedNamesMap.values()].filter(count => count > 1).length;
-    const organizedCrimeCount = caseViews.filter(c => String(c.majorHeadName).toLowerCase().includes('dacoity') || String(c.majorHeadName).toLowerCase().includes('robbery')).length;
-    const activeAlertsCount = 3; // hardcoded alerts count for consistency
-
-    return [
-      { label: 'Heinous Crime Cases', value: heinousCount.toLocaleString(), caption: 'Critical Caseload', status: heinousCount >= 5 ? 'danger' : heinousCount >= 2 ? 'warning' : 'success' },
-      { label: 'Repeat Offenders', value: repeatOffendersCount.toLocaleString(), caption: 'Tracked Recidivists', status: repeatOffendersCount > 2 ? 'warning' : 'neutral' },
-      { label: 'Organized Crime Networks', value: organizedCrimeCount.toLocaleString(), caption: 'Active Syndicates', status: organizedCrimeCount > 2 ? 'warning' : 'neutral' },
-      { label: 'Active Intelligence Alerts', value: activeAlertsCount.toLocaleString(), caption: 'Immediate Threats', status: activeAlertsCount >= 3 ? 'danger' : activeAlertsCount >= 1 ? 'warning' : 'success' }
-    ];
-  }, []);
-
-  const renderKpiStrip = (title, stats) => (
-    <div style={{ marginBottom: '24px' }}>
-      <div className="section-eyebrow" style={{
-        color: 'var(--text-secondary)',
-        fontSize: '11px',
-        textTransform: 'uppercase',
-        letterSpacing: '1.5px',
-        margin: '18px 0 10px 0',
-        paddingLeft: '10px',
-        borderLeft: '3px solid var(--accent-primary)',
-        fontWeight: 'bold'
-      }}>{title}</div>
-      <div className="ops-stat-strip" style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(4, 1fr)',
-        border: '1px solid var(--border-color)',
-        borderRadius: '0px',
-        backgroundColor: 'var(--bg-panel)'
-      }}>
-        {stats.map((stat, idx) => (
-          <div key={idx} className="ops-stat-block" style={{
-            padding: '12px 16px',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            backgroundColor: 'var(--bg-panel)',
-            borderRight: idx < stats.length - 1 ? '1px solid var(--border-color)' : 'none'
-          }}>
-            <div className="ops-stat-label" style={{
-              fontFamily: 'Consolas, monospace',
-              fontSize: '11px',
-              fontWeight: 600,
-              textTransform: 'uppercase',
-              color: 'var(--text-muted)',
-              letterSpacing: '0.5px',
-              marginBottom: '2px'
-            }}>{stat.label}</div>
-            <div className="ops-stat-value" style={{
-              fontFamily: 'Consolas, monospace',
-              fontSize: '24px',
-              fontWeight: 800,
-              color: stat.status === 'success' ? 'var(--accent-success)' : stat.status === 'warning' ? 'var(--accent-warning)' : stat.status === 'danger' ? 'var(--accent-danger)' : 'var(--text-primary)',
-              marginBottom: '2px'
-            }}>{stat.value}</div>
-            <div className="ops-stat-caption" style={{
-              fontFamily: 'Consolas, monospace',
-              fontSize: '9.5px',
-              color: 'var(--text-muted)',
-              fontStyle: 'italic',
-              fontWeight: 'normal'
-            }}>{stat.caption}</div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-
-  // ── Graph statistics ───────────────────────────────────────────────────────
-  const graphStats = useMemo(() => {
-    const deg = {};
-    visEdges.forEach(e => {
-      deg[e.source] = (deg[e.source] || 0) + 1;
-      deg[e.target] = (deg[e.target] || 0) + 1;
-    });
-    let hub = null, maxDeg = 0;
-    Object.entries(deg).forEach(([id, d]) => {
-      if (d > maxDeg) { maxDeg = d; hub = nodeMap.get(id); }
-    });
-    const N = visNodes.length;
-    const E = visEdges.length;
-    const density = N > 1 ? ((2 * E) / (N * (N - 1)) * 100).toFixed(1) : '0.0';
-    return { N, E, hub, maxDeg, density, deg };
-  }, [visNodes, visEdges, nodeMap]);
-
-  // ── Connection items for selected node panel ───────────────────────────────
-  const connItems = useMemo(() => {
-    if (!selectedNode) return [];
-    return visEdges
-      .filter(e => e.source === selectedNode.id || e.target === selectedNode.id)
-      .map(e => {
-        const peerId = e.source === selectedNode.id ? e.target : e.source;
-        const peer   = nodeMap.get(peerId);
-        return { id: peerId, label: peer?.label || peerId, nodeType: peer?.type || 'unknown', edgeType: e.type };
-      });
-  }, [selectedNode, visEdges, nodeMap]);
-
-  // ── Canvas draw loop ───────────────────────────────────────────────────────
   useEffect(() => {
+    if (!hasQueried || !canvasRef.current) return;
     const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx   = canvas.getContext('2d');
+    let W = canvas.offsetWidth;
+    let H = canvas.offsetHeight;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = W * dpr;
+    canvas.height = H * dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+
     const nodes = visNodes;
     const edges = visEdges;
-    // O(1) lookup map (rebuilt when filtered data changes)
-    const nm    = new Map(nodes.map(n => [n.id, n]));
+    const nm = nodeMap;
 
-    // Degree for sizing
-    const deg = {};
-    edges.forEach(e => {
-      deg[e.source] = (deg[e.source] || 0) + 1;
-      deg[e.target] = (deg[e.target] || 0) + 1;
-    });
-    fittedRef.current = false;
+    let initialFit = false;
+    const fitGraph = () => {
+      if (nodes.length === 0 || W === 0 || H === 0) return;
+      const xs = nodes.map(n => n.x), ys = nodes.map(n => n.y);
+      const minX = Math.min(...xs), maxX = Math.max(...xs);
+      const minY = Math.min(...ys), maxY = Math.max(...ys);
+      let fitZoom = Math.min((W - 100) / Math.max(maxX - minX, 1), (H - 100) / Math.max(maxY - minY, 1), 1);
+      fitZoom = Math.max(fitZoom, 0.1);
+      transformRef.current = {
+        zoom: fitZoom,
+        x: W / 2 - ((minX + maxX) / 2) * fitZoom,
+        y: H / 2 - ((minY + maxY) / 2) * fitZoom,
+      };
+      initialFit = true;
+    };
 
     const frame = () => {
-      // ── Resize canvas to fill container (HiDPI aware) ──────────────────
-      const dpr  = window.devicePixelRatio || 1;
-      const rect = canvas.getBoundingClientRect();
-      const W = rect.width, H = rect.height;
-      
-      // Early exit if canvas is hidden/zero-size to prevent infinite loops
-      if (W === 0 || H === 0) {
-        animRef.current = requestAnimationFrame(frame);
-        return;
-      }
+      animRef.current = requestAnimationFrame(frame);
+      if (!initialFit) fitGraph();
 
-      if (canvas.width !== Math.round(W * dpr) || canvas.height !== Math.round(H * dpr)) {
-        canvas.width  = Math.round(W * dpr);
-        canvas.height = Math.round(H * dpr);
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      }
-
-      if (!fittedRef.current && nodes.length) {
-        const xs = nodes.map(node => node.x);
-        const ys = nodes.map(node => node.y);
-        const minX = Math.min(...xs), maxX = Math.max(...xs);
-        const minY = Math.min(...ys), maxY = Math.max(...ys);
-        let fitZoom = Math.min((W - 48) / Math.max(maxX - minX, 1), (H - 48) / Math.max(maxY - minY, 1), 1);
-        fitZoom = Math.max(fitZoom, 0.05); // Prevent negative or zero zoom
-        transformRef.current = {
-          zoom: fitZoom,
-          x: W / 2 - ((minX + maxX) / 2) * fitZoom,
-          y: H / 2 - ((minY + maxY) / 2) * fitZoom,
-        };
-        fittedRef.current = true;
-      }
-
-      // ── Physics ─────────────────────────────────────────────────────────
-      const dragged  = dragRef.current.node;
-      const pinned   = pinnedRef.current;
+      const { x: tx, y: ty, zoom: tz } = transformRef.current;
+      const dragged = dragRef.current.node;
+      const pinned = pinnedRef.current;
       const cx = W / 2, cy = H / 2;
-      const cSet     = connSetRef.current;
+      const cSet = connSetRef.current;
+      const sel = selectedRef.current;
 
-      // Exact repulsion is intentionally limited to small filtered views. The complete
-      // graph uses the deterministic large-graph layout to avoid an O(N²) frame cost.
       const runExactPhysics = nodes.length <= 350;
-      for (let i = 0; runExactPhysics && i < nodes.length; i++) {
-        const a = nodes[i];
-        if (pinned.has(a.id) || a === dragged) continue;
-        if (cSet && !cSet.has(a.id)) continue; // Ignore hidden nodes in physics
-        
-        for (let j = i + 1; j < nodes.length; j++) {
-          const b  = nodes[j];
-          if (cSet && !cSet.has(b.id)) continue; // Ignore hidden nodes in physics
+
+      nodes.forEach(n => {
+        if (n.ox === undefined) { n.ox = n.x; n.oy = n.y; }
+      });
+
+      if (!runExactPhysics) {
+        nodes.forEach(n => {
+          if (pinned.has(n.id) || n === dragged) return;
+          if (cSet && !cSet.has(n.id)) return;
+          n.vx += (n.ox - n.x) * 0.06;
+          n.vy += (n.oy - n.y) * 0.06;
+          n.x += n.vx;
+          n.y += n.vy;
+          n.vx *= 0.82;
+          n.vy *= 0.82;
+        });
+      } else {
+        for (let i = 0; i < nodes.length; i++) {
+          const a = nodes[i];
+          if (pinned.has(a.id) || a === dragged) continue;
+          if (cSet && !cSet.has(a.id)) continue;
           
-          const dx = (b.x - a.x) || 0.01;
-          const dy = (b.y - a.y) || 0.01;
-          const d2 = dx * dx + dy * dy;
-          if (d2 > 90000) continue;         // skip distant pairs
-          const d  = Math.sqrt(d2) || 1;
-          const f  = REPULSION / d2;
-          const fx = (dx / d) * f;
-          const fy = (dy / d) * f;
-          a.vx -= fx * 0.01; a.vy -= fy * 0.01;
-          if (!pinned.has(b.id) && b !== dragged) { b.vx += fx * 0.01; b.vy += fy * 0.01; }
+          for (let j = i + 1; j < nodes.length; j++) {
+            const b = nodes[j];
+            if (cSet && !cSet.has(b.id)) continue;
+            const dx = (b.x - a.x) || 0.01;
+            const dy = (b.y - a.y) || 0.01;
+            const d2 = dx * dx + dy * dy;
+            if (d2 > 90000) continue;
+            const d = Math.sqrt(d2) || 1;
+            const f = REPULSION / d2;
+            const fx = (dx / d) * f;
+            const fy = (dy / d) * f;
+            a.vx -= fx * 0.01; a.vy -= fy * 0.01;
+            if (!pinned.has(b.id) && b !== dragged) { b.vx += fx * 0.01; b.vy += fy * 0.01; }
+          }
         }
+        edges.forEach(edge => {
+          const s = nm.get(edge.source), t = nm.get(edge.target);
+          if (!s || !t) return;
+          if (cSet && (!cSet.has(s.id) || !cSet.has(t.id))) return;
+          const dx = t.x - s.x, dy = t.y - s.y;
+          const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+          const f = (dist - IDEAL_LEN) * SPRING_K * (edge.strength || 1);
+          const fx = (dx / dist) * f, fy = (dy / dist) * f;
+          if (!pinned.has(s.id) && s !== dragged) { s.vx += fx; s.vy += fy; }
+          if (!pinned.has(t.id) && t !== dragged) { t.vx -= fx; t.vy -= fy; }
+        });
+        nodes.forEach(n => {
+          if (pinned.has(n.id) || n === dragged) return;
+          if (cSet && !cSet.has(n.id)) return;
+          n.vx += (cx - n.x) * GRAVITY;
+          n.vy += (cy - n.y) * GRAVITY;
+          n.x += n.vx; n.y += n.vy;
+          n.vx *= DAMPING; n.vy *= DAMPING;
+        });
       }
 
-      // Spring forces (Hooke)
-      if (runExactPhysics) edges.forEach(edge => {
-        const s = nm.get(edge.source), t = nm.get(edge.target);
-        if (!s || !t) return;
-        if (cSet && (!cSet.has(s.id) || !cSet.has(t.id))) return; // Ignore spring if either end is hidden
-        
-        const dx   = t.x - s.x, dy = t.y - s.y;
-        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-        const f    = (dist - IDEAL_LEN) * SPRING_K * (edge.strength || 1);
-        const fx   = (dx / dist) * f, fy = (dy / dist) * f;
-        if (!pinned.has(s.id) && s !== dragged) { s.vx += fx; s.vy += fy; }
-        if (!pinned.has(t.id) && t !== dragged) { t.vx -= fx; t.vy -= fy; }
-      });
-
-      // Gravity + integrate
-      if (runExactPhysics) nodes.forEach(n => {
-        if (pinned.has(n.id) || n === dragged) return;
-        if (cSet && !cSet.has(n.id)) return; // Ignore gravity/movement for hidden nodes
-        
-        n.vx += (cx - n.x) * GRAVITY;
-        n.vy += (cy - n.y) * GRAVITY;
-        n.x  += n.vx;  n.y  += n.vy;
-        n.vx *= DAMPING; n.vy *= DAMPING;
-      });
-
-      // ── Clear ───────────────────────────────────────────────────────────
       ctx.clearRect(0, 0, W, H);
 
-      // Subtle grid lines
-      const { x: tx, y: ty, zoom: tz } = transformRef.current;
-      ctx.save();
-      ctx.strokeStyle = 'rgba(255,255,255,0.025)';
-      ctx.lineWidth   = 1;
-      const step = Math.max(60 * tz, 5); // Prevent infinite loop if tz is 0
-      const ox   = ((tx % step) + step) % step;
-      const oy   = ((ty % step) + step) % step;
-      for (let gx = ox - step; gx < W + step; gx += step) {
-        ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, H); ctx.stroke();
-      }
-      for (let gy = oy - step; gy < H + step; gy += step) {
-        ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy); ctx.stroke();
-      }
-      ctx.restore();
-
-      // Apply pan/zoom transform
       ctx.save();
       ctx.translate(tx, ty);
       ctx.scale(tz, tz);
 
-      const sel    = selectedRef.current;
+      const activeNode = sel;
+      if (activeNode) {
+        edges.forEach(edge => {
+          if (edge.source !== activeNode.id && edge.target !== activeNode.id) return;
+          const s = nm.get(edge.source), t = nm.get(edge.target);
+          if (!s || !t) return;
+          const isSourceActive = (s.id === activeNode.id);
+          const start = isSourceActive ? s : t;
+          const end = isSourceActive ? t : s;
+          
+          ctx.beginPath();
+          ctx.moveTo(start.x, start.y);
+          ctx.lineTo(end.x, end.y);
+          ctx.lineWidth = 3.5;
+          const grad = ctx.createLinearGradient(start.x, start.y, end.x, end.y);
+          grad.addColorStop(0, 'rgba(0, 255, 255, 1)');
+          grad.addColorStop(0.5, 'rgba(0, 150, 255, 0.8)');
+          grad.addColorStop(1, 'rgba(255, 0, 150, 0.1)');
+          ctx.strokeStyle = grad;
+          ctx.shadowBlur = 12;
+          ctx.shadowColor = 'rgba(0, 200, 255, 0.9)';
+          ctx.stroke();
+          ctx.shadowBlur = 0;
+        });
+      }
 
-      // ── Draw Edges ───────────────────────────────────────────────────────
-      edges.forEach(edge => {
-        const s = nm.get(edge.source), t = nm.get(edge.target);
-        if (!s || !t) return;
-        const connected = cSet && cSet.has(s.id) && cSet.has(t.id);
-        const dimmed    = cSet && !connected;
-        if (dimmed) return; // Completely hide unconnected edges!
-        
-        ctx.beginPath();
-        ctx.moveTo(s.x, s.y);
-        ctx.lineTo(t.x, t.y);
-        ctx.lineWidth    = connected ? 2 : 0.85;
-        ctx.strokeStyle  = connected ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.42)';
-        ctx.shadowBlur   = connected ? 6 : 0;
-        ctx.shadowColor  = 'rgba(255,255,255,0.4)';
-        ctx.stroke();
-        ctx.shadowBlur   = 0;
-      });
-
-      // ── Draw Nodes ───────────────────────────────────────────────────────
+      const now = Date.now();
       nodes.forEach(n => {
-        const ent       = ENTITY[n.type] || ENTITY.case;
+        const ent = ENTITY[n.type] || ENTITY.case;
         const isSelected = sel && sel.id === n.id;
-        const isHovered  = hoveredRef.current && hoveredRef.current.id === n.id;
-        const isPinned   = pinnedRef.current.has(n.id);
-        const dimmed     = cSet && !cSet.has(n.id);
-        if (dimmed) return; // Completely hide unconnected nodes!
+        const isHovered = hoveredRef.current && hoveredRef.current.id === n.id;
         
-        const nodeDeg    = deg[n.id] || 0;
+        let dimmed = false;
+        if (activeNode) {
+          if (n.id !== activeNode.id) {
+            dimmed = cSet ? !cSet.has(n.id) : false;
+          }
+        }
+        
+        if (dimmed) {
+          ctx.beginPath();
+          ctx.arc(n.x, n.y, 1.5, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+          ctx.fill();
+          return; 
+        }
+        
+        const nodeDeg = deg[n.id] || 0;
         const largeGraph = nodes.length > 500;
-        const r = largeGraph
-          ? Math.max(2.4, n.radius * 0.42 + Math.min(nodeDeg * 0.18, 3.5))
-          : n.radius + Math.min(nodeDeg * 1.2, 10);
+        const r = largeGraph ? Math.max(3.0, n.radius * 0.45 + Math.min(nodeDeg * 0.18, 3.5)) : n.radius + Math.min(nodeDeg * 1.2, 10);
 
-        ctx.globalAlpha = 1;
-
-        // Glow ring
-        if ((isSelected || isHovered) && !dimmed) {
-          const gr = ctx.createRadialGradient(n.x, n.y, r * 0.6, n.x, n.y, r + 16);
-          gr.addColorStop(0, ent.glow);
-          gr.addColorStop(1, 'transparent');
+        if (isSelected || isHovered) {
+          const radarWave = (now % 2000) / 2000; 
+          const waveRadius = r + (radarWave * 30);
           ctx.beginPath();
-          ctx.arc(n.x, n.y, r + 16, 0, Math.PI * 2);
-          ctx.fillStyle = gr;
-          ctx.fill();
-        }
+          ctx.arc(n.x, n.y, waveRadius, 0, Math.PI * 2);
+          ctx.strokeStyle = `rgba(255, 255, 255, ${1 - radarWave})`;
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
 
-        // Main circle
-        ctx.beginPath();
-        ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
-        ctx.fillStyle   = isSelected ? '#fff' : ent.color;
-        ctx.fill();
-
-        // Stroke
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth   = isSelected ? 2.5 : (largeGraph ? 0.9 : 1.5);
-        ctx.stroke();
-
-        // Pin dot
-        if (isPinned) {
+          const crossR = r + 12;
           ctx.beginPath();
-          ctx.arc(n.x + r - 2, n.y - r + 2, 4, 0, Math.PI * 2);
-          ctx.fillStyle = '#FFD54F';
-          ctx.fill();
+          ctx.moveTo(n.x - crossR - 6, n.y); ctx.lineTo(n.x - crossR, n.y);
+          ctx.moveTo(n.x + crossR, n.y); ctx.lineTo(n.x + crossR + 6, n.y);
+          ctx.moveTo(n.x, n.y - crossR - 6); ctx.lineTo(n.x, n.y - crossR);
+          ctx.moveTo(n.x, n.y + crossR); ctx.lineTo(n.x, n.y + crossR + 6);
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
         }
 
-        ctx.globalAlpha = 1;
-
-        // Label
-        const showLabel = labelModeRef.current === 'all'
-          || isSelected
-          || (labelModeRef.current === 'smart' && (isHovered || r > 14));
-        if (showLabel && !dimmed) {
-          const text = n.label.length > 16 ? n.label.slice(0, 15) + '…' : n.label;
-          ctx.font      = isSelected ? 'bold 11px Inter, sans-serif' : '10px Inter, sans-serif';
-          ctx.textAlign = 'center';
-          ctx.shadowBlur   = 4;
-          ctx.shadowColor  = '#000';
-          ctx.fillStyle    = isSelected ? '#fff' : 'rgba(220,235,255,0.88)';
-          ctx.fillText(text, n.x, n.y - r - 6);
-          ctx.shadowBlur   = 0;
-        }
+        const sprite = nodeSprites[n.type] || nodeSprites['case'];
+        const scale = r / 24;
+        const sW = 64 * scale;
+        const sH = 64 * scale;
+        
+        ctx.drawImage(sprite, n.x - sW/2, n.y - sH/2, sW, sH);
       });
 
       ctx.restore();
-      animRef.current = requestAnimationFrame(frame);
     };
 
     frame();
     return () => { if (animRef.current) cancelAnimationFrame(animRef.current); };
-  // Rebuild loop only when filtered graph data changes
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visNodes, visEdges]);
+  }, [hasQueried, visNodes, visEdges]);
 
-  // ── Coordinate helpers ─────────────────────────────────────────────────────
   const screenToSim = useCallback((cx, cy) => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
@@ -538,188 +401,184 @@ export default function NetworkGraph() {
     }) || null,
   [visNodes, connectedSet]);
 
-  // ── Pointer events ─────────────────────────────────────────────────────────
   const onMouseDown = useCallback((e) => {
     if (e.button !== 0) return;
-    const sim  = screenToSim(e.clientX, e.clientY);
+    const sim = screenToSim(e.clientX, e.clientY);
     const node = nodeAt(sim.x, sim.y);
     if (node) {
       dragRef.current.node = node;
       setSelectedNode(node);
     } else {
       dragRef.current.node = null;
-      panRef.current = {
-        active: true,
-        ox: e.clientX - transformRef.current.x,
-        oy: e.clientY - transformRef.current.y,
-      };
+      panRef.current = { active: true, ox: e.clientX - transformRef.current.x, oy: e.clientY - transformRef.current.y };
     }
   }, [screenToSim, nodeAt]);
 
   const onMouseMove = useCallback((e) => {
-    const sim    = screenToSim(e.clientX, e.clientY);
-    const hNode  = nodeAt(sim.x, sim.y);
-    hoveredRef.current = hNode;
+    const sim = screenToSim(e.clientX, e.clientY);
+    const hNode = nodeAt(sim.x, sim.y);
     setHoveredNode(hNode);
     if (canvasRef.current) {
       canvasRef.current.style.cursor = hNode ? 'pointer' : (dragRef.current.node ? 'grabbing' : 'grab');
     }
     if (dragRef.current.node && e.buttons === 1) {
-      dragRef.current.node.x  = sim.x;
-      dragRef.current.node.y  = sim.y;
-      dragRef.current.node.vx = 0;
-      dragRef.current.node.vy = 0;
+      dragRef.current.node.x = sim.x;
+      dragRef.current.node.y = sim.y;
     } else if (!dragRef.current.node && panRef.current.active && e.buttons === 1) {
-      transformRef.current = {
-        ...transformRef.current,
-        x: e.clientX - panRef.current.ox,
-        y: e.clientY - panRef.current.oy,
-      };
+      transformRef.current = { ...transformRef.current, x: e.clientX - panRef.current.ox, y: e.clientY - panRef.current.oy };
     }
   }, [screenToSim, nodeAt]);
 
   const onMouseUp = useCallback(() => {
-    dragRef.current.node    = null;
-    panRef.current.active   = false;
+    dragRef.current.node = null;
+    panRef.current.active = false;
   }, []);
 
-  const onDoubleClick = useCallback((e) => {
-    const sim  = screenToSim(e.clientX, e.clientY);
-    const node = nodeAt(sim.x, sim.y);
-    if (!node) return;
-    setPinnedNodes(prev => {
-      const next = new Set(prev);
-      if (next.has(node.id)) next.delete(node.id); else next.add(node.id);
-      pinnedRef.current = next;
-      return next;
-    });
-  }, [screenToSim, nodeAt]);
-
-  // Wheel zoom toward cursor
   const onWheel = useCallback((e) => {
     e.preventDefault();
-    const factor  = e.deltaY < 0 ? 1.12 : 0.89;
-    const canvas  = canvasRef.current;
-    const rect    = canvas.getBoundingClientRect();
-    const mx      = e.clientX - rect.left;
-    const my      = e.clientY - rect.top;
+    const factor = e.deltaY < 0 ? 1.12 : 0.89;
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
     const { x: tx, y: ty, zoom: tz } = transformRef.current;
     const newZoom = Math.max(0.12, Math.min(tz * factor, 6));
     transformRef.current = {
-      x:    mx - (mx - tx) * (newZoom / tz),
-      y:    my - (my - ty) * (newZoom / tz),
+      x: mx - (mx - tx) * (newZoom / tz),
+      y: my - (my - ty) * (newZoom / tz),
       zoom: newZoom,
     };
   }, []);
 
-  // Attach wheel as non-passive
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     canvas.addEventListener('wheel', onWheel, { passive: false });
     return () => canvas.removeEventListener('wheel', onWheel);
-  }, [onWheel]);
+  }, [onWheel, hasQueried]);
 
-  // ── Toolbar helpers ────────────────────────────────────────────────────────
-  const zoom = (factor) => {
-    const { x: tx, y: ty, zoom: tz } = transformRef.current;
-    const canvas = canvasRef.current;
-    const rect   = canvas.getBoundingClientRect();
-    const cx = rect.width / 2, cy = rect.height / 2;
-    const nz = Math.max(0.12, Math.min(tz * factor, 6));
-    transformRef.current = {
-      x: cx - (cx - tx) * (nz / tz),
-      y: cy - (cy - ty) * (nz / tz),
-      zoom: nz,
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setSelectedNode(null);
+      }
     };
-  };
-  const recenter = () => {
-    const canvas = canvasRef.current;
-    if (!canvas || !visNodes.length) return;
-    const rect = canvas.getBoundingClientRect();
-    const xs = visNodes.map(node => node.x), ys = visNodes.map(node => node.y);
-    const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
-    let fitZoom = Math.min((rect.width - 48) / Math.max(maxX - minX, 1), (rect.height - 48) / Math.max(maxY - minY, 1), 1);
-    fitZoom = Math.max(fitZoom, 0.05);
-    transformRef.current = {
-      zoom: fitZoom,
-      x: rect.width / 2 - ((minX + maxX) / 2) * fitZoom,
-      y: rect.height / 2 - ((minY + maxY) / 2) * fitZoom,
-    };
-  };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
-  const onCanvasKeyDown = useCallback((event) => {
-    if (!visNodes.length) return;
-    if (['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp'].includes(event.key)) {
-      event.preventDefault();
-      const direction = ['ArrowRight', 'ArrowDown'].includes(event.key) ? 1 : -1;
-      setKeyboardNode(current => {
-        const next = (current + direction + visNodes.length) % visNodes.length;
-        setSelectedNode(visNodes[next]);
-        return next;
-      });
-    } else if (event.key === '+' || event.key === '=') {
-      event.preventDefault(); zoom(1.25);
-    } else if (event.key === '-') {
-      event.preventDefault(); zoom(0.8);
-    } else if (event.key === '0') {
-      event.preventDefault(); recenter();
-    } else if (event.key === 'Escape') {
-      setSelectedNode(null);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visNodes]);
+  // UI Components
+  if (!hasQueried) {
+    const activeFilters = (qSearch ? 1 : 0) + (qCategory !== 'all' ? 1 : 0) + (qStation !== 'all' ? 1 : 0);
+    const canRun = activeFilters >= 1; 
 
-  // ── Styles ─────────────────────────────────────────────────────────────────
-  const chip = (active, color) => ({
-    padding: '4px 12px', borderRadius: '20px', cursor: 'pointer', fontSize: '11px',
-    fontWeight: active ? 700 : 400, transition: 'all 0.15s',
-    border: `1px solid ${active ? (color || '#4fc3f7') : 'rgba(255,255,255,0.08)'}`,
-    background: active ? `${color || '#4fc3f7'}18` : 'transparent',
-    color: active ? (color || '#4fc3f7') : 'var(--text-muted)',
-  });
+    return (
+      <div className="page-content animate-fade-in text-inverse" style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ maxWidth: '600px', width: '100%', background: 'var(--bg-panel)', borderRadius: '16px', padding: '40px', border: '1px solid var(--border-color)', boxShadow: '0 24px 60px rgba(0,0,0,0.4)', position: 'relative', overflow: 'hidden' }}>
+          
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '4px', background: 'linear-gradient(90deg, #ff4d6d, #7b2ff7, #4fc3f7)' }} />
 
-  const iconBtn = {
-    width: '34px', height: '34px', borderRadius: '8px', display: 'flex',
-    alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-    background: 'rgba(8,15,26,0.85)', border: '1px solid rgba(255,255,255,0.1)',
-    color: 'var(--text-secondary)', transition: 'all 0.15s',
-  };
-
-  const card = {
-    background: 'var(--bg-panel)', borderRadius: '12px',
-    border: '1px solid var(--border-color)', padding: '14px',
-  };
-
-  const metaRow = { fontSize: '11px', color: 'var(--text-muted)', letterSpacing: '0.07em', fontWeight: 700 };
-
-  // ─────────────────────────────────────────────────────────────────────────
-  return (
-    <div className="page-content animate-fade-in text-inverse">
-
-      {/* ── Page Header ─────────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px', flexWrap: 'wrap', gap: '12px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'linear-gradient(135deg,#7b2ff7,#512da8)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 16px rgba(123,47,247,0.35)' }}>
-            <MdHub size={22} color="#fff" />
-          </div>
-          <div>
-            <h1 className="network-title">Criminal Intelligence Network</h1>
-            <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)' }}>
-              Explore how accused persons, FIRs, victims and locations are connected.
+          <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+            <div style={{ width: '64px', height: '64px', borderRadius: '16px', background: 'rgba(123,47,247,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px auto', border: '1px solid rgba(123,47,247,0.3)' }}>
+              <MdSecurity size={32} color="#7b2ff7" />
+            </div>
+            <h1 style={{ fontSize: '24px', margin: '0 0 8px 0', color: '#fff' }}>Intelligence Sandbox</h1>
+            <p style={{ color: 'var(--text-muted)', fontSize: '14px', lineHeight: 1.6, margin: 0 }}>
+              The database contains millions of records. To prevent intelligence overload, 
+              construct a focused query to generate a specific target network.
             </p>
           </div>
-        </div>
 
-        {/* Stat pills */}
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '6px', fontWeight: 700, letterSpacing: '0.05em' }}>TARGET IDENTIFIER (FIR / NAME)</label>
+              <input 
+                type="text" 
+                value={qSearch}
+                onChange={e => setQSearch(e.target.value)}
+                placeholder="e.g. FIR-1234, John Doe..."
+                style={{ width: '100%', boxSizing: 'border-box', padding: '12px 16px', borderRadius: '8px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', outline: 'none', fontSize: '14px' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '16px' }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '6px', fontWeight: 700, letterSpacing: '0.05em' }}>CRIME CATEGORY</label>
+                <select 
+                  value={qCategory}
+                  onChange={e => setQCategory(e.target.value)}
+                  style={{ width: '100%', boxSizing: 'border-box', padding: '12px 16px', borderRadius: '8px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', outline: 'none', fontSize: '14px', cursor: 'pointer' }}
+                >
+                  {crimeTypesList.map(t => <option key={t} value={t}>{t === 'all' ? 'Any Category' : t}</option>)}
+                </select>
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '6px', fontWeight: 700, letterSpacing: '0.05em' }}>DISTRICT</label>
+                <select 
+                  value={qDistrict}
+                  onChange={e => { setQDistrict(e.target.value); setQStation('all'); }}
+                  style={{ width: '100%', boxSizing: 'border-box', padding: '12px 16px', borderRadius: '8px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', outline: 'none', fontSize: '14px', cursor: 'pointer' }}
+                >
+                  {districtList.map(t => <option key={t} value={t}>{t === 'all' ? 'Any District' : t}</option>)}
+                </select>
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '6px', fontWeight: 700, letterSpacing: '0.05em' }}>POLICE STATION</label>
+                <select 
+                  value={qStation}
+                  onChange={e => setQStation(e.target.value)}
+                  disabled={qDistrict === 'all'}
+                  style={{ width: '100%', boxSizing: 'border-box', padding: '12px 16px', borderRadius: '8px', background: qDistrict === 'all' ? 'rgba(0,0,0,0.1)' : 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: qDistrict === 'all' ? 'rgba(255,255,255,0.3)' : '#fff', outline: 'none', fontSize: '14px', cursor: qDistrict === 'all' ? 'not-allowed' : 'pointer', transition: 'all 0.2s' }}
+                >
+                  {stationList.map(t => <option key={t} value={t}>{t === 'all' ? (qDistrict === 'all' ? 'Select District First' : 'Any Station') : t}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <button 
+              disabled={!canRun}
+              onClick={() => setHasQueried(true)}
+              style={{
+                marginTop: '16px', width: '100%', padding: '14px', borderRadius: '8px',
+                background: canRun ? 'linear-gradient(135deg, #7b2ff7, #512da8)' : 'rgba(255,255,255,0.05)',
+                color: canRun ? '#fff' : 'rgba(255,255,255,0.3)',
+                border: 'none', fontSize: '15px', fontWeight: 700, cursor: canRun ? 'pointer' : 'not-allowed',
+                boxShadow: canRun ? '0 8px 20px rgba(123,47,247,0.3)' : 'none',
+                transition: 'all 0.2s'
+              }}
+            >
+              {canRun ? 'Initialize Network Graph' : 'Select at least 1 filter to query'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Graph View (Full Screen immersive) ──
+  return (
+    <div className="page-content animate-fade-in text-inverse" style={{ 
+      display: 'flex', flexDirection: 'column', 
+      height: 'calc(100vh - 64px)', 
+      padding: 0, 
+      margin: '-24px', // Override global page padding
+      position: 'relative', // Contain the absolute floating panels
+      background: '#050a12' 
+    }}>
+      
+      {/* Absolute Header Overlay */}
+      <div style={{ position: 'absolute', top: '24px', left: '24px', zIndex: 100, display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <button 
+          onClick={() => { setHasQueried(false); setSelectedNode(null); }}
+          style={{ padding: '8px 16px', borderRadius: '8px', background: 'rgba(7,16,28,0.85)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', cursor: 'pointer', fontSize: '13px', backdropFilter: 'blur(10px)' }}
+        >
+          ← New Query
+        </button>
+        <div style={{ display: 'flex', gap: '8px' }}>
           {[
-            { label: 'Nodes',     value: graphStats.N,       c: '#4fc3f7' },
-            { label: 'Edges',     value: graphStats.E,       c: '#ce93d8' },
-            { label: 'Density',   value: graphStats.density + '%', c: '#69f0ae' },
-            { label: 'Top Hub',   value: graphStats.maxDeg + ' links', c: '#ff4d6d' },
+            { label: 'Nodes', value: visNodes.length, c: '#4fc3f7' },
+            { label: 'Edges', value: visEdges.length, c: '#ce93d8' }
           ].map(s => (
-            <div key={s.label} style={{ padding: '6px 14px', borderRadius: '20px', background: `${s.c}0f`, border: `1px solid ${s.c}30`, fontSize: '12px' }}>
+            <div key={s.label} style={{ padding: '6px 14px', borderRadius: '20px', background: 'rgba(7,16,28,0.85)', border: `1px solid ${s.c}30`, fontSize: '12px', backdropFilter: 'blur(10px)' }}>
               <span style={{ color: s.c, fontWeight: 700 }}>{s.value}</span>
               <span style={{ color: 'var(--text-muted)', marginLeft: '6px' }}>{s.label}</span>
             </div>
@@ -727,654 +586,113 @@ export default function NetworkGraph() {
         </div>
       </div>
 
-      <section className="network-intro" aria-labelledby="network-help-title">
-        <div>
-          <strong id="network-help-title">How to use this page</strong>
-          <p>Select a node to see direct connections. Use filters to reduce noise, or switch to List view for a text-based overview.</p>
-        </div>
-        <div className="network-view-switch" role="group" aria-label="Network display mode">
-          <button type="button" className={viewMode === 'graph' ? 'active' : ''} aria-pressed={viewMode === 'graph'} onClick={() => setViewMode('graph')}>
-            <MdAccountTree aria-hidden="true" /> Graph view
+      <div style={{ position: 'absolute', top: '24px', right: '24px', zIndex: 100, display: 'flex', gap: '8px', background: 'rgba(7,16,28,0.85)', padding: '6px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)' }}>
+        {FILTER_CHIPS.map(f => (
+          <button
+            key={f.key}
+            onClick={() => setFilterType(f.key)}
+            style={{
+              padding: '4px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '11px',
+              border: `1px solid ${filterType === f.key ? (ENTITY[f.key]?.color || '#4fc3f7') : 'transparent'}`,
+              background: filterType === f.key ? `${ENTITY[f.key]?.color || '#4fc3f7'}20` : 'transparent',
+              color: filterType === f.key ? (ENTITY[f.key]?.color || '#fff') : 'var(--text-muted)',
+            }}
+          >
+            {f.label}
           </button>
-          <button type="button" className={viewMode === 'list' ? 'active' : ''} aria-pressed={viewMode === 'list'} onClick={() => setViewMode('list')}>
-            <MdViewList aria-hidden="true" /> List view
-          </button>
-        </div>
-      </section>
-
-      {/* Relocated Crime Intelligence Metrics */}
-      {renderKpiStrip('Criminal Intelligence Overview', intelligenceStats)}
-
-      {/* ── Two-column layout ─────────────────────────────────────────────── */}
-      <div className={`network-page network-page--${viewMode}`}>
-
-        {/* ── Canvas column ─────────────────────────────────────────────── */}
-        <div className="network-visual" hidden={viewMode !== 'graph'} style={{
-          position: 'relative', flex: 1, minHeight: '560px',
-          background: '#07101c', borderRadius: '14px', overflow: 'hidden',
-          border: '1px solid rgba(255,255,255,0.06)',
-          boxShadow: 'inset 0 0 80px rgba(0,0,0,0.6)',
-        }}>
-          <canvas
-            ref={canvasRef}
-            tabIndex={0}
-            role="img"
-            aria-label={`Interactive criminal network with ${graphStats.N} nodes and ${graphStats.E} connections. Use arrow keys to move between nodes, plus and minus to zoom, zero to reset, and Escape to clear selection.`}
-            style={{ width: '100%', height: '100%', display: 'block', cursor: 'grab' }}
-            onMouseDown={onMouseDown}
-            onMouseMove={onMouseMove}
-            onMouseUp={onMouseUp}
-            onMouseLeave={onMouseUp}
-            onDoubleClick={onDoubleClick}
-            onKeyDown={onCanvasKeyDown}
-          />
-          <p className="sr-only" aria-live="polite">
-            {selectedNode ? `Selected ${selectedNode.label}, ${ENTITY[selectedNode.type]?.label || selectedNode.type}, with ${connItems.length} direct connections.` : 'No network node selected.'}
-          </p>
-
-          {/* ── Floating Legend ─────────────────────────────────────────── */}
-          {showLegend ? (
-            <div style={{
-              position: 'absolute', top: '14px', left: '14px',
-              background: 'rgba(7,16,28,0.88)', backdropFilter: 'blur(10px)',
-              border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px',
-              padding: '12px 14px', zIndex: 10, minWidth: '150px',
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                <span style={{ ...metaRow }}>ENTITY TYPES</span>
-                <button onClick={() => setShowLegend(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', lineHeight: 1, fontSize: '14px', padding: 0 }}>×</button>
-              </div>
-              {Object.entries(ENTITY).map(([type, ent]) => (
-                <div
-                  key={type}
-                  onClick={() => setFilterType(filterType === type ? 'all' : type)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: '8px',
-                    padding: '5px 4px', cursor: 'pointer', borderRadius: '6px',
-                    opacity: filterType === 'all' || filterType === type ? 1 : 0.35,
-                    transition: 'opacity 0.2s',
-                  }}
-                >
-                  <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: ent.color, boxShadow: `0 0 7px ${ent.color}`, flexShrink: 0 }} />
-                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{ent.label}</span>
-                </div>
-              ))}
-              <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)', marginTop: '10px', paddingTop: '8px', fontSize: '10px', color: 'var(--text-muted)', lineHeight: 1.6 }}>
-                🖱 Scroll to zoom<br />
-                ✋ Drag to pan<br />
-                📌 Dbl-click to pin
-              </div>
-            </div>
-          ) : (
-            <button
-              onClick={() => setShowLegend(true)}
-              style={{ ...iconBtn, position: 'absolute', top: '14px', left: '14px', width: 'auto', padding: '6px 12px', fontSize: '11px', zIndex: 10 }}
-            >
-              Legend
-            </button>
-          )}
-
-          {/* ── Hover tooltip ───────────────────────────────────────────── */}
-          {hoveredNode && (
-            <div style={{
-              position: 'absolute', top: '14px', left: '50%', transform: 'translateX(-50%)',
-              background: 'rgba(7,16,28,0.95)', backdropFilter: 'blur(8px)',
-              border: `1px solid ${ENTITY[hoveredNode.type]?.color || '#fff'}40`,
-              borderRadius: '10px', padding: '8px 16px', zIndex: 20,
-              pointerEvents: 'none', whiteSpace: 'nowrap',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{ width: '9px', height: '9px', borderRadius: '50%', background: ENTITY[hoveredNode.type]?.color, boxShadow: `0 0 8px ${ENTITY[hoveredNode.type]?.color}` }} />
-                <strong style={{ fontSize: '13px' }}>{hoveredNode.label}</strong>
-                <span style={{ fontSize: '11px', color: ENTITY[hoveredNode.type]?.color, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  {ENTITY[hoveredNode.type]?.label}
-                </span>
-              </div>
-              <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '3px', textAlign: 'center' }}>
-                Click to inspect · Double-click to {pinnedNodes.has(hoveredNode.id) ? 'unpin' : 'pin'}
-              </div>
-            </div>
-          )}
-
-          {/* ── Zoom controls ───────────────────────────────────────────── */}
-          <div style={{ position: 'absolute', bottom: '14px', left: '14px', display: 'flex', flexDirection: 'column', gap: '6px', zIndex: 10 }}>
-            {[
-              { Icon: MdZoomIn,            action: () => zoom(1.25),  tip: 'Zoom in'    },
-              { Icon: MdZoomOut,           action: () => zoom(0.8),   tip: 'Zoom out'   },
-              { Icon: MdCenterFocusStrong, action: recenter,          tip: 'Reset view' },
-            ].map(({ Icon, action, tip }, i) => (
-              <button key={i} title={tip} onClick={action} style={iconBtn}
-                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'rgba(8,15,26,0.85)'}
-              >
-                <Icon size={18} />
-              </button>
-            ))}
-          </div>
-
-          {/* ── Label mode toggle ────────────────────────────────────────── */}
-          <div style={{ position: 'absolute', bottom: '14px', right: '14px', display: 'flex', alignItems: 'center', gap: '4px', zIndex: 10 }}>
-            <span style={{ fontSize: '10px', color: 'var(--text-muted)', marginRight: '4px' }}>Labels:</span>
-            {['all', 'smart', 'none'].map(m => (
-              <button key={m} onClick={() => setLabelMode(m)} style={{
-                padding: '5px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '10px',
-                background: labelMode === m ? 'rgba(255,255,255,0.12)' : 'rgba(7,16,28,0.85)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                color: labelMode === m ? '#fff' : 'var(--text-muted)',
-                fontWeight: labelMode === m ? 700 : 400, textTransform: 'capitalize',
-              }}>
-                {m}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* ── Right Sidebar ──────────────────────────────────────────────── */}
-        {viewMode === 'list' && (
-          <section className="network-list-view" aria-labelledby="network-list-title">
-            <div className="network-list-heading">
-              <h2 id="network-list-title">Network Database View</h2>
-              <p>Explore categorized entities matching search filters. Select any node to locate it in the visual graph.</p>
-            </div>
-
-            {/* Entity Tabs Switcher */}
-            <div style={{ display: 'flex', gap: '4px', borderBottom: '1px solid var(--border-color)', marginBottom: '16px', overflowX: 'auto', paddingBottom: '2px' }}>
-              {[
-                { key: 'criminal', label: 'Accused', count: groupedNodes.criminal.length, color: ENTITY.criminal.color },
-                { key: 'case',     label: 'FIR Cases', count: groupedNodes.case.length,     color: ENTITY.case.color },
-                { key: 'victim',   label: 'Victims', count: groupedNodes.victim.length,   color: ENTITY.victim.color },
-                { key: 'location', label: 'Locations', count: groupedNodes.station.length + groupedNodes.district.length, color: ENTITY.station.color },
-              ].map(tab => (
-                <button
-                  key={tab.key}
-                  type="button"
-                  onClick={() => setActiveListTab(tab.key)}
-                  style={{
-                    padding: '8px 12px',
-                    borderRadius: '8px 8px 0 0',
-                    border: '1px solid transparent',
-                    borderBottom: 'none',
-                    background: activeListTab === tab.key ? 'var(--bg-panel-alt)' : 'transparent',
-                    borderColor: activeListTab === tab.key ? 'var(--border-color)' : 'transparent',
-                    color: activeListTab === tab.key ? 'var(--text-primary)' : 'var(--text-muted)',
-                    cursor: 'pointer',
-                    fontSize: '12px',
-                    fontWeight: activeListTab === tab.key ? 700 : 400,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    whiteSpace: 'nowrap',
-                    transition: 'all 0.15s'
-                  }}
-                >
-                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: tab.color }} />
-                  {tab.label}
-                  <span style={{
-                    fontSize: '10px',
-                    padding: '2px 6px',
-                    borderRadius: '10px',
-                    background: activeListTab === tab.key ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.04)',
-                    color: 'var(--text-muted)'
-                  }}>
-                    {tab.count}
-                  </span>
-                </button>
-              ))}
-            </div>
-
-            {/* Tab content rendering */}
-            {visNodes.length ? (
-              <div>
-                {/* 1. Accused Tab */}
-                {activeListTab === 'criminal' && (
-                  groupedNodes.criminal.length ? (
-                    <ul className="network-entity-list">
-                      {groupedNodes.criminal.map(node => (
-                        <li key={node.id}>
-                          <button type="button" onClick={() => setSelectedNode(node)} aria-current={selectedNode?.id === node.id ? 'true' : undefined}>
-                            <span className="network-entity-marker" style={{ backgroundColor: ENTITY.criminal.color }} />
-                            <span className="network-entity-copy">
-                              <strong>{node.label}</strong>
-                              <span>
-                                {node.data?.Gender || 'M'}&nbsp;·&nbsp;{node.data?.Age ? `Age ${node.data.Age}` : 'Age N/A'}&nbsp;·&nbsp;{node.data?.Occupation || 'Suspect'}
-                              </span>
-                            </span>
-                            <span className="network-entity-count">
-                              {graphStats.deg[node.id] || 0} link{(graphStats.deg[node.id] || 0) === 1 ? '' : 's'}
-                            </span>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : <div className="network-empty">No accused records found.</div>
-                )}
-
-                {/* 2. Cases Tab */}
-                {activeListTab === 'case' && (
-                  groupedNodes.case.length ? (
-                    <ul className="network-entity-list">
-                      {groupedNodes.case.map(node => (
-                        <li key={node.id}>
-                          <button type="button" onClick={() => setSelectedNode(node)} aria-current={selectedNode?.id === node.id ? 'true' : undefined}>
-                            <span className="network-entity-marker" style={{ backgroundColor: ENTITY.case.color }} />
-                            <span className="network-entity-copy">
-                              <strong>{node.label}</strong>
-                              <span>
-                                {node.data?.majorHeadName || 'Crime Case'}&nbsp;·&nbsp;{node.data?.FIRDate ? new Date(node.data.FIRDate).toLocaleDateString() : 'N/A'}
-                              </span>
-                            </span>
-                            <span className="network-entity-count">
-                              {graphStats.deg[node.id] || 0} link{(graphStats.deg[node.id] || 0) === 1 ? '' : 's'}
-                            </span>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : <div className="network-empty">No case records found.</div>
-                )}
-
-                {/* 3. Victims Tab */}
-                {activeListTab === 'victim' && (
-                  groupedNodes.victim.length ? (
-                    <ul className="network-entity-list">
-                      {groupedNodes.victim.map(node => (
-                        <li key={node.id}>
-                          <button type="button" onClick={() => setSelectedNode(node)} aria-current={selectedNode?.id === node.id ? 'true' : undefined}>
-                            <span className="network-entity-marker" style={{ backgroundColor: ENTITY.victim.color }} />
-                            <span className="network-entity-copy">
-                              <strong>{node.label}</strong>
-                              <span>
-                                Victim&nbsp;·&nbsp;{node.data?.Gender || 'F'}&nbsp;·&nbsp;{node.data?.Age ? `Age ${node.data.Age}` : 'Age N/A'}
-                              </span>
-                            </span>
-                            <span className="network-entity-count">
-                              {graphStats.deg[node.id] || 0} link{(graphStats.deg[node.id] || 0) === 1 ? '' : 's'}
-                            </span>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : <div className="network-empty">No victim records found.</div>
-                )}
-
-                {/* 4. Locations Tab */}
-                {activeListTab === 'location' && (
-                  (groupedNodes.station.length + groupedNodes.district.length) ? (
-                    <ul className="network-entity-list">
-                      {[...groupedNodes.station, ...groupedNodes.district].map(node => (
-                        <li key={node.id}>
-                          <button type="button" onClick={() => setSelectedNode(node)} aria-current={selectedNode?.id === node.id ? 'true' : undefined}>
-                            <span className="network-entity-marker" style={{ backgroundColor: ENTITY[node.type]?.color }} />
-                            <span className="network-entity-copy">
-                              <strong>{node.label}</strong>
-                              <span style={{ textTransform: 'capitalize' }}>
-                                {node.type === 'station' ? 'Police Station' : 'District'}
-                              </span>
-                            </span>
-                            <span className="network-entity-count">
-                              {graphStats.deg[node.id] || 0} link{(graphStats.deg[node.id] || 0) === 1 ? '' : 's'}
-                            </span>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : <div className="network-empty">No location records found.</div>
-                )}
-              </div>
-            ) : (
-              <div className="network-empty" role="status">No entities match the current search and filter. Clear them to view the network.</div>
-            )}
-          </section>
-        )}
-
-        <div className="network-controls" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-
-          {/* Search + Filter chips */}
-          <div style={card}>
-            <div style={{ ...metaRow, marginBottom: '10px' }}>SEARCH & FILTER</div>
-            <div style={{ position: 'relative', marginBottom: '10px' }}>
-              <input
-                id="network-search"
-                aria-label="Search network entities by name or FIR number"
-                type="text"
-                placeholder="Search nodes by name / FIR…"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                style={{
-                  width: '100%', boxSizing: 'border-box',
-                  padding: '8px 32px 8px 34px', borderRadius: '8px',
-                  background: 'var(--bg-panel-alt)', border: '1px solid var(--border-color)',
-                  color: 'var(--text-primary)', outline: 'none', fontSize: '13px',
-                }}
-              />
-              <MdSearch size={16} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
-              {search && (
-                <button onClick={() => setSearch('')} style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '16px', lineHeight: 1, padding: '2px' }}>×</button>
-              )}
-            </div>
-            
-            {/* Crime Category Select Dropdown */}
-            <div style={{ marginBottom: '12px' }}>
-              <label htmlFor="crime-type-select" style={{ display: 'block', fontSize: '10px', fontWeight: 'bold', color: 'var(--text-muted)', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Type of Crime
-              </label>
-              <select
-                id="crime-type-select"
-                value={selectedCrimeType}
-                onChange={e => setSelectedCrimeType(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '8px 10px',
-                  borderRadius: '8px',
-                  background: 'var(--bg-panel-alt)',
-                  border: '1px solid var(--border-color)',
-                  color: 'var(--text-primary)',
-                  fontSize: '12px',
-                  outline: 'none',
-                  cursor: 'pointer',
-                  minHeight: '34px'
-                }}
-              >
-                {crimeTypesList.map(type => (
-                  <option key={type} value={type}>
-                    {type === 'all' ? 'All Crime Categories' : type}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-              {FILTER_CHIPS.map(f => (
-                <button
-                  key={f.key}
-                  type="button"
-                  aria-pressed={filterType === f.key}
-                  onClick={() => setFilterType(f.key)}
-                  style={chip(filterType === f.key, ENTITY[f.key]?.color)}
-                >
-                  {f.label}
-                </button>
-              ))}
-            </div>
-            {search && (
-              <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--text-muted)' }}>
-                <strong style={{ color: '#4fc3f7' }}>{visNodes.length}</strong> result{visNodes.length !== 1 ? 's' : ''} found
-              </div>
-            )}
-          </div>
-
-          {/* Graph metrics */}
-          <div style={card}>
-            <div style={{ ...metaRow, marginBottom: '10px' }}>NETWORK METRICS</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '10px' }}>
-              {[
-                { label: 'Nodes',   value: graphStats.N,              color: '#4fc3f7' },
-                { label: 'Edges',   value: graphStats.E,              color: '#ce93d8' },
-                { label: 'Density', value: graphStats.density + '%',  color: '#69f0ae' },
-                { label: 'Max Deg', value: graphStats.maxDeg,         color: '#ff4d6d' },
-              ].map(m => (
-                <div key={m.label} style={{ background: 'var(--bg-panel-alt)', borderRadius: '8px', padding: '10px 8px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '20px', fontWeight: 700, color: m.color, lineHeight: 1.1 }}>{m.value}</div>
-                  <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '3px' }}>{m.label}</div>
-                </div>
-              ))}
-            </div>
-            {graphStats.hub && (
-              <div style={{ padding: '8px 10px', borderRadius: '8px', background: 'rgba(255,77,109,0.07)', border: '1px solid rgba(255,77,109,0.18)' }}>
-                <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '3px' }}>MOST CONNECTED NODE</div>
-                <div style={{ fontSize: '13px', fontWeight: 600, color: '#ff4d6d', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {graphStats.hub.label}
-                </div>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                  {graphStats.maxDeg} direct connection{graphStats.maxDeg !== 1 ? 's' : ''}
-                  &nbsp;·&nbsp; {ENTITY[graphStats.hub.type]?.label}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Node detail panel (only in graph view mode) */}
-          {selectedNode && viewMode === 'graph' ? (
-            <div style={{ ...card, border: `1px solid ${ENTITY[selectedNode.type]?.color || 'var(--border-color)'}35`, flex: 1 }}>
-              {/* Header */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '3px 10px', borderRadius: '20px', background: `${ENTITY[selectedNode.type]?.color || '#fff'}18`, border: `1px solid ${ENTITY[selectedNode.type]?.color || '#fff'}35`, marginBottom: '6px' }}>
-                    <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: ENTITY[selectedNode.type]?.color, boxShadow: `0 0 6px ${ENTITY[selectedNode.type]?.color}` }} />
-                    <span style={{ fontSize: '10px', fontWeight: 700, color: ENTITY[selectedNode.type]?.color, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                      {ENTITY[selectedNode.type]?.label || selectedNode.type}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {selectedNode.label}
-                  </div>
-                </div>
-                <button type="button" aria-label="Close selected entity details" onClick={() => setSelectedNode(null)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '18px', lineHeight: 1, padding: '6px', flexShrink: 0 }}>
-                  <MdClose size={16} />
-                </button>
-              </div>
-
-              {/* Case details */}
-              {selectedNode.type === 'case' && selectedNode.data && (
-                <div style={{ marginBottom: '12px' }}>
-                  {selectedNode.data.statusName && (
-                    <div style={{ display: 'inline-block', padding: '3px 10px', borderRadius: '6px', background: 'rgba(255,179,0,0.12)', color: '#FFB300', fontSize: '11px', fontWeight: 600, marginBottom: '8px', border: '1px solid rgba(255,179,0,0.2)' }}>
-                      {selectedNode.data.statusName}
-                    </div>
-                  )}
-                  {selectedNode.data.BriefFacts && (
-                    <div style={{ padding: '8px 10px', background: 'var(--bg-panel-alt)', borderRadius: '8px', fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5, maxHeight: '72px', overflowY: 'auto', borderLeft: '3px solid rgba(79,195,247,0.4)' }}>
-                      {selectedNode.data.BriefFacts}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Accused details */}
-              {selectedNode.type === 'criminal' && selectedNode.data && (
-                <div style={{ marginBottom: '12px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
-                  {[
-                    { label: 'Age',      value: selectedNode.data.Age || '—' },
-                    { label: 'Gender',   value: selectedNode.data.Gender || '—' },
-                    { label: 'Alias',    value: selectedNode.data.AccusedAliasName || '—' },
-                    { label: 'District', value: selectedNode.data.districtName || '—' },
-                  ].map(f => (
-                    <div key={f.label} style={{ background: 'var(--bg-panel-alt)', borderRadius: '6px', padding: '7px 8px' }}>
-                      <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '2px' }}>{f.label.toUpperCase()}</div>
-                      <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.value}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Connections list */}
-              <div style={{ ...metaRow, marginBottom: '8px' }}>
-                CONNECTIONS &nbsp;
-                <span style={{ color: '#4fc3f7', fontWeight: 700 }}>({connItems.length})</span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '200px', overflowY: 'auto', paddingRight: '2px' }}>
-                {connItems.length === 0 && (
-                  <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '12px', padding: '16px' }}>No visible connections</div>
-                )}
-                {connItems.map((item, i) => (
-                  <button
-                    type="button"
-                    key={i}
-                    onClick={() => { const n = nodeMap.get(item.id); if (n) setSelectedNode(n); }}
-                    style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '9px', borderRadius: '8px', cursor: 'pointer', background: 'var(--bg-panel-alt)', border: '1px solid transparent', transition: 'all 0.15s', fontSize: '12px', width: '100%', textAlign: 'left' }}
-                    onMouseEnter={e => { e.currentTarget.style.background = `${ENTITY[item.nodeType]?.color || '#fff'}12`; e.currentTarget.style.borderColor = `${ENTITY[item.nodeType]?.color || '#fff'}30`; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-panel-alt)'; e.currentTarget.style.borderColor = 'transparent'; }}
-                  >
-                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: ENTITY[item.nodeType]?.color || '#888', boxShadow: `0 0 5px ${ENTITY[item.nodeType]?.color || '#888'}`, flexShrink: 0 }} />
-                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-primary)' }}>{item.label}</span>
-                    <span style={{ fontSize: '10px', color: 'var(--text-muted)', flexShrink: 0, background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px' }}>
-                      {(item.edgeType || '').replace(/_/g, ' ')}
-                    </span>
-                  </button>
-                ))}
-              </div>
-
-              {/* Pin hint */}
-              <div style={{ marginTop: '10px', padding: '7px 10px', borderRadius: '8px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-                <MdPushPin size={12} style={{ color: pinnedNodes.has(selectedNode.id) ? '#FFD54F' : 'var(--text-muted)' }} />
-                {pinnedNodes.has(selectedNode.id) ? 'Node pinned — double-click to release' : 'Double-click on canvas to pin this node'}
-              </div>
-            </div>
-          ) : (
-            <div style={{ ...card, flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', color: 'var(--text-muted)', gap: '12px', minHeight: '160px' }}>
-              <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: 'rgba(79,195,247,0.08)', border: '1px solid rgba(79,195,247,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <MdHub size={26} style={{ color: '#4fc3f7', opacity: 0.6 }} />
-              </div>
-              <div>
-                <div style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 600, marginBottom: '4px' }}>Criminal Intelligence Index</div>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-                  Click any node in the list or graph view to open the centralized inspection dossier.
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+        ))}
       </div>
 
-      {/* ── Centralized Dossier Detail Modal Popup (Only in List View) ───── */}
-      {selectedNode && viewMode === 'list' && (
-        <div 
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            width: '100vw',
-            height: '100vh',
-            backgroundColor: 'rgba(5, 12, 22, 0.82)',
-            backdropFilter: 'blur(8px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 999999,
-          }}
-          onClick={() => setSelectedNode(null)}
-        >
-          <div 
-            style={{
-              width: 'min(480px, calc(100vw - 32px))',
-              background: 'var(--bg-panel)',
-              border: `1px solid ${ENTITY[selectedNode.type]?.color || 'var(--border-color)'}45`,
-              borderRadius: '16px',
-              boxShadow: `0 24px 60px rgba(0,0,0,0.8), 0 0 35px ${(ENTITY[selectedNode.type]?.color || '#fff')}15`,
-              padding: '24px',
-              position: 'relative',
-              boxSizing: 'border-box',
-              animation: 'fadeInUp 200ms ease-out',
-            }}
-            onClick={e => e.stopPropagation()}
-          >
-            {/* Corner Close Button */}
-            <button
-              type="button"
-              aria-label="Close details popup"
-              onClick={() => setSelectedNode(null)}
-              style={{
-                position: 'absolute',
-                top: '16px',
-                right: '16px',
-                background: 'rgba(255,255,255,0.04)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                color: 'var(--text-secondary)',
-                cursor: 'pointer',
-                padding: '6px',
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                transition: 'all 0.15s',
-              }}
-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
-            >
-              <MdClose size={18} />
-            </button>
+      {/* Canvas */}
+      <div style={{ flex: 1, background: '#050a12', position: 'relative', overflow: 'hidden' }}>
+        <canvas
+          ref={canvasRef}
+          onMouseDown={onMouseDown}
+          onMouseMove={onMouseMove}
+          onMouseUp={onMouseUp}
+          onMouseLeave={onMouseUp}
+          style={{ width: '100%', height: '100%', display: 'block' }}
+        />
 
-            {/* Modal Dossier Content */}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '3px 10px', borderRadius: '20px', background: `${ENTITY[selectedNode.type]?.color || '#fff'}18`, border: `1px solid ${ENTITY[selectedNode.type]?.color || '#fff'}35`, marginBottom: '10px' }}>
-                <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: ENTITY[selectedNode.type]?.color, boxShadow: `0 0 6px ${ENTITY[selectedNode.type]?.color}` }} />
-                <span style={{ fontSize: '10px', fontWeight: 700, color: ENTITY[selectedNode.type]?.color, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                  {ENTITY[selectedNode.type]?.label || selectedNode.type}
-                </span>
-              </div>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.3, paddingRight: '24px' }}>
-                {selectedNode.label}
-              </h3>
+        {/* Hover Tooltip */}
+        {hoveredNode && (
+          <div style={{
+            position: 'absolute', top: '80px', left: '50%', transform: 'translateX(-50%)',
+            background: 'rgba(7,16,28,0.95)', border: `1px solid ${ENTITY[hoveredNode.type]?.color || '#fff'}40`,
+            borderRadius: '10px', padding: '8px 16px', zIndex: 20, pointerEvents: 'none',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <strong style={{ fontSize: '13px', color: '#fff' }}>{hoveredNode.label}</strong>
+              <span style={{ fontSize: '11px', color: ENTITY[hoveredNode.type]?.color, textTransform: 'uppercase' }}>
+                {ENTITY[hoveredNode.type]?.label}
+              </span>
             </div>
-
-            {/* Case details */}
-            {selectedNode.type === 'case' && selectedNode.data && (
-              <div style={{ marginBottom: '16px' }}>
-                {selectedNode.data.statusName && (
-                  <div style={{ display: 'inline-block', padding: '3px 10px', borderRadius: '6px', background: 'rgba(255,179,0,0.12)', color: '#FFB300', fontSize: '11px', fontWeight: 600, marginBottom: '10px', border: '1px solid rgba(255,179,0,0.2)' }}>
-                    {selectedNode.data.statusName}
-                  </div>
-                )}
-                {selectedNode.data.BriefFacts && (
-                  <div style={{ padding: '12px 14px', background: 'var(--bg-panel-alt)', borderRadius: '10px', fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: 1.6, maxHeight: '120px', overflowY: 'auto', borderLeft: '4px solid rgba(79,195,247,0.5)' }}>
-                    {selectedNode.data.BriefFacts}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Accused details */}
-            {selectedNode.type === 'criminal' && selectedNode.data && (
-              <div style={{ marginBottom: '16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                {[
-                  { label: 'Age',      value: selectedNode.data.Age || '—' },
-                  { label: 'Gender',   value: selectedNode.data.Gender || '—' },
-                  { label: 'Alias',    value: selectedNode.data.AccusedAliasName || '—' },
-                  { label: 'District', value: selectedNode.data.districtName || '—' },
-                ].map(f => (
-                  <div key={f.label} style={{ background: 'var(--bg-panel-alt)', borderRadius: '8px', padding: '8px 10px' }}>
-                    <div style={{ fontSize: '9px', color: 'var(--text-muted)', marginBottom: '3px', fontWeight: 'bold' }}>{f.label.toUpperCase()}</div>
-                    <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.value}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Connections list */}
-            <div style={{ ...metaRow, marginBottom: '10px' }}>
-              CONNECTIONS &nbsp;
-              <span style={{ color: '#4fc3f7', fontWeight: 700 }}>({connItems.length})</span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', maxHeight: '180px', overflowY: 'auto', paddingRight: '2px', marginBottom: '16px' }}>
-              {connItems.length === 0 && (
-                <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '12.5px', padding: '16px' }}>No visible connections</div>
-              )}
-              {connItems.map((item, i) => (
-                <button
-                  type="button"
-                  key={i}
-                  onClick={() => { const n = nodeMap.get(item.id); if (n) setSelectedNode(n); }}
-                  style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 12px', borderRadius: '8px', cursor: 'pointer', background: 'var(--bg-panel-alt)', border: '1px solid transparent', transition: 'all 0.15s', fontSize: '12.5px', width: '100%', textAlign: 'left' }}
-                  onMouseEnter={e => { e.currentTarget.style.background = `${ENTITY[item.nodeType]?.color || '#fff'}12`; e.currentTarget.style.borderColor = `${ENTITY[item.nodeType]?.color || '#fff'}30`; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-panel-alt)'; e.currentTarget.style.borderColor = 'transparent'; }}
-                >
-                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: ENTITY[item.nodeType]?.color || '#888', boxShadow: `0 0 5px ${ENTITY[item.nodeType]?.color || '#888'}`, flexShrink: 0 }} />
-                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-primary)', fontWeight: 500 }}>{item.label}</span>
-                  <span style={{ fontSize: '10px', color: 'var(--text-muted)', flexShrink: 0, background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px' }}>
-                    {(item.edgeType || '').replace(/_/g, ' ')}
-                  </span>
-                </button>
-              ))}
-            </div>
-
-            {/* Pin hint */}
-            <div style={{ padding: '8px 10px', borderRadius: '8px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-              <MdPushPin size={12} style={{ color: pinnedNodes.has(selectedNode.id) ? '#FFD54F' : 'var(--text-muted)' }} />
-              {pinnedNodes.has(selectedNode.id) ? 'Node pinned — double-click to release' : 'Double-click on canvas to pin this node'}
+            <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '4px', textAlign: 'center' }}>
+              Click to view intelligence dossier
             </div>
           </div>
-        </div>
-      )}
+        )}
+
+        {/* Selected Dossier Panel (Floating Palantir Style) */}
+        {selectedNode && (
+          <div style={{
+            position: 'absolute', right: '24px', top: '80px', width: '320px',
+            background: 'rgba(7,16,28,0.95)', border: `1px solid ${ENTITY[selectedNode.type]?.color || 'rgba(255,255,255,0.1)'}`,
+            borderRadius: '16px', padding: '20px', backdropFilter: 'blur(20px)', boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
+            zIndex: 30, animation: 'fadeInRight 0.2s ease-out'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+              <div>
+                <div style={{ fontSize: '10px', color: ENTITY[selectedNode.type]?.color, fontWeight: 700, letterSpacing: '0.05em', marginBottom: '4px' }}>
+                  {ENTITY[selectedNode.type]?.label || selectedNode.type.toUpperCase()}
+                </div>
+                <h3 style={{ margin: 0, fontSize: '18px', color: '#fff' }}>{selectedNode.label}</h3>
+              </div>
+              <button onClick={() => setSelectedNode(null)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', opacity: 0.6 }}>
+                <MdClose size={20} />
+              </button>
+            </div>
+            
+            {selectedNode.type === 'case' && selectedNode.data && (
+              <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.5, background: 'rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px' }}>
+                {selectedNode.data.BriefFacts || 'No brief facts available.'}
+              </div>
+            )}
+            
+            {(() => {
+              const breakdown = { case: 0, criminal: 0, victim: 0, station: 0, district: 0 };
+              if (connectedSet) {
+                connectedSet.forEach(id => {
+                  if (id === selectedNode.id) return;
+                  const n = nodeMap.get(id);
+                  if (n) breakdown[n.type] = (breakdown[n.type] || 0) + 1;
+                });
+              }
+              return (
+                <>
+                  <div style={{ marginTop: '20px', fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.05em', marginBottom: '12px' }}>
+                    NETWORK IMPACT ({connectedSet ? connectedSet.size - 1 : 0} CONNECTIONS)
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    {[
+                      { key: 'case', label: 'Linked FIRs' },
+                      { key: 'criminal', label: 'Accused / Linked' },
+                      { key: 'victim', label: 'Victims' },
+                      { key: 'station', label: 'Stations' },
+                      { key: 'district', label: 'Districts' }
+                    ].map(b => breakdown[b.key] > 0 ? (
+                      <div key={b.key} style={{ background: 'rgba(255,255,255,0.03)', padding: '10px', borderRadius: '8px', border: `1px solid ${ENTITY[b.key]?.color}30` }}>
+                        <div style={{ fontSize: '18px', fontWeight: 700, color: ENTITY[b.key]?.color }}>{breakdown[b.key]}</div>
+                        <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px' }}>{b.label.toUpperCase()}</div>
+                      </div>
+                    ) : null)}
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
