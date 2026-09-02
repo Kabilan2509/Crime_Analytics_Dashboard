@@ -1,3 +1,4 @@
+const fs = require('fs');
 /**
  * graphUtils.js — Enhanced Criminal Network Graph Builder
  * Builds node-link data from live crime records with real names,
@@ -5,7 +6,7 @@
  */
 
 // ─── Node color palette ───────────────────────────────────────────────────────
-export const ENTITY = {
+const ENTITY = {
   criminal: { color: '#ff4d6d', glow: 'rgba(255,77,109,0.4)',  label: 'Accused / Suspect' },
   case:     { color: '#4fc3f7', glow: 'rgba(79,195,247,0.4)',  label: 'FIR Case'           },
   victim:   { color: '#69f0ae', glow: 'rgba(105,240,174,0.4)', label: 'Victim'             },
@@ -13,7 +14,7 @@ export const ENTITY = {
   station:  { color: '#ce93d8', glow: 'rgba(206,147,216,0.4)', label: 'Police Station'     },
 };
 
-export function buildNetworkData(cases, accused, victims, districts, stations) {
+function buildNetworkData(cases, accused, victims, districts, stations) {
   const nodes  = [];
   const edges  = [];
   const nodeSet = new Set();
@@ -252,7 +253,7 @@ export function buildNetworkData(cases, accused, victims, districts, stations) {
   return { nodes, edges };
 }
 
-export function getNodeStats(nodeId, nodes, edges) {
+function getNodeStats(nodeId, nodes, edges) {
   const nodeMap   = new Map(nodes.map(n => [n.id, n]));
   const connected = [];
   edges.forEach(e => {
@@ -267,3 +268,5 @@ export function getNodeStats(nodeId, nodes, edges) {
     })),
   };
 }
+
+const data = JSON.parse(fs.readFileSync('testData.json', 'utf8')); const cases = data.CaseMaster.filter(c => c.ROWID === '56064000000177002'); const rawGraph = buildNetworkData(cases, data.Accused, data.Victim, data.District, data.Unit); let nodes = rawGraph.nodes; const MAX_CASES = 15; const allCases = nodes.filter(n => n.type === 'case').sort((a,b)=>0); const topCaseIds = new Set(allCases.slice(0, MAX_CASES).map(n => n.id)); const validIds = new Set(topCaseIds); rawGraph.edges.forEach(e => { if (topCaseIds.has(e.source)) validIds.add(e.target); if (topCaseIds.has(e.target)) validIds.add(e.source); }); nodes = nodes.filter(n => validIds.has(n.id)); console.log('Criminals before:', rawGraph.nodes.filter(n=>n.type==='criminal').length); console.log('Criminals after:', nodes.filter(n=>n.type==='criminal').length);

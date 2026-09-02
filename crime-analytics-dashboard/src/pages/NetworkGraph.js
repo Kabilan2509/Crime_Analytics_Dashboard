@@ -19,6 +19,9 @@ const SPRING_K = 0.004;
 const IDEAL_LEN = 110;
 const GRAVITY = 0.0007;
 const DAMPING = 0.78;
+// The browser is an investigation lens, not a graph database.  In production
+// this value maps to a cursor-paginated /network-neighbourhood API response.
+const CASE_WINDOW = 120;
 
 const nodeSprites = {};
 const generateSprites = () => {
@@ -106,7 +109,7 @@ export default function NetworkGraph() {
     if (!hasQueried) return { nodes: [], edges: [] };
     
     // Query-First Approach: Filter secureCases BEFORE building graph!
-    const filteredCases = secureCases.filter(c => {
+    const matchingCases = secureCases.filter(c => {
       let match = true;
       if (qCategory !== 'all' && c.majorHeadName !== qCategory) match = false;
       
@@ -126,12 +129,30 @@ export default function NetworkGraph() {
       return match;
     });
     
-    // Build network from heavily filtered list
-    return buildNetworkData(filteredCases, accused, victims, districts, units);
-  }, [hasQueried, secureCases, qCategory, qStation, qSearch]);
+    // Do not send every matching FIR to the visual layer.  A deterministic,
+    // ranked window gives the current device a fast first view; the remainder
+    // is represented as a cluster and is loaded only after the user refines or
+    // pages the investigation. This is the same contract needed for crore-scale
+    // records when this prototype is wired to the graph service.
+    const queryWindow = [...matchingCases]
+      .sort((a, b) => Number(Boolean(b.isHeinous)) - Number(Boolean(a.isHeinous)))
+      .slice(0, CASE_WINDOW);
+    return { ...buildNetworkData(queryWindow, accused, victims, districts, units), totalCaseMatches: matchingCases.length };
+  }, [hasQueried, secureCases, qCategory, qDistrict, qStation, qSearch]);
 
-  const { visNodes, visEdges, nodeMap } = useMemo(() => {
-    let nodes = rawGraph.nodes.filter(n => filterType === 'all' || n.type === filterType);
+  const { visNodes, visEdges, nodeMap, hiddenCount, totalCaseMatches, patternCount } = useMemo(() => {
+    // A type chip is a focus lens, not a destructive filter. Keep the direct
+    // FIR/location context so an accused card can never appear as a lone,
+    // meaningless node.
+    let nodes = rawGraph.nodes;
+    if (filterType !== 'all') {
+      const focusIds = new Set(nodes.filter(n => n.type === filterType).map(n => n.id));
+      rawGraph.edges.forEach(edge => {
+        if (focusIds.has(edge.source)) focusIds.add(edge.target);
+        if (focusIds.has(edge.target)) focusIds.add(edge.source);
+      });
+      nodes = nodes.filter(n => focusIds.has(n.id));
+    }
     
     // Core nodes are the actual data (Cases, Accused, Victims)
     const coreNodeIds = new Set();
@@ -151,11 +172,74 @@ export default function NetworkGraph() {
     // Filter out all the empty master stations/districts that have no cases
     nodes = nodes.filter(n => validNodeIds.has(n.id));
     
+    // SMART CLUSTERING LOGIC (Prevents unending scroll while guaranteeing data completeness)
+    // 1. Select the Top 15 most connected Cases
+    const MAX_CASES = 15;
+    const allCases = nodes.filter(n => n.type === 'case').sort((a, b) => {
+      const aDegree = rawGraph.edges.filter(e => e.source === a.id || e.target === a.id).length;
+      const bDegree = rawGraph.edges.filter(e => e.source === b.id || e.target === b.id).length;
+      return bDegree - aDegree || a.label.localeCompare(b.label);
+    });
+    
+    const topCaseIds = new Set(allCases.slice(0, MAX_CASES).map(n => n.id));
+    const validIds = new Set(topCaseIds);
+
+    // 2. Expand Hop 1: Recursively pull in ALL extra FIRs linked via Pattern Matches (the full chain)
+    let addedNewCase = true;
+    while (addedNewCase) {
+      addedNewCase = false;
+      rawGraph.edges.forEach(e => {
+        if (e.type === 'pattern_match') {
+          if (validIds.has(e.source) && !validIds.has(e.target)) {
+            validIds.add(e.target);
+            addedNewCase = true;
+          }
+          if (validIds.has(e.target) && !validIds.has(e.source)) {
+            validIds.add(e.source);
+            addedNewCase = true;
+          }
+        }
+      });
+    }
+
+    // 3. Expand Hop 2: Pull in Accused, Victims, and Stations for ALL valid cases (but explicitly block new cases)
+    const allValidCases = new Set([...validIds].filter(id => String(id).startsWith('case_')));
+    rawGraph.edges.forEach(e => {
+      if (allValidCases.has(e.source) && !String(e.target).startsWith('case_')) validIds.add(e.target);
+      if (allValidCases.has(e.target) && !String(e.source).startsWith('case_')) validIds.add(e.source);
+    });
+
+    // 4. Ensure Districts are included by finding connections to the included Stations
+    const includedStations = new Set([...validIds].filter(id => String(id).startsWith('station')));
+    rawGraph.edges.forEach(e => {
+      if (includedStations.has(e.source) && !String(e.target).startsWith('case_')) validIds.add(e.target);
+      if (includedStations.has(e.target) && !String(e.source).startsWith('case_')) validIds.add(e.source);
+    });
+
+    // 4. Filter the final nodes
+    nodes = nodes.filter(n => validIds.has(n.id));
+
+    // 5. CRITICAL FIX: Recalculate Y positions! 
+    // graphUtils initially spaced them out based on the full 1000+ node dataset.
+    // We must compress their Y coordinates so they appear on screen together.
+    const laneX = { district: 120, station: 370, case: 700, criminal: 1040, victim: 1340 };
+    Object.keys(laneX).forEach(type => {
+      const typeNodes = nodes.filter(n => n.type === type);
+      typeNodes.forEach((node, index) => {
+        node.y = 110 + index * 86;
+      });
+    });
+
     const finalIds = new Set(nodes.map(n => n.id));
     const edges = rawGraph.edges.filter(e => finalIds.has(e.source) && finalIds.has(e.target));
     const map = new Map(nodes.map(n => [n.id, n]));
     
-    return { visNodes: nodes, visEdges: edges, nodeMap: map };
+    return {
+      visNodes: nodes, visEdges: edges, nodeMap: map,
+      hiddenCount: Math.max(0, rawGraph.nodes.length - nodes.length),
+      totalCaseMatches: rawGraph.totalCaseMatches || 0,
+      patternCount: edges.filter(edge => edge.type === 'pattern_match').length,
+    };
   }, [rawGraph, filterType]);
 
   const deg = useMemo(() => {
@@ -234,13 +318,16 @@ export default function NetworkGraph() {
       const cSet = connSetRef.current;
       const sel = selectedRef.current;
 
-      const runExactPhysics = nodes.length <= 350;
+      // Positions come from the deterministic investigation-lane layout.  Do
+      // not run browser force physics here: it causes radial clusters and has
+      // quadratic cost on large query results.
+      const runExactPhysics = false;
 
       nodes.forEach(n => {
         if (n.ox === undefined) { n.ox = n.x; n.oy = n.y; }
       });
 
-      if (!runExactPhysics) {
+      if (false && !runExactPhysics) {
         nodes.forEach(n => {
           if (pinned.has(n.id) || n === dragged) return;
           if (cSet && !cSet.has(n.id)) return;
@@ -251,7 +338,7 @@ export default function NetworkGraph() {
           n.vx *= 0.82;
           n.vy *= 0.82;
         });
-      } else {
+      } else if (false) {
         for (let i = 0; i < nodes.length; i++) {
           const a = nodes[i];
           if (pinned.has(a.id) || a === dragged) continue;
@@ -298,6 +385,37 @@ export default function NetworkGraph() {
       ctx.save();
       ctx.translate(tx, ty);
       ctx.scale(tz, tz);
+
+      [
+        ['JURISDICTION', 120, '#FFD54F'],
+        ['REPORTING STATION', 370, '#ce93d8'],
+        ['FIR ROUTES', 700, '#4fc3f7'],
+        ['ACCUSED LINKS', 1040, '#ff4d6d'],
+        ['AFFECTED PEOPLE', 1340, '#69f0ae'],
+      ].forEach(([label, x, color]) => {
+        ctx.fillStyle = color;
+        ctx.font = '700 11px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(label, x, 40);
+        ctx.strokeStyle = `${color}45`;
+        ctx.beginPath(); ctx.moveTo(x - 72, 52); ctx.lineTo(x + 72, 52); ctx.stroke();
+      });
+      ctx.textAlign = 'start';
+
+      // Quiet, directional relationships form the map's structure. Stronger
+      // links appear only when an analyst selects an entity below.
+      edges.forEach(edge => {
+        const s = nm.get(edge.source), t = nm.get(edge.target);
+        if (!s || !t) return;
+        ctx.beginPath();
+        ctx.moveTo(s.x + 42, s.y);
+        ctx.bezierCurveTo(s.x + 115, s.y, t.x - 115, t.y, t.x - 42, t.y);
+        ctx.strokeStyle = edge.type === 'pattern_match' ? 'rgba(255,77,109,0.25)' : 'rgba(105,185,225,0.16)';
+        ctx.lineWidth = edge.type === 'pattern_match' ? 1.6 : 1;
+        if (edge.type === 'pattern_match') ctx.setLineDash([4, 5]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      });
 
       const activeNode = sel;
       if (activeNode) {
@@ -358,8 +476,7 @@ export default function NetworkGraph() {
         }
         
         const nodeDeg = deg[n.id] || 0;
-        // Extreme boost to node sizing for prototype visibility on large screens
-        const r = Math.max(16, n.radius * 3.5 + Math.min(nodeDeg * 2.0, 25));
+        const r = 30;
 
         if (isSelected || isHovered) {
           const radarWave = (now % 2000) / 2000; 
@@ -381,12 +498,29 @@ export default function NetworkGraph() {
           ctx.stroke();
         }
 
-        const sprite = nodeSprites[n.type] || nodeSprites['case'];
-        const scale = r / 24;
-        const sW = 64 * scale;
-        const sH = 64 * scale;
-        
-        ctx.drawImage(sprite, n.x - sW/2, n.y - sH/2, sW, sH);
+        const width = Math.max(116, Math.min(168, 68 + n.label.length * 6));
+        const height = 44;
+        ctx.fillStyle = '#0c1827';
+        ctx.strokeStyle = isSelected || isHovered ? ent.color : `${ent.color}90`;
+        ctx.lineWidth = isSelected || isHovered ? 2 : 1;
+        ctx.beginPath();
+        ctx.roundRect(n.x - width / 2, n.y - height / 2, width, height, 7);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = ent.color;
+        ctx.fillRect(n.x - width / 2 + 8, n.y - height / 2 + 8, 4, height - 16);
+        ctx.fillStyle = '#e8f2f8';
+        ctx.font = '600 11px Inter, sans-serif';
+        ctx.textBaseline = 'middle';
+        const label = n.label.length > 19 ? `${n.label.slice(0, 18)}…` : n.label;
+        ctx.fillText(label, n.x - width / 2 + 20, n.y - 5);
+        ctx.fillStyle = '#8fa3b5';
+        ctx.font = '9px Inter, sans-serif';
+        const accusedCount = n.type === 'case' ? (n.data?.accused?.length || 0) : null;
+        const sublabel = n.type === 'case'
+          ? `${accusedCount} accused recorded · ${nodeDeg} links`
+          : `${ent.label} · ${nodeDeg} link${nodeDeg === 1 ? '' : 's'}`;
+        ctx.fillText(sublabel, n.x - width / 2 + 20, n.y + 10);
       });
 
       ctx.restore();
@@ -408,7 +542,7 @@ export default function NetworkGraph() {
     visNodes.find(n => {
       if (connectedSet && !connectedSet.has(n.id)) return false;
       const dx = n.x - sx, dy = n.y - sy;
-      return dx * dx + dy * dy <= (n.radius + 10) * (n.radius + 10);
+      return Math.abs(dx) <= 85 && Math.abs(dy) <= 28;
     }) || null,
   [visNodes, connectedSet]);
 
@@ -587,13 +721,24 @@ export default function NetworkGraph() {
         <div style={{ display: 'flex', gap: '8px' }}>
           {[
             { label: 'Nodes', value: visNodes.length, c: '#4fc3f7' },
-            { label: 'Edges', value: visEdges.length, c: '#ce93d8' }
+            { label: 'Links', value: visEdges.length, c: '#ce93d8' },
+            { label: 'MO routes', value: patternCount, c: '#ff4d6d' }
           ].map(s => (
             <div key={s.label} style={{ padding: '6px 14px', borderRadius: '20px', background: 'rgba(7,16,28,0.85)', border: `1px solid ${s.c}30`, fontSize: '12px', backdropFilter: 'blur(10px)' }}>
               <span style={{ color: s.c, fontWeight: 700 }}>{s.value}</span>
               <span style={{ color: 'var(--text-muted)', marginLeft: '6px' }}>{s.label}</span>
             </div>
           ))}
+          {totalCaseMatches > CASE_WINDOW && (
+            <div style={{ padding: '6px 14px', borderRadius: '20px', background: 'rgba(79,195,247,0.08)', border: '1px solid rgba(79,195,247,0.24)', fontSize: '12px', color: '#9bdff8', backdropFilter: 'blur(10px)' }}>
+              {totalCaseMatches.toLocaleString()} FIRs matched · first {CASE_WINDOW} loaded
+            </div>
+          )}
+            {hiddenCount > 0 && (
+            <div style={{ padding: '6px 14px', borderRadius: '20px', background: 'rgba(255,193,7,0.08)', border: '1px solid rgba(255,193,7,0.24)', fontSize: '12px', color: '#ffd54f', backdropFilter: 'blur(10px)' }}>
+              +{hiddenCount.toLocaleString()} clustered
+            </div>
+          )}
         </div>
       </div>
 
@@ -612,6 +757,11 @@ export default function NetworkGraph() {
             {f.label}
           </button>
         ))}
+      </div>
+
+      <div style={{ position: 'absolute', left: '24px', top: '82px', zIndex: 100, maxWidth: '470px', padding: '13px 16px', borderLeft: '3px solid #4fc3f7', background: 'linear-gradient(90deg, rgba(8,23,39,.92), rgba(8,23,39,.55), transparent)', pointerEvents: 'none' }}>
+        <div style={{ color: '#dff6ff', fontSize: '13px', fontWeight: 800, letterSpacing: '.12em' }}>EVIDENCE METRO</div>
+        <div style={{ color: '#8fa9bb', fontSize: '11px', marginTop: '4px', lineHeight: 1.5 }}>Read left to right: jurisdiction → FIR route → associated people. This fixed-size board displays the highest-signal stops only; every other result is clustered until the investigation is narrowed.</div>
       </div>
 
       {/* Canvas */}
