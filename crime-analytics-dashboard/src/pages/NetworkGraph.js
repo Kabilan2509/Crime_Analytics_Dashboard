@@ -312,15 +312,26 @@ export default function NetworkGraph() {
           ctx.beginPath();
           ctx.moveTo(start.x, start.y);
           ctx.lineTo(end.x, end.y);
-          ctx.lineWidth = 3.5;
-          const grad = ctx.createLinearGradient(start.x, start.y, end.x, end.y);
-          grad.addColorStop(0, 'rgba(0, 255, 255, 1)');
-          grad.addColorStop(0.5, 'rgba(0, 150, 255, 0.8)');
-          grad.addColorStop(1, 'rgba(255, 0, 150, 0.1)');
-          ctx.strokeStyle = grad;
+          
+          if (edge.type === 'pattern_match') {
+            ctx.lineWidth = 2.5;
+            ctx.setLineDash([6, 6]);
+            ctx.strokeStyle = 'rgba(255, 77, 109, 0.9)'; // Warning red for pattern match
+            ctx.shadowColor = 'rgba(255, 77, 109, 0.8)';
+          } else {
+            ctx.lineWidth = 3.5;
+            ctx.setLineDash([]);
+            const grad = ctx.createLinearGradient(start.x, start.y, end.x, end.y);
+            grad.addColorStop(0, 'rgba(0, 255, 255, 1)');
+            grad.addColorStop(0.5, 'rgba(0, 150, 255, 0.8)');
+            grad.addColorStop(1, 'rgba(255, 0, 150, 0.1)');
+            ctx.strokeStyle = grad;
+            ctx.shadowColor = 'rgba(0, 200, 255, 0.9)';
+          }
+          
           ctx.shadowBlur = 12;
-          ctx.shadowColor = 'rgba(0, 200, 255, 0.9)';
           ctx.stroke();
+          ctx.setLineDash([]);
           ctx.shadowBlur = 0;
         });
       }
@@ -347,8 +358,8 @@ export default function NetworkGraph() {
         }
         
         const nodeDeg = deg[n.id] || 0;
-        const largeGraph = nodes.length > 500;
-        const r = largeGraph ? Math.max(3.0, n.radius * 0.45 + Math.min(nodeDeg * 0.18, 3.5)) : n.radius + Math.min(nodeDeg * 1.2, 10);
+        // Extreme boost to node sizing for prototype visibility on large screens
+        const r = Math.max(16, n.radius * 3.5 + Math.min(nodeDeg * 2.0, 25));
 
         if (isSelected || isHovered) {
           const radarWave = (now % 2000) / 2000; 
@@ -660,12 +671,19 @@ export default function NetworkGraph() {
             )}
             
             {(() => {
-              const breakdown = { case: 0, criminal: 0, victim: 0, station: 0, district: 0 };
-              if (connectedSet) {
+              const breakdown = { case: 0, criminal: 0, victim: 0, station: 0, district: 0, pattern: 0 };
+              if (connectedSet && visEdges) {
+                // First tally standard node types
                 connectedSet.forEach(id => {
                   if (id === selectedNode.id) return;
                   const n = nodeMap.get(id);
                   if (n) breakdown[n.type] = (breakdown[n.type] || 0) + 1;
+                });
+                // Then specifically count pattern matches
+                visEdges.forEach(e => {
+                  if ((e.source === selectedNode.id || e.target === selectedNode.id) && e.type === 'pattern_match') {
+                    breakdown.pattern++;
+                  }
                 });
               }
               return (
@@ -674,6 +692,12 @@ export default function NetworkGraph() {
                     NETWORK IMPACT ({connectedSet ? connectedSet.size - 1 : 0} CONNECTIONS)
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    {breakdown.pattern > 0 && (
+                      <div style={{ background: 'rgba(255, 77, 109, 0.1)', padding: '10px', borderRadius: '8px', border: `1px solid rgba(255, 77, 109, 0.5)`, gridColumn: '1 / -1' }}>
+                        <div style={{ fontSize: '18px', fontWeight: 700, color: '#ff4d6d' }}>{breakdown.pattern}</div>
+                        <div style={{ fontSize: '10px', color: '#ff4d6d', marginTop: '2px' }}>SIMILAR PATTERN MATCHES (MO)</div>
+                      </div>
+                    )}
                     {[
                       { key: 'case', label: 'Linked FIRs' },
                       { key: 'criminal', label: 'Accused / Linked' },

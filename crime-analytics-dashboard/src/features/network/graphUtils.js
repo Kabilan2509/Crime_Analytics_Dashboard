@@ -196,16 +196,85 @@ export function buildNetworkData(cases, accused, victims, districts, stations) {
     edges.push({ source: victimId, target: caseNodeId, type: 'victim_of', strength: 0.5 });
   });
 
-  // Deterministic sunflower layout produces a dense but readable complete graph.
-  // It avoids random node movement between visits and scales to several thousand nodes.
-  const W = 700, H = 460;
-  const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+  // 6. Pattern Match (MO) Edges between Cases
+  // Link cases that have the exact same majorHeadName AND policeStationName AND occurred within 7 days.
+  const DAY_IN_MS = 24 * 60 * 60 * 1000;
+  for (let i = 0; i < activeCases.length; i++) {
+    for (let j = i + 1; j < activeCases.length; j++) {
+      const c1 = activeCases[i];
+      const c2 = activeCases[j];
+      
+      // Skip if missing core pattern fields
+      if (!c1.majorHeadName || c1.majorHeadName !== c2.majorHeadName) continue;
+      
+      const st1 = c1.policeStationName || c1.unit?.UnitName || c1.unit?.PoliceStationName;
+      const st2 = c2.policeStationName || c2.unit?.UnitName || c2.unit?.PoliceStationName;
+      if (!st1 || st1 !== st2) continue;
+
+      // Check temporal proximity
+      if (c1.registeredDateObj && c2.registeredDateObj) {
+        const diffDays = Math.abs(c1.registeredDateObj - c2.registeredDateObj) / DAY_IN_MS;
+        if (diffDays <= 7) {
+          const id1 = `case_${c1.ROWID || c1.CaseMasterID}`;
+          const id2 = `case_${c2.ROWID || c2.CaseMasterID}`;
+          if (nodeSet.has(id1) && nodeSet.has(id2)) {
+            edges.push({ source: id1, target: id2, type: 'pattern_match', strength: 0.1 });
+          }
+        }
+      }
+    }
+  }
+
+  // Fast Organic Force-Directed Layout
+  // Runs synchronously for 150 iterations so it instantly renders in a clustered, organic structure.
+  const W = 1000, H = 800;
   nodes.forEach((n, i) => {
-    const angle = i * goldenAngle;
-    const radius = 12 * Math.sqrt(i + 1);
-    n.x = W / 2 + Math.cos(angle) * radius;
-    n.y = H / 2 + Math.sin(angle) * radius;
+    const angle = i * Math.PI * 0.1;
+    n.x = W / 2 + Math.cos(angle) * (i * 0.5);
+    n.y = H / 2 + Math.sin(angle) * (i * 0.5);
+    n.vx = 0; n.vy = 0;
   });
+
+  const iterations = 150;
+  const k = 60; // spring length
+  const repulsion = 5000;
+  const nm = new Map(nodes.map((n, i) => [n.id, i]));
+  
+  for (let iter = 0; iter < iterations; iter++) {
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const dx = nodes[i].x - nodes[j].x;
+        const dy = nodes[i].y - nodes[j].y;
+        const distSq = dx * dx + dy * dy + 1;
+        if (distSq < 80000) { 
+          const f = repulsion / distSq;
+          nodes[i].vx += dx * f; nodes[i].vy += dy * f;
+          nodes[j].vx -= dx * f; nodes[j].vy -= dy * f;
+        }
+      }
+    }
+    
+    for (const e of edges) {
+      const i1 = nm.get(e.source);
+      const i2 = nm.get(e.target);
+      if (i1 !== undefined && i2 !== undefined) {
+        const n1 = nodes[i1], n2 = nodes[i2];
+        const dx = n2.x - n1.x, dy = n2.y - n1.y;
+        const dist = Math.sqrt(dx * dx + dy * dy) + 1;
+        const f = (dist - k) * (e.strength || 0.5) * 0.05;
+        n1.vx += (dx / dist) * f; n1.vy += (dy / dist) * f;
+        n2.vx -= (dx / dist) * f; n2.vy -= (dy / dist) * f;
+      }
+    }
+    
+    for (const n of nodes) {
+      n.vx += (W / 2 - n.x) * 0.015; // Gravity
+      n.vy += (H / 2 - n.y) * 0.015;
+      n.vx *= 0.65; // Damping
+      n.vy *= 0.65;
+      n.x += n.vx; n.y += n.vy;
+    }
+  }
 
   return { nodes, edges };
 }
