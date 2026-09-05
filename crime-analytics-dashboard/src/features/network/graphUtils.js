@@ -234,15 +234,15 @@ export function buildNetworkData(cases, accused, victims, districts, stations) {
   // Deterministic investigation lanes: geography → FIR → people.  Unlike a
   // force-directed graph, this never becomes a radial/rangoli shape and is
   // stable between renders, screenshots and analyst hand-offs.
-  const laneX = { district: 120, station: 370, case: 700, criminal: 1040, victim: 1340 };
+  const laneY = { district: 80, station: 250, case: 450, criminal: 700, victim: 900 };
   const degree = new Map(nodes.map(n => [n.id, 0]));
   edges.forEach(e => { degree.set(e.source, (degree.get(e.source) || 0) + 1); degree.set(e.target, (degree.get(e.target) || 0) + 1); });
-  Object.keys(laneX).forEach(type => {
+  Object.keys(laneY).forEach(type => {
     const laneNodes = nodes.filter(n => n.type === type)
       .sort((a, b) => (degree.get(b.id) - degree.get(a.id)) || a.label.localeCompare(b.label));
     laneNodes.forEach((node, index) => {
-      node.x = laneX[type];
-      node.y = 110 + index * 86;
+      node.x = 220 + index * 140; // Spread horizontally (shifted right to avoid labels)
+      node.y = laneY[type];       // Fixed Y lane (top to bottom)
       node.vx = 0;
       node.vy = 0;
       node.order = index;

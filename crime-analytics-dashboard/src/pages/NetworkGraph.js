@@ -219,14 +219,14 @@ export default function NetworkGraph() {
     // 4. Filter the final nodes
     nodes = nodes.filter(n => validIds.has(n.id));
 
-    // 5. CRITICAL FIX: Recalculate Y positions! 
-    // graphUtils initially spaced them out based on the full 1000+ node dataset.
-    // We must compress their Y coordinates so they appear on screen together.
-    const laneX = { district: 120, station: 370, case: 700, criminal: 1040, victim: 1340 };
-    Object.keys(laneX).forEach(type => {
+    // 5. CRITICAL FIX: Recalculate X positions! 
+    // We must compress their X coordinates so they appear tightly together on screen.
+    const laneY = { district: 80, station: 250, case: 450, criminal: 700, victim: 900 };
+    Object.keys(laneY).forEach(type => {
       const typeNodes = nodes.filter(n => n.type === type);
       typeNodes.forEach((node, index) => {
-        node.y = 110 + index * 86;
+        node.x = 220 + index * 140; // Compress horizontally (shifted right to avoid labels)
+        node.y = laneY[type];       // Fixed Y lane
       });
     });
 
@@ -295,8 +295,10 @@ export default function NetworkGraph() {
     const fitGraph = () => {
       if (nodes.length === 0 || W === 0 || H === 0) return;
       const xs = nodes.map(n => n.x), ys = nodes.map(n => n.y);
-      const minX = Math.min(...xs), maxX = Math.max(...xs);
-      const minY = Math.min(...ys), maxY = Math.max(...ys);
+      const minX = Math.min(0, ...xs); // Include 0 so left row labels are never cut off
+      const maxX = Math.max(...xs);
+      const minY = Math.min(0, ...ys); // Include 0 so we have top padding
+      const maxY = Math.max(...ys);
       let fitZoom = Math.min((W - 100) / Math.max(maxX - minX, 1), (H - 100) / Math.max(maxY - minY, 1), 1);
       fitZoom = Math.max(fitZoom, 0.1);
       transformRef.current = {
@@ -387,18 +389,22 @@ export default function NetworkGraph() {
       ctx.scale(tz, tz);
 
       [
-        ['JURISDICTION', 120, '#FFD54F'],
-        ['REPORTING STATION', 370, '#ce93d8'],
-        ['FIR ROUTES', 700, '#4fc3f7'],
-        ['ACCUSED LINKS', 1040, '#ff4d6d'],
-        ['AFFECTED PEOPLE', 1340, '#69f0ae'],
-      ].forEach(([label, x, color]) => {
+        ['JURISDICTION', 80, '#FFD54F'],
+        ['REPORTING STATION', 250, '#ce93d8'],
+        ['FIR ROUTES', 450, '#4fc3f7'],
+        ['ACCUSED LINKS', 700, '#ff4d6d'],
+        ['AFFECTED PEOPLE', 900, '#69f0ae'],
+      ].forEach(([label, y, color]) => {
         ctx.fillStyle = color;
         ctx.font = '700 11px Inter, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(label, x, 40);
+        ctx.textAlign = 'right'; 
+        ctx.fillText(label, 70, y + 4); 
+        
         ctx.strokeStyle = `${color}45`;
-        ctx.beginPath(); ctx.moveTo(x - 72, 52); ctx.lineTo(x + 72, 52); ctx.stroke();
+        ctx.beginPath(); 
+        ctx.moveTo(85, y); 
+        ctx.lineTo(120, y); 
+        ctx.stroke(); 
       });
       ctx.textAlign = 'start';
 

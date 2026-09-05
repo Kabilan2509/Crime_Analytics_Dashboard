@@ -7,7 +7,7 @@ import Header from './components/Header';
 import FilterBar from './components/FilterBar';
 import EmergencyTicker from './components/EmergencyTicker';
 import AccessibilityToolbar from './components/AccessibilityToolbar';
-
+import PushNotificationSetup from './components/PushNotificationSetup';
 /* Core Pages (eagerly loaded) */
 import Dashboard from './pages/DashboardModern';
 import CrimeMap from './pages/CrimeMap';
@@ -190,6 +190,7 @@ function App() {
               </MainContentWrapper>
             </div>
           </div>
+          <PushNotificationSetup />
           <AccessibilityToolbar />
         </Router>
       </DateFilterProvider>

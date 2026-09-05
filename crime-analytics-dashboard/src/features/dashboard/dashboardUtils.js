@@ -101,7 +101,8 @@ export function buildDashboardViewModel(filteredCases, accessLevel) {
 
   const distributionMap = new Map();
   secureCases.forEach((item) => {
-    distributionMap.set(item.majorHeadName, (distributionMap.get(item.majorHeadName) || 0) + 1);
+    const categoryName = item.minorHeadName || item.majorHeadName || 'Unknown';
+    distributionMap.set(categoryName, (distributionMap.get(categoryName) || 0) + 1);
   });
   const palette = [
     '#2563eb', // Informational Blue
