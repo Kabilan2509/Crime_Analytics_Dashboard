@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { useSecurity } from '../../context/SecurityContext';
+import * as OTPAuth from 'otpauth';
 
 export default function PIIUnlockModal({ isOpen, onClose }) {
   const { session, verifyOfficer } = useSecurity();
@@ -101,49 +102,35 @@ export default function PIIUnlockModal({ isOpen, onClose }) {
       return;
     }
 
-    try {
-      const res = await fetch('/server/crime_api/api/security/request-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: form.email,
-          badgeId: form.badgeId,
-          officerName: form.officerName
-        })
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to request verification code.');
-      }
-      
-      setStep('otp');
-      setInfoMsg(data.message);
-      if (data.debugOtp) {
-        setDebugOtp(data.debugOtp);
-      }
-    } catch (err) {
-      setErrorMsg(err.message || 'Error sending OTP. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
+    // Bypass Catalyst Mail completely. Go straight to Authenticator App.
+    setStep('otp');
+    setInfoMsg('Check your KSP Google Authenticator App for the 6-digit code.');
+    // Show the secret key in the debug box so they can add it to Google Authenticator
+    setDebugOtp('Authenticator Setup Key: JBSWY3DPEHPK3PXP');
+    setIsLoading(false);
   };
 
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
     setErrorMsg('');
     setIsLoading(true);
+    
     try {
-      const res = await fetch('/server/crime_api/api/security/verify-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          badgeId: form.badgeId,
-          otp: otpCode
-        })
+      // Create the TOTP mathematical verifier
+      let totp = new OTPAuth.TOTP({
+        issuer: 'KSP Dashboard',
+        label: form.badgeId || 'Officer',
+        algorithm: 'SHA1',
+        digits: 6,
+        period: 30,
+        secret: 'JBSWY3DPEHPK3PXP'
       });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Verification failed.');
+
+      // Validate the 6-digit code the user typed
+      let delta = totp.validate({ token: otpCode, window: 1 });
+
+      if (delta === null) {
+        throw new Error('Invalid Authenticator code. Please try again.');
       }
 
       verifyOfficer(form.officerName, form.badgeId, form.unitName);
@@ -382,7 +369,7 @@ export default function PIIUnlockModal({ isOpen, onClose }) {
 
             {debugOtp && (
               <div style={{ fontSize: '11px', color: '#f59e0b', padding: '8px', border: '1px dashed #f59e0b', borderRadius: '4px', background: 'rgba(245, 158, 11, 0.05)' }}>
-                ℹ️ <strong>Demo Bypass:</strong> Use code <code>{debugOtp}</code>
+                ℹ️ <strong>Presentation Note:</strong> Enter this in Google Authenticator: <code>{debugOtp}</code>
               </div>
             )}
 
