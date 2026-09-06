@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import {
@@ -22,6 +23,10 @@ import {
   MdPictureAsPdf,
   MdSearch,
   MdAddCircle,
+  MdInfoOutline,
+  MdLaunch,
+  MdSecurity,
+  MdClose,
 } from 'react-icons/md';
 import { MapContainer, CircleMarker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -39,7 +44,7 @@ import {
 } from '../data/schemaSelectors';
 import { useSecurity } from '../context/SecurityContext';
 import { maskText, maskNarrative, downloadBlob, toCsv } from '../security/securityUtils';
-import { downloadExcel, downloadPdf, sanitizePdfText } from '../utils/fileExports';
+import { downloadExcel, downloadPdf, sanitizePdfText, getKspEmblemBase64 } from '../utils/fileExports';
 
 // Helper function to dynamically load external scripts from CDN
 function loadScript(src) {
@@ -123,8 +128,29 @@ function ChartTooltip({ active, payload, label }) {
 }
 
 function Reports() {
+  const navigate = useNavigate();
   const theme = useActiveTheme();
-  const { isCommandMode } = useSecurity();
+  const { isCommandMode, session } = useSecurity();
+  const [accessNotice, setAccessNotice] = useState(null);
+
+  const hasCaseAccess = isCommandMode ||
+    session?.accessLevel === 'command' ||
+    session?.role?.toLowerCase().includes('admin') ||
+    session?.role?.toLowerCase().includes('command') ||
+    session?.role?.toLowerCase().includes('dgp');
+
+  const handleCaseClick = (c) => {
+    if (hasCaseAccess) {
+      navigate(`/cases/${c.CaseMasterID}`);
+    } else {
+      setAccessNotice({
+        caseId: c.CaseMasterID,
+        crimeNo: isCommandMode ? c.FIRNo : maskText(c.FIRNo || `FIR-${c.CaseMasterID}`, 6, 4),
+        station: c.policeStationName,
+        district: c.districtName
+      });
+    }
+  };
 
 
   // Active template selector state
@@ -668,6 +694,7 @@ function Reports() {
     }
     try {
       setExporting(true);
+      const emblemBase64 = await getKspEmblemBase64();
       const orientation = activeTab === 'table' ? 'landscape' : 'portrait';
       const pdf = new jsPDF({ orientation, unit: 'mm', format: 'a4', compress: true });
       const pageWidth = pdf.internal.pageSize.getWidth();
@@ -678,23 +705,51 @@ function Reports() {
       const filtersText = sanitizePdfText(getAppliedFiltersText());
 
       const drawHeader = () => {
-        pdf.setFillColor(20, 55, 92);
-        pdf.rect(0, 0, pageWidth, 24, 'F');
+        // Official Police Navy header bar
+        pdf.setFillColor(0, 33, 71);
+        pdf.rect(0, 0, pageWidth, 25, 'F');
+
+        // Karnataka State Gold accent stripe
+        pdf.setFillColor(218, 165, 32);
+        pdf.rect(0, 25, pageWidth, 1.8, 'F');
+
+        let textStartX = margin;
+        if (emblemBase64) {
+          try {
+            pdf.addImage(emblemBase64, 'PNG', margin, 2.5, 20, 20);
+            textStartX = margin + 24;
+          } catch (e) {
+            textStartX = margin;
+          }
+        }
+
+        // Bilingual and official department title
         pdf.setTextColor(255, 255, 255);
         pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(14);
-        pdf.text('KARNATAKA STATE POLICE', margin, 10);
-        pdf.setFontSize(8);
+        pdf.setFontSize(13);
+        pdf.text('KARNATAKA STATE POLICE', textStartX, 9);
+
         pdf.setFont('helvetica', 'normal');
-        pdf.text('MADHUKAR - MODERN ANALYTICS AND DATA HUB', margin, 16);
-        pdf.text('OFFICIAL USE', pageWidth - margin, 13, { align: 'right' });
+        pdf.setFontSize(7.5);
+        pdf.setTextColor(218, 165, 32);
+        pdf.text('GOVERNMENT OF KARNATAKA | STATE CRIME RECORDS BUREAU', textStartX, 15);
+
+        pdf.setFontSize(6.8);
+        pdf.setTextColor(195, 215, 235);
+        pdf.text('MADHUKAR - COMMAND & ANALYTICAL INTELLIGENCE DOSSIER', textStartX, 20.5);
+
+        // Security badge
+        pdf.setTextColor(255, 255, 255);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(7.5);
+        pdf.text('CONFIDENTIAL // LAW ENFORCEMENT SENSITIVE', pageWidth - margin, 13, { align: 'right' });
       };
 
       const drawTitleBlock = () => {
         drawHeader();
-        pdf.setTextColor(25, 35, 45);
+        pdf.setTextColor(0, 33, 71);
         pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(15);
+        pdf.setFontSize(14);
         pdf.text(reportTitle, margin, 35);
         pdf.setFont('helvetica', 'normal');
         pdf.setFontSize(8.5);
@@ -702,7 +757,8 @@ function Reports() {
         pdf.text(`View: ${activeTab.toUpperCase()}   |   Generated: ${generatedAt}   |   Records: ${filteredCases.length}`, margin, 42);
         const filterLines = pdf.splitTextToSize(`Applied filters: ${filtersText}`, pageWidth - margin * 2);
         pdf.text(filterLines, margin, 48);
-        pdf.setDrawColor(200, 208, 216);
+        pdf.setDrawColor(218, 165, 32);
+        pdf.setLineWidth(0.5);
         pdf.line(margin, 55, pageWidth - margin, 55);
       };
 
@@ -711,7 +767,7 @@ function Reports() {
       if (activeTab === 'table') {
         autoTable(pdf, {
           startY: 61,
-          margin: { left: margin, right: margin, top: 30, bottom: 16 },
+          margin: { left: margin, right: margin, top: 32, bottom: 16 },
           head: [['Case ID', 'FIR Number', 'Crime Group', 'Crime Type', 'District', 'Station', 'Registered', 'Status', 'Severity']],
           body: filteredCases.map(c => [
             c.CaseMasterID,
@@ -721,7 +777,7 @@ function Reports() {
           ].map(sanitizePdfText)),
           theme: 'grid',
           styles: { font: 'helvetica', fontSize: 7, cellPadding: 2, overflow: 'linebreak', valign: 'middle' },
-          headStyles: { fillColor: [20, 55, 92], textColor: 255, fontStyle: 'bold', halign: 'left' },
+          headStyles: { fillColor: [0, 33, 71], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'left' },
           alternateRowStyles: { fillColor: [244, 247, 250] },
           columnStyles: { 0: { cellWidth: 22 }, 1: { cellWidth: 28 }, 6: { cellWidth: 21 }, 7: { cellWidth: 18 }, 8: { cellWidth: 18 } },
           didParseCell: data => {
@@ -731,11 +787,11 @@ function Reports() {
         });
       } else if (activeTab === 'charts') {
         autoTable(pdf, {
-          startY: 61, margin: { left: margin, right: margin, top: 30, bottom: 16 },
+          startY: 61, margin: { left: margin, right: margin, top: 32, bottom: 16 },
           head: [['Year', 'Total cases', 'Violent crime', 'Property crime']],
           body: multiYearComparisonData.map(item => [item.year, item.total, item.violent, item.property]),
           theme: 'grid', styles: { font: 'helvetica', fontSize: 8.5, cellPadding: 3, halign: 'right' },
-          headStyles: { fillColor: [20, 55, 92], textColor: 255, fontStyle: 'bold' },
+          headStyles: { fillColor: [0, 33, 71], textColor: [255, 255, 255], fontStyle: 'bold' },
           alternateRowStyles: { fillColor: [244, 247, 250] },
           didDrawPage: data => { if (data.pageNumber > 1) drawHeader(); }
         });
@@ -756,7 +812,7 @@ function Reports() {
           head: [['District', 'Case count', 'Share of report']],
           body: districtCounts.map(([district, count]) => [district, count, `${filteredCases.length ? ((count / filteredCases.length) * 100).toFixed(1) : 0}%`]),
           theme: 'grid', styles: { font: 'helvetica', fontSize: 8, cellPadding: 2.5 },
-          headStyles: { fillColor: [20, 55, 92], textColor: 255, fontStyle: 'bold' },
+          headStyles: { fillColor: [0, 33, 71], textColor: [255, 255, 255], fontStyle: 'bold' },
           alternateRowStyles: { fillColor: [244, 247, 250] },
           didDrawPage: data => { if (data.pageNumber > 1) drawHeader(); }
         });
@@ -765,12 +821,13 @@ function Reports() {
       const totalPages = pdf.getNumberOfPages();
       for (let page = 1; page <= totalPages; page += 1) {
         pdf.setPage(page);
-        pdf.setDrawColor(210, 215, 220);
+        pdf.setDrawColor(218, 165, 32);
+        pdf.setLineWidth(0.5);
         pdf.line(margin, pageHeight - 12, pageWidth - margin, pageHeight - 12);
         pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(7.5);
+        pdf.setFontSize(7);
         pdf.setTextColor(100, 108, 116);
-        pdf.text('KSP MADHUKAR Dashboard | Confidential - Official Use Only', margin, pageHeight - 7);
+        pdf.text('KARNATAKA STATE POLICE - MADHUKAR INTELLIGENCE COMMAND | CONFIDENTIAL - LAW ENFORCEMENT SENSITIVE', margin, pageHeight - 7);
         pdf.text(`Page ${page} of ${totalPages}`, pageWidth - margin, pageHeight - 7, { align: 'right' });
       }
       pdf.save(`KSP_${activeTemplate.toUpperCase()}_${activeTab.toUpperCase()}_${new Date().toISOString().split('T')[0]}.pdf`);
@@ -1975,8 +2032,8 @@ function Reports() {
     ));
   };
 
-  // T9: FBI UCR Annual Report Style
-  const renderFbiUcr = () => {
+  // T9: KSP State Annual Crime Review
+  const renderKspAnnual = () => {
     // Map categories to Violent and Property Buckets
     const violentHeads = ['murder', 'assault', 'kidnap', 'hurt', 'riot', 'violence'];
     const propertyHeads = ['theft', 'burglary', 'housebreaking', 'arson', 'damage', 'property'];
@@ -1996,7 +2053,7 @@ function Reports() {
       return { name: d.DistrictName, count: cnt };
     }).sort((a, b) => b.count - a.count);
 
-    return renderTemplateShell('FBI UCR Annual Report', (
+    return renderTemplateShell('KSP State Annual Crime Review', (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
         {/* Section 1: Methodology */}
         <div>
@@ -2004,7 +2061,7 @@ function Reports() {
             1. Methodology & Coverage
           </h4>
           <p style={{ margin: 0, fontSize: '11px', lineHeight: '16px', color: '#444', textAlign: 'justify' }}>
-            This annual briefing compiles uniform crime reporting indexes mapped from localized circle boundaries. Aggregations follow the guidelines of the Crime Command System to categorize Indian Penal Code / BNS entries directly into violent and property crime indices.
+            This annual briefing compiles uniform state crime reporting indexes mapped across all 31 Karnataka police jurisdictions. Aggregations follow the guidelines of the Karnataka State Police & NCRB Crime in India standard to categorize Bharatiya Nyaya Sanhita (BNS) / IPC entries into violent, property, and specialized crime heads.
           </p>
         </div>
 
@@ -2361,7 +2418,7 @@ function Reports() {
       case 'hotspot_report': return renderHotspotReport();
       case 'ps_review': return renderPsReview();
       case 'district_review': return renderDistrictReview();
-      case 'fbi_ucr': return renderFbiUcr();
+      case 'ksp_annual': return renderKspAnnual();
       case 'ncrb_india': return renderNcrbIndia();
       default: return renderExecutiveBriefing();
     }
@@ -2661,6 +2718,30 @@ function Reports() {
         <div className="card-header">
           <h3 className="card-title"><MdDescription /> KSP Crime Data Explorer — Query Creator</h3>
         </div>
+
+        {/* Step-by-Step Instructions Banner */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          padding: '10px 16px',
+          marginBottom: '16px',
+          background: 'rgba(0, 33, 71, 0.05)',
+          border: '1px solid rgba(0, 33, 71, 0.2)',
+          borderLeft: '4px solid #002147',
+          borderRadius: '4px',
+          fontSize: '11.5px',
+          color: activeThemeColors.textColor,
+          fontFamily: 'Consolas, monospace'
+        }}>
+          <MdInfoOutline size={22} style={{ color: '#002147', flexShrink: 0 }} />
+          <div style={{ lineHeight: '1.5' }}>
+            <strong style={{ color: '#002147' }}>HOW TO APPLY FILTERS & COMPILE DOSSIER:</strong>
+            {' '}1. Select your <strong>Report Template, Date Range, District, and Offense Category</strong> below.
+            {' '}2. Click <strong style={{ color: 'var(--text-primary)', background: 'var(--bg-panel-alt)', padding: '1px 6px', border: '1px solid var(--border-color)', borderRadius: '3px' }}>+ Add Query Criteria</strong> to stage your query.
+            {' '}3. Click <strong style={{ color: '#fff', background: '#2563eb', padding: '1px 6px', borderRadius: '3px' }}>🔍 Submit Query</strong> to generate the live report briefing, charts, and case table.
+          </div>
+        </div>
         
         {/* Row 1: Date Range, Location, Crime selectors */}
         <div className="form-grid">
@@ -2676,7 +2757,7 @@ function Reports() {
               <option value="hotspot_report">Hotspot Analysis Report</option>
               <option value="ps_review">Police Station Crime Review</option>
               <option value="district_review">District Crime Review</option>
-              <option value="fbi_ucr">FBI UCR Annual Report</option>
+              <option value="ksp_annual">KSP State Annual Crime Review</option>
               <option value="ncrb_india">NCRB Crime in India Report</option>
             </select>
           </div>
@@ -2873,10 +2954,21 @@ function Reports() {
                 </div>
                 
                 {chartData.data && chartData.data.length > 0 ? (
-                  <div style={{ height: '320px', width: '100%' }}>
+                  <div style={{
+                    height: '330px',
+                    width: '100%',
+                    background: theme === 'dark'
+                      ? 'linear-gradient(to right, rgba(148, 163, 184, 0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(148, 163, 184, 0.05) 1px, transparent 1px)'
+                      : 'linear-gradient(to right, rgba(100, 116, 139, 0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(100, 116, 139, 0.05) 1px, transparent 1px)',
+                    backgroundSize: '24px 24px',
+                    borderRadius: '4px',
+                    border: `1px solid ${activeThemeColors.border}`,
+                    padding: '12px 12px 6px 0',
+                    boxSizing: 'border-box'
+                  }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={chartData.data} margin={{ top: 10, bottom: 5, left: -10, right: 10 }}>
-                        <CartesianGrid stroke={activeThemeColors.gridColor} strokeDasharray="1 3" vertical={false} />
+                        <CartesianGrid stroke={activeThemeColors.gridColor} strokeDasharray="3 3" vertical={true} horizontal={true} strokeOpacity={0.6} />
                         <XAxis dataKey="name" stroke={activeThemeColors.mutedTextColor} tickLine={false} axisLine={false} style={{ fontSize: '11px', fontFamily: 'Consolas, monospace' }} />
                         <YAxis stroke={activeThemeColors.mutedTextColor} tickLine={false} axisLine={false} style={{ fontSize: '11px', fontFamily: 'Consolas, monospace' }} />
                         <Tooltip content={<ChartTooltip />} />
@@ -2912,6 +3004,14 @@ function Reports() {
               </div>
             ) : (
               <div className="table-wrap" style={{ overflowX: 'auto' }}>
+                <div style={{ padding: '0 0 10px', fontSize: '11px', color: activeThemeColors.mutedTextColor, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>
+                    💡 Click on any case row below to open and inspect in the <strong>Case Registry</strong> ({hasCaseAccess ? 'Authorized Access' : 'Command Elevation Required'}).
+                  </span>
+                  <span style={{ fontWeight: 600, color: '#2563eb' }}>
+                    {filteredCases.length} Matching Records
+                  </span>
+                </div>
                 <table className="data-table">
                   <thead>
                     <tr>
@@ -2928,8 +3028,22 @@ function Reports() {
                   </thead>
                   <tbody>
                     {filteredCases.map(c => (
-                      <tr key={c.CaseMasterID}>
-                        <td>{c.CaseMasterID}</td>
+                      <tr 
+                        key={c.CaseMasterID}
+                        onClick={() => handleCaseClick(c)}
+                        style={{
+                          cursor: 'pointer',
+                          transition: 'background-color 0.15s ease'
+                        }}
+                        className="ksp-case-row"
+                        title={hasCaseAccess ? `Click to inspect Case #${c.CaseMasterID} in Case Registry` : `Case #${c.CaseMasterID} (Click to check authorization)`}
+                      >
+                        <td>
+                          <span style={{ color: '#2563eb', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px', textDecoration: 'underline' }}>
+                            #{c.CaseMasterID}
+                            <MdLaunch size={11} style={{ opacity: 0.8 }} />
+                          </span>
+                        </td>
                         <td><strong>{isCommandMode ? c.FIRNo : maskText(c.FIRNo || `FIR-${c.CaseMasterID}`, 6, 4)}</strong></td>
                         <td>{c.majorHeadName}</td>
                         <td>{c.minorHeadName}</td>
@@ -2959,38 +3073,152 @@ function Reports() {
         </div>
       )}
 
+      {/* Permission Warning Dialog when restricted user clicks a case */}
+      {accessNotice && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 9999,
+            backgroundColor: 'rgba(0, 0, 0, 0.65)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }}
+          onClick={() => setAccessNotice(null)}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: '460px',
+              background: activeThemeColors.cardBg,
+              border: '1px solid var(--border-color)',
+              borderTop: '4px solid #dc2626',
+              borderRadius: '8px',
+              padding: '20px',
+              color: activeThemeColors.textColor,
+              boxShadow: '0 16px 36px rgba(0,0,0,0.35)'
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#dc2626' }}>
+                <MdSecurity size={24} />
+                <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 800, textTransform: 'uppercase' }}>
+                  Command Access Required
+                </h4>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAccessNotice(null)}
+                style={{ background: 'transparent', border: 'none', color: activeThemeColors.mutedTextColor, cursor: 'pointer', padding: 4 }}
+              >
+                <MdClose size={18} />
+              </button>
+            </div>
+            <p style={{ fontSize: '12px', lineHeight: '1.5', margin: '0 0 12px', color: activeThemeColors.textColor }}>
+              Access to Case Registry record <strong>#{accessNotice.caseId} ({accessNotice.crimeNo})</strong> at <strong>{accessNotice.station} ({accessNotice.district})</strong> requires <strong>Command Center</strong> or <strong>Administrator</strong> authorization.
+            </p>
+            <div style={{ padding: '8px 12px', background: 'rgba(220, 38, 38, 0.08)', borderRadius: '4px', fontSize: '11px', color: '#dc2626', marginBottom: '16px' }}>
+              🔒 Currently browsing in <em>{session?.role || 'Redacted Analyst'}</em> mode. To inspect full unredacted case registry details, please unlock Command Mode using your authorized officer credentials in the header.
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={() => setAccessNotice(null)}
+                className="btn"
+                style={{ height: '30px', padding: '0 14px', fontSize: '11px' }}
+              >
+                Acknowledge
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
 
-// Shared Document Letterhead wrapper helper
+// Shared Document Letterhead wrapper helper with authentic Karnataka State Police Branding
 const renderHeaderFooterShell = (reportTitle, filterDesc, content) => {
-  const reportId = `KSP/CRB/2026/QB-${reportTitle.toUpperCase().replace(/\s+/g, '-')}`;
+  const reportId = `KSP/SCRB/2026/QB-${reportTitle.toUpperCase().replace(/\s+/g, '-')}`;
   const timestamp = new Date().toLocaleString('en-IN');
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', fontFamily: 'Georgia, serif', color: '#111' }}>
-      {/* Header Block */}
-      <div style={{ borderBottom: '2px solid #1a1a1a', paddingBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', fontFamily: 'Consolas, Georgia, serif', color: '#111' }}>
+      {/* Official KSP Top Police Banner */}
+      <div style={{
+        borderBottom: '3px solid #002147',
+        paddingBottom: '16px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        position: 'relative'
+      }}>
+        {/* Gold accent sub-stripe */}
+        <div style={{ position: 'absolute', bottom: '-6px', left: 0, right: 0, height: '2px', backgroundColor: '#DAA520' }} />
+
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: '#1a1a1a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ color: '#fff', fontSize: '18px', fontWeight: 'bold' }}>KSP</span>
-          </div>
+          <img
+            src={`${process.env.PUBLIC_URL || ''}/ksp-emblem.png`}
+            alt="Karnataka State Police Emblem"
+            style={{ width: '56px', height: '56px', objectFit: 'contain' }}
+            onError={(e) => { e.target.src = '/app/ksp-emblem.png'; }}
+          />
           <div>
-            <h2 style={{ margin: 0, fontSize: '16px', textTransform: 'uppercase', letterSpacing: '0.5px', color: '#1a1a1a' }}>Government of Karnataka</h2>
-            <h3 style={{ margin: '2px 0 0', fontSize: '11px', textTransform: 'uppercase', color: '#555555', letterSpacing: '1px', fontFamily: 'sans-serif' }}>Karnataka State Police • SCRB</h3>
+            <div style={{ fontSize: '12px', fontWeight: 800, color: '#002147', letterSpacing: '0.5px' }}>
+              ಕರ್ನಾಟಕ ರಾಜ್ಯ ಪೊಲೀಸ್ • GOVERNMENT OF KARNATAKA
+            </div>
+            <h2 style={{ margin: '2px 0 0', fontSize: '18px', textTransform: 'uppercase', letterSpacing: '0.8px', color: '#002147', fontWeight: 900 }}>
+              KARNATAKA STATE POLICE
+            </h2>
+            <h3 style={{ margin: '2px 0 0', fontSize: '11px', textTransform: 'uppercase', color: '#8B0000', letterSpacing: '1px', fontWeight: 700 }}>
+              STATE CRIME RECORDS BUREAU • CID HEADQUARTERS, BENGALURU
+            </h3>
+            <div style={{ fontSize: '9px', color: '#64748b', marginTop: '2px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              MADHUKAR Automated Crime Intelligence & Analytics Dossier
+            </div>
           </div>
         </div>
-        <div style={{ textAlign: 'right', fontSize: '10px', fontFamily: 'sans-serif', color: '#555555' }}>
-          <strong style={{ display: 'block', color: '#dc2626', fontSize: '11px', letterSpacing: '1px', marginBottom: '4px' }}>CONFIDENTIAL</strong>
-          <div>ID: {reportId}</div>
-          <div>Generated: {timestamp}</div>
-          <div>Officer: SCRB Analytical Director</div>
+
+        {/* Security & Confidentiality Block */}
+        <div style={{
+          textAlign: 'right',
+          fontSize: '10px',
+          fontFamily: 'Consolas, monospace',
+          color: '#334155',
+          border: '1.5px solid #8B0000',
+          padding: '8px 14px',
+          borderRadius: '4px',
+          backgroundColor: 'rgba(139, 0, 0, 0.03)'
+        }}>
+          <strong style={{ display: 'block', color: '#8B0000', fontSize: '11px', letterSpacing: '1px', marginBottom: '3px' }}>
+            CONFIDENTIAL • OFFICIAL POLICE RECORD
+          </strong>
+          <div><strong style={{ color: '#002147' }}>REF:</strong> {reportId}</div>
+          <div><strong style={{ color: '#002147' }}>Generated:</strong> {timestamp}</div>
+          <div><strong style={{ color: '#002147' }}>Authority:</strong> DGP Karnataka State Police Command</div>
         </div>
       </div>
 
       {/* Query Scope descriptor */}
-      <div style={{ padding: '8px 12px', border: '1px solid #ddd', backgroundColor: '#f9f9f9', fontSize: '11px', fontFamily: 'Consolas, monospace', color: '#333' }}>
-        <strong>Query Scope Checklist:</strong> {filterDesc}
+      <div style={{
+        padding: '10px 14px',
+        border: '1px solid #cbd5e1',
+        borderLeft: '4px solid #002147',
+        backgroundColor: 'rgba(0, 33, 71, 0.03)',
+        fontSize: '11px',
+        fontFamily: 'Consolas, monospace',
+        color: '#1e293b'
+      }}>
+        <strong style={{ color: '#002147' }}>OFFICIAL QUERY SCOPE:</strong> {filterDesc}
       </div>
 
       {/* Report Content */}
@@ -2999,18 +3227,40 @@ const renderHeaderFooterShell = (reportTitle, filterDesc, content) => {
       </div>
 
       {/* Footer Block */}
-      <div style={{ borderTop: '2px solid #1a1a1a', paddingTop: '16px', marginTop: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', fontSize: '10px', color: '#555', fontFamily: 'sans-serif' }}>
+      <div style={{
+        borderTop: '2px solid #DAA520',
+        paddingTop: '16px',
+        marginTop: '24px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'flex-end',
+        fontSize: '10px',
+        color: '#555',
+        fontFamily: 'Consolas, monospace'
+      }}>
         <div>
-          <div>GENERATED BY KSP PLATFORM SYSTEM AUTOMATION</div>
-          <div style={{ fontSize: '9px', color: '#777', marginTop: '2px' }}>Audit Trail: SEC-LVL-4-AUTH-VERIFIED • Appendices A-D Attached</div>
-        </div>
-        <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-          <div style={{ border: '1px solid #ddd', padding: '4px', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' }}>
-            <span style={{ fontSize: '8px', color: '#777' }}>[QR]</span>
+          <div style={{ fontWeight: 700, color: '#002147' }}>KARNATAKA STATE POLICE — MADHUKAR AUTOMATED INTELLIGENCE PLATFORM</div>
+          <div style={{ fontSize: '9px', color: '#64748b', marginTop: '2px' }}>
+            Security Level 4 Verified • Audit Signature ECDSA-SHA256 • Law Enforcement Sensitive (LES)
           </div>
-          <div style={{ textAlign: 'center', border: '1px dashed #777', padding: '4px 10px', width: '130px' }}>
-            <div style={{ fontSize: '9px', fontStyle: 'italic' }}>Verified Digitally</div>
-            <strong style={{ display: 'block', fontSize: '10px', color: '#1a1a1a', marginTop: '2px' }}>DGP Command Center</strong>
+        </div>
+        <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+          <img
+            src={`${process.env.PUBLIC_URL || ''}/ksp-emblem.png`}
+            alt="KSP Seal"
+            style={{ width: '36px', height: '36px', objectFit: 'contain' }}
+            onError={(e) => { e.target.src = '/app/ksp-emblem.png'; }}
+          />
+          <div style={{
+            textAlign: 'center',
+            border: '1px solid #002147',
+            backgroundColor: 'rgba(0, 33, 71, 0.03)',
+            padding: '5px 12px',
+            borderRadius: '2px',
+            width: '140px'
+          }}>
+            <div style={{ fontSize: '8.5px', fontStyle: 'italic', color: '#64748b' }}>Digitally Certified</div>
+            <strong style={{ display: 'block', fontSize: '10px', color: '#002147', marginTop: '1px' }}>DGP Command Center</strong>
           </div>
         </div>
       </div>

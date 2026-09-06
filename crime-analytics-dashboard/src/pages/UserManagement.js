@@ -127,6 +127,19 @@ function UserManagement() {
     setDualApprovalExportSetting(dual);
   }, [activeTab]); // Refresh when navigating back/around
 
+  // Close profile drawer and modals on Escape key press
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        if (drawerOfficerId) setDrawerOfficerId(null);
+        if (clearanceModalData) setClearanceModalData(null);
+        if (newRoleFormOpen) setNewRoleFormOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [drawerOfficerId, clearanceModalData, newRoleFormOpen]);
+
   const triggerToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 4000);
@@ -788,7 +801,6 @@ function UserManagement() {
           box-shadow: var(--shadow-soft);
           border-color: var(--accent-primary);
         }
-
         .metric-card-header {
           display: flex;
           justify-content: space-between;
@@ -816,13 +828,13 @@ function UserManagement() {
           gap: 4px;
         }
 
-        /* Slide-in Drawer Pattern (Evidence Workspace & District Drawer standard alignment) */
+        /* Slide-in Drawer Pattern (Ensures profile dossier displays cleanly ABOVE navbar) */
         .drawer-backdrop {
           position: fixed;
           top: 0; left: 0; right: 0; bottom: 0;
-          background: rgba(8, 19, 34, 0.45);
+          background: rgba(8, 19, 34, 0.55);
           backdrop-filter: blur(4px);
-          z-index: 199;
+          z-index: 2400;
           animation: fadeIn 0.2s ease-out;
         }
 
@@ -831,11 +843,12 @@ function UserManagement() {
           top: 0;
           right: 0;
           bottom: 0;
-          width: 450px;
+          width: 460px;
+          max-width: 90vw;
           background: var(--bg-panel);
           border-left: 1px solid var(--border-color);
-          box-shadow: -10px 0 40px rgba(0, 0, 0, 0.25);
-          z-index: 200;
+          box-shadow: -10px 0 40px rgba(0, 0, 0, 0.35);
+          z-index: 2500;
           display: flex;
           flex-direction: column;
           transform: translate3d(0, 0, 0);
@@ -1108,7 +1121,7 @@ function UserManagement() {
           top: 0; left: 0; right: 0; bottom: 0;
           background: rgba(0, 0, 0, 0.6);
           backdrop-filter: blur(2px);
-          z-index: 999;
+          z-index: 2600;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -2445,9 +2458,20 @@ function UserManagement() {
                 type="button" 
                 onClick={() => setDrawerOfficerId(null)} 
                 className="tree-toggle"
-                style={{ padding: 4 }}
+                style={{
+                  padding: '4px 8px',
+                  borderRadius: '4px',
+                  background: 'var(--bg-panel)',
+                  border: '1px solid var(--border-color)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+                title="Close Profile (Esc)"
               >
-                <MdClose size={20} />
+                <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)' }}>ESC</span>
+                <MdClose size={18} />
               </button>
             </header>
 

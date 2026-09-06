@@ -689,6 +689,49 @@ function CaseOverview() {
           overflow: hidden !important;
         }
 
+        .case-action-card-highlight {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 12px 16px;
+          background: #002147;
+          color: #ffffff !important;
+          border: 1px solid rgba(218, 165, 32, 0.4);
+          border-left: 4px solid #DAA520;
+          border-radius: 6px;
+          cursor: pointer;
+          box-shadow: 0 4px 14px rgba(0, 33, 71, 0.25);
+          transition: all 0.2s ease;
+          margin-top: 10px;
+        }
+        .case-action-card-highlight:hover {
+          background: #001733;
+          transform: translateY(-1px);
+          box-shadow: 0 6px 18px rgba(0, 33, 71, 0.35);
+          border-left-color: #ffd700;
+        }
+        .case-action-card-highlight-timeline {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 12px 16px;
+          background: #002147;
+          color: #ffffff !important;
+          border: 1px solid rgba(56, 189, 248, 0.4);
+          border-left: 4px solid #38bdf8;
+          border-radius: 6px;
+          cursor: pointer;
+          box-shadow: 0 4px 14px rgba(0, 33, 71, 0.25);
+          transition: all 0.2s ease;
+          margin-top: 10px;
+        }
+        .case-action-card-highlight-timeline:hover {
+          background: #001733;
+          transform: translateY(-1px);
+          box-shadow: 0 6px 18px rgba(0, 33, 71, 0.35);
+          border-left-color: #7dd3fc;
+        }
+
         .case-content-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 40px; margin-bottom: 20px; }
         .case-subject-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
         @media (max-width: 900px) {
@@ -1272,26 +1315,48 @@ function CaseOverview() {
                     </div>
 
                     <div
+                      role="button"
+                      tabIndex={0}
                       onClick={() => {
                         playAlertSound(600, 0.05);
                         navigate(isCaseOverviewRoute ? `/evidence-workspace/${activeCase.CaseMasterID}` : `/evidence/${activeCase.CaseMasterID}`);
                       }}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '10px 14px',
-                        background: 'var(--bg-panel-alt)',
-                        border: '1px solid var(--border-color)',
-                        borderRadius: '0px',
-                        cursor: 'pointer',
-                        fontSize: '12px',
-                        fontWeight: '600',
-                        color: 'var(--accent-primary)'
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          playAlertSound(600, 0.05);
+                          navigate(isCaseOverviewRoute ? `/evidence-workspace/${activeCase.CaseMasterID}` : `/evidence/${activeCase.CaseMasterID}`);
+                        }
                       }}
+                      className="case-action-card-highlight"
+                      title="Open full Evidence Locker and forensic repository"
                     >
-                      <span>Open Evidence Workspace</span>
-                      <MdChevronRight size={18} />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{
+                          width: '34px',
+                          height: '34px',
+                          borderRadius: '4px',
+                          background: 'rgba(218, 165, 32, 0.2)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#DAA520',
+                          flexShrink: 0
+                        }}>
+                          <MdInsertDriveFile size={20} />
+                        </div>
+                        <div>
+                          <div style={{ color: '#ffffff', fontSize: '13px', fontWeight: 800, letterSpacing: '0.04em' }}>
+                            OPEN EVIDENCE WORKSPACE
+                          </div>
+                          <div style={{ color: '#cbd5e1', fontSize: '10.5px', marginTop: '1px' }}>
+                            Digital custody, CCTV footage, CDRs & forensic reports
+                          </div>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#DAA520', fontWeight: 700, fontSize: '12px' }}>
+                        <span>LAUNCH</span>
+                        <MdLaunch size={16} />
+                      </div>
                     </div>
                   </div>
 
@@ -1315,26 +1380,48 @@ function CaseOverview() {
                     </div>
 
                     <div
+                      role="button"
+                      tabIndex={0}
                       onClick={() => {
                         playAlertSound(600, 0.05);
                         navigate(`/suspect-timeline/${activeCase.CaseMasterID}?suspectId=${suspectsList[0]?.id || ''}`);
                       }}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '10px 14px',
-                        background: 'var(--bg-panel-alt)',
-                        border: '1px solid var(--border-color)',
-                        borderRadius: '0px',
-                        cursor: 'pointer',
-                        fontSize: '12px',
-                        fontWeight: '600',
-                        color: 'var(--accent-primary)'
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          playAlertSound(600, 0.05);
+                          navigate(`/suspect-timeline/${activeCase.CaseMasterID}?suspectId=${suspectsList[0]?.id || ''}`);
+                        }
                       }}
+                      className="case-action-card-highlight-timeline"
+                      title="Open complete Suspect Timeline tracking"
                     >
-                      <span>Open Suspect Timeline</span>
-                      <MdChevronRight size={18} />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{
+                          width: '34px',
+                          height: '34px',
+                          borderRadius: '4px',
+                          background: 'rgba(56, 189, 248, 0.2)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#38bdf8',
+                          flexShrink: 0
+                        }}>
+                          <MdHistory size={20} />
+                        </div>
+                        <div>
+                          <div style={{ color: '#ffffff', fontSize: '13px', fontWeight: 800, letterSpacing: '0.04em' }}>
+                            OPEN SUSPECT TIMELINE
+                          </div>
+                          <div style={{ color: '#cbd5e1', fontSize: '10.5px', marginTop: '1px' }}>
+                            Spatiotemporal movement trail, geofence pings & alibis
+                          </div>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#38bdf8', fontWeight: 700, fontSize: '12px' }}>
+                        <span>LAUNCH</span>
+                        <MdLaunch size={16} />
+                      </div>
                     </div>
                   </div>
 

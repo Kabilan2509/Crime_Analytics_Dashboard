@@ -44,8 +44,8 @@ function Dashboard({
   }, [cases, selectedDistrict, selectedCrimeType, searchQuery, dateRange]);
 
   const dashboardData = useMemo(() => {
-    return buildDashboardViewModel(filteredCases, session.accessLevel);
-  }, [filteredCases, session.accessLevel]);
+    return buildDashboardViewModel(filteredCases, session.accessLevel, { selectedDistrict });
+  }, [filteredCases, session.accessLevel, selectedDistrict]);
 
   return (
     <div className="page-content dashboard-page text-inverse">
@@ -213,6 +213,9 @@ function Dashboard({
           color: #0f172a !important;
           margin-bottom: 2px !important;
         }
+        .ops-stat-value.is-text-val {
+          font-size: 19px !important;
+        }
         .ops-stat-value.status-success {
           color: #16a34a !important;
         }
@@ -372,7 +375,7 @@ function Dashboard({
         {dashboardData.opsStats.condensedStats.map((stat, idx) => (
           <div key={idx} className="ops-stat-block">
             <div className="ops-stat-label">{stat.label}</div>
-            <div className={`ops-stat-value status-${stat.status}`}>{stat.value}</div>
+            <div className={`ops-stat-value status-${stat.status}${typeof stat.value === 'string' && isNaN(Number(String(stat.value).replace('%', ''))) ? ' is-text-val' : ''}`}>{stat.value}</div>
             <div className="ops-stat-caption">
               <span>{stat.caption}</span>
             </div>

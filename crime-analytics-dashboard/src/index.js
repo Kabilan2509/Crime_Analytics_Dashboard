@@ -11,10 +11,32 @@ const isCatalystHosted = /(^|\.)catalystserverless\.(in|com)$/i.test(window.loca
 // Catalyst's configured login_redirect returns successful authentication here.
 const returnedFromCatalystLogin = window.location.pathname === '/app/index.html';
 
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = src;
+    script.onload = resolve;
+    script.onerror = () => reject(new Error(`Unable to load ${src}`));
+    document.head.appendChild(script);
+  });
+}
+
+async function loadCatalystSdk() {
+  await loadScript('https://static.zohocdn.com/catalyst/sdk/js/4.0.0/catalystWebSDK.js');
+  await loadScript('/__catalyst/sdk/init.js');
+}
+
 async function renderAuthenticatedApp() {
   // The Catalyst SDK and init script are only available on the hosted client.
   // Keep localhost usable for UI development without weakening deployed access.
   if (isCatalystHosted) {
+    try {
+      await loadCatalystSdk();
+    } catch (error) {
+      console.error('Unable to initialize the Catalyst authentication SDK.', error);
+      return;
+    }
+
     const loginUrl = `${window.location.origin}${CATALYST_LOGIN_PATH}`;
 
     // Catalyst cookies can outlive the browser. Require a successful login in

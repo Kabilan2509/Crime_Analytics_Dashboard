@@ -329,6 +329,7 @@ function StatisticsPage({ defaultDistrict = 'all', defaultCrimeType = 'all', def
         <ExportFooter
           filteredCases={pageData.filteredList}
           filterSummary={getActiveFilterSummary()}
+          onResetFilters={handleResetFilters}
         />
       )}
 

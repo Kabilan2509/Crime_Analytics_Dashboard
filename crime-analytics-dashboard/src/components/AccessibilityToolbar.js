@@ -20,6 +20,7 @@ function AccessibilityToolbar() {
     localStorage.setItem('madhukar-high-contrast', String(highContrast));
     localStorage.setItem('madhukar-colorblind-safe', String(colorblindSafe));
     localStorage.setItem('madhukar-font-size', fontSize);
+    window.dispatchEvent(new CustomEvent('madhukar-colorblind-change', { detail: colorblindSafe }));
   }, [highContrast, colorblindSafe, fontSize]);
 
   useEffect(() => {
@@ -63,12 +64,16 @@ function AccessibilityToolbar() {
     const next = !colorblindSafe;
     setColorblindSafe(next);
     document.documentElement.classList.toggle('colorblind-safe', next);
+    window.dispatchEvent(new CustomEvent('madhukar-colorblind-change', { detail: next }));
   };
 
   const resetAll = () => {
     setHighContrast(false);
     setColorblindSafe(false);
     setFontSize('default');
+    document.documentElement.classList.remove('high-contrast');
+    document.documentElement.classList.remove('colorblind-safe');
+    window.dispatchEvent(new CustomEvent('madhukar-colorblind-change', { detail: false }));
   };
 
   return (

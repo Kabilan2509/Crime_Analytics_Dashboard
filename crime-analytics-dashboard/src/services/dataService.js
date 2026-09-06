@@ -72,6 +72,10 @@ function getCatalystTables() {
       .then(data => {
         // Strip _meta field — the rest is { CaseMaster: [...], District: [...], ... }
         const { _meta, ...tables } = data;
+        const hasRows = Object.values(tables).some(rows => Array.isArray(rows) && rows.length > 0);
+        if (!hasRows) {
+          throw new Error('Catalyst Data Store returned no records');
+        }
         console.log('[dataService] app-data loaded:', _meta?.counts);
         return tables;
       })

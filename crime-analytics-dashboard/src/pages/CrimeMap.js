@@ -41,17 +41,30 @@ if (typeof window !== 'undefined') {
 
 /* ---- CUSTOM UTILITY HOOKS ---- */
 
-function useActiveTheme() {
+function useActiveThemeAndA11y() {
   const [theme, setTheme] = useState(() => document.documentElement.getAttribute('data-theme') || 'dark');
+  const [isColorblind, setIsColorblind] = useState(() => document.documentElement.classList.contains('colorblind-safe'));
+
   useEffect(() => {
-    const observer = new MutationObserver(() => {
+    const update = () => {
       const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
       setTheme(currentTheme);
-    });
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
-    return () => observer.disconnect();
+      setIsColorblind(document.documentElement.classList.contains('colorblind-safe'));
+    };
+
+    const observer = new MutationObserver(update);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class'] });
+
+    const handleCbEvent = (e) => setIsColorblind(Boolean(e.detail));
+    window.addEventListener('madhukar-colorblind-change', handleCbEvent);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('madhukar-colorblind-change', handleCbEvent);
+    };
   }, []);
-  return theme;
+
+  return { theme, isColorblind };
 }
 
 function useDebounce(value, delay) {
@@ -139,7 +152,23 @@ function MapController({ center, zoom }) {
   return null;
 }
 
-function HeatmapLayer({ points, mapZoom }) {
+const defaultHeatGradient = { 
+  0.2: '#4c1d95',
+  0.4: '#c026d3',
+  0.6: '#f97316',
+  0.8: '#ef4444',
+  1.0: '#fecaca'
+};
+
+const colorblindHeatGradient = {
+  0.2: '#00429d', // deep blue
+  0.4: '#4771b2', // steel blue
+  0.6: '#73a2c6', // sky/cyan tint
+  0.8: '#e69f00', // high-contrast amber/orange
+  1.0: '#d81b60'  // vibrant magenta / high-contrast vermilion
+};
+
+function HeatmapLayer({ points, mapZoom, isColorblind }) {
   const map = useMap();
   useEffect(() => {
     if (!map || !points?.length) return;
@@ -163,13 +192,7 @@ function HeatmapLayer({ points, mapZoom }) {
     const radius = Math.max(22, Math.min(48, 60 - (mapZoom * 2.2)));
     const blur = Math.max(15, Math.round(radius * 0.7));
 
-    const gradient = { 
-      0.2: '#4c1d95',
-      0.4: '#c026d3',
-      0.6: '#f97316',
-      0.8: '#ef4444',
-      1.0: '#fecaca'
-    };
+    const gradient = isColorblind ? colorblindHeatGradient : defaultHeatGradient;
 
     let layer = null;
     try {
@@ -195,7 +218,7 @@ function HeatmapLayer({ points, mapZoom }) {
         }
       }
     };
-  }, [map, points, mapZoom]);
+  }, [map, points, mapZoom, isColorblind]);
   return null;
 }
 
@@ -206,7 +229,14 @@ const customPinIcon = L.divIcon({
   iconAnchor: [6, 6]
 });
 
-function MarkerClusterGroup({ points }) {
+const colorblindPinIcon = L.divIcon({
+  html: `<div style="background-color: #0072b2; border: 2px solid #ffffff; width: 13px; height: 13px; border-radius: 50%; box-shadow: 0 0 6px rgba(0,0,0,0.6);"></div>`,
+  className: 'custom-pin-icon colorblind-pin',
+  iconSize: [13, 13],
+  iconAnchor: [6.5, 6.5]
+});
+
+function MarkerClusterGroup({ points, isColorblind }) {
   const map = useMap();
   useEffect(() => {
     if (!map || !points?.length) return;
@@ -215,6 +245,8 @@ function MarkerClusterGroup({ points }) {
       chunkedLoading: true,
       maxClusterRadius: 45
     });
+
+    const pinIcon = isColorblind ? colorblindPinIcon : customPinIcon;
 
     points.forEach(p => {
       const desc = p.briefFacts || 'No narrative details.';
@@ -230,23 +262,28 @@ function MarkerClusterGroup({ points }) {
           <strong>Facts:</strong> ${desc.slice(0, 100)}${desc.length > 100 ? '...' : ''}
         </div>
       `;
-      const marker = L.marker([p.lat, p.lng], { icon: customPinIcon }).bindPopup(popupContent);
+      const marker = L.marker([p.lat, p.lng], { icon: pinIcon }).bindPopup(popupContent);
       markers.addLayer(marker);
     });
 
     map.addLayer(markers);
     return () => map.removeLayer(markers);
-  }, [map, points]);
+  }, [map, points, isColorblind]);
   return null;
 }
 
-function ChoroplethLayer({ cells, theme }) {
+function ChoroplethLayer({ cells, theme, isColorblind }) {
   const maxCount = Math.max(...cells.map(c => c.count), 1);
   
   return cells.map(cell => {
     const ratio = cell.count / maxCount;
     let color = '#ef4444';
-    if (theme === 'dark') {
+    if (isColorblind) {
+      if (ratio < 0.25) color = '#0072b2';
+      else if (ratio < 0.5) color = '#56b4e9';
+      else if (ratio < 0.75) color = '#e69f00';
+      else color = '#d81b60';
+    } else if (theme === 'dark') {
       if (ratio < 0.25) color = '#1d4ed8'; 
       else if (ratio < 0.5) color = '#059669'; 
       else if (ratio < 0.75) color = '#d97706'; 
@@ -258,9 +295,9 @@ function ChoroplethLayer({ cells, theme }) {
 
     const style = {
       fillColor: color,
-      color: theme === 'dark' ? '#334155' : '#cbd5e1',
-      weight: 1,
-      fillOpacity: 0.4,
+      color: isColorblind ? '#ffffff' : (theme === 'dark' ? '#334155' : '#cbd5e1'),
+      weight: isColorblind ? 1.5 : 1,
+      fillOpacity: isColorblind ? 0.6 : 0.4,
     };
 
     const tooltipContent = `
@@ -285,14 +322,14 @@ function ChoroplethLayer({ cells, theme }) {
   });
 }
 
-function GraduatedPointsLayer({ cells }) {
+function GraduatedPointsLayer({ cells, isColorblind }) {
   const map = useMap();
   return cells.map(cell => {
     const radius = 6 + Math.sqrt(cell.count) * 2;
     
-    let color = '#facc15';
-    if (cell.count >= 50) color = '#ef4444';
-    else if (cell.count >= 20) color = '#f97316';
+    let color = isColorblind ? '#56b4e9' : '#facc15';
+    if (cell.count >= 50) color = isColorblind ? '#d81b60' : '#ef4444';
+    else if (cell.count >= 20) color = isColorblind ? '#e69f00' : '#f97316';
 
     const tooltipContent = `
       <div style="font-family: monospace; font-size: 11px;">
@@ -314,7 +351,7 @@ function GraduatedPointsLayer({ cells }) {
           fillColor: color, 
           color: '#ffffff', 
           weight: 1.5, 
-          fillOpacity: 0.65,
+          fillOpacity: isColorblind ? 0.8 : 0.65,
           className: 'graduated-symbol-marker'
         }}
         eventHandlers={{
@@ -402,14 +439,14 @@ function ZoomControlOverlay({ overlayBg, overlayBorder }) {
 }
 
 // Static Horizontal Legend Strip (No popup box)
-function MapLegend({ activeLayer, activeVisLayers, theme, overlayBg, overlayBorder }) {
+function MapLegend({ activeLayer, activeVisLayers, theme, overlayBg, overlayBorder, isColorblind }) {
   const opLayerLegendMap = {
-    gis_cctv: { label: 'CCTV Grid Camera', color: '#00e676' },
-    gis_schools: { label: 'School Location', color: '#1e90ff' },
-    emergency: { label: '112 Emergency Call', color: '#ff4d4d' },
-    patrols: { label: 'Patrol Unit Coverage', color: '#3b82f6' },
-    forecast_tomorrow: { label: "Tomorrow's AI Forecast", color: '#ff4d4d' },
-    forecast_week: { label: "Next Week AI Forecast", color: '#ffaa00' },
+    gis_cctv: { label: 'CCTV Grid Camera', color: isColorblind ? '#0072b2' : '#00e676' },
+    gis_schools: { label: 'School Location', color: isColorblind ? '#56b4e9' : '#1e90ff' },
+    emergency: { label: '112 Emergency Call', color: isColorblind ? '#d81b60' : '#ff4d4d' },
+    patrols: { label: 'Patrol Unit Coverage', color: isColorblind ? '#e69f00' : '#3b82f6' },
+    forecast_tomorrow: { label: "Tomorrow's AI Forecast", color: isColorblind ? '#d81b60' : '#ff4d4d' },
+    forecast_week: { label: "Next Week AI Forecast", color: isColorblind ? '#e69f00' : '#ffaa00' },
   };
 
   const activeOp = opLayerLegendMap[activeLayer];
@@ -425,7 +462,7 @@ function MapLegend({ activeLayer, activeVisLayers, theme, overlayBg, overlayBord
         zIndex: 1005,
         background: overlayBg,
         backdropFilter: 'blur(6px)',
-        border: overlayBorder,
+        border: isColorblind ? '1.5px solid #0072b2' : overlayBorder,
         padding: '6px 12px',
         borderRadius: '20px',
         fontFamily: 'monospace',
@@ -438,8 +475,21 @@ function MapLegend({ activeLayer, activeVisLayers, theme, overlayBg, overlayBord
         pointerEvents: 'auto'
       }}
     >
-      <span style={{ fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--accent-primary)', fontSize: '9px', letterSpacing: '0.5px' }}>
+      <span style={{ fontWeight: 'bold', textTransform: 'uppercase', color: isColorblind ? '#0072b2' : 'var(--accent-primary)', fontSize: '9px', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '5px' }}>
         MAP LEGEND:
+        {isColorblind && (
+          <span style={{
+            background: '#0072b2',
+            color: '#ffffff',
+            padding: '1px 5px',
+            borderRadius: '10px',
+            fontSize: '8px',
+            fontWeight: 800,
+            letterSpacing: '0.3px'
+          }}>
+            CB SAFE
+          </span>
+        )}
       </span>
 
       {activeOp && (
@@ -455,7 +505,9 @@ function MapLegend({ activeLayer, activeVisLayers, theme, overlayBg, overlayBord
           <div style={{
             height: '8px',
             width: '60px',
-            background: 'linear-gradient(to right, #4c1d95, #c026d3, #f97316, #ef4444, #fecaca)',
+            background: isColorblind 
+              ? 'linear-gradient(to right, #00429d, #4771b2, #73a2c6, #e69f00, #d81b60)'
+              : 'linear-gradient(to right, #4c1d95, #c026d3, #f97316, #ef4444, #fecaca)',
             borderRadius: '2px'
           }} />
           <span style={{ fontSize: '8px', color: 'var(--text-muted)' }}>Low → High</span>
@@ -465,15 +517,15 @@ function MapLegend({ activeLayer, activeVisLayers, theme, overlayBg, overlayBord
       {activeVisLayers?.graduated && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <span style={{ color: 'var(--text-muted)', fontSize: '9px' }}>Tiers:</span>
-          <span style={{ color: '#facc15' }}>● Low</span>
-          <span style={{ color: '#f97316' }}>● Med</span>
-          <span style={{ color: '#ef4444' }}>● High</span>
+          <span style={{ color: isColorblind ? '#56b4e9' : '#facc15' }}>● Low</span>
+          <span style={{ color: isColorblind ? '#e69f00' : '#f97316' }}>● Med</span>
+          <span style={{ color: isColorblind ? '#d81b60' : '#ef4444' }}>● High</span>
         </div>
       )}
 
       {activeVisLayers?.rawPins && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#3b82f6', border: '1px solid #fff' }} />
+          <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: isColorblind ? '#0072b2' : '#3b82f6', border: '1.5px solid #fff' }} />
           <span>Incident Pin</span>
         </div>
       )}
@@ -659,7 +711,7 @@ function LayerDropdown({
 
 function CrimeMap({ selectedDistrict: globalDistrict, selectedCrimeType: globalCrimeType }) {
   const { isCommandMode } = useSecurity();
-  const theme = useActiveTheme();
+  const { theme, isColorblind } = useActiveThemeAndA11y();
 
   /* Local filter state */
   const [localDistrict, setLocalDistrict] = useState('all');
@@ -914,8 +966,8 @@ function CrimeMap({ selectedDistrict: globalDistrict, selectedCrimeType: globalC
           boxShadow: '0 4px 12px rgba(0,0,0,0.15)', backdropFilter: 'blur(4px)',
           width: '240px', pointerEvents: 'auto', color: 'var(--text-primary)'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--accent-danger)', fontWeight: 700, fontSize: '9px', textTransform: 'uppercase' }}>
-            <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent-danger)', animation: 'tickerPulse 1.2s infinite' }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: isColorblind ? '#d81b60' : 'var(--accent-danger)', fontWeight: 700, fontSize: '9px', textTransform: 'uppercase' }}>
+            <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', background: isColorblind ? '#d81b60' : 'var(--accent-danger)', animation: 'tickerPulse 1.2s infinite' }} />
             Emerging Trend Alerts:
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '9px', color: 'var(--text-secondary)' }}>
@@ -925,7 +977,7 @@ function CrimeMap({ selectedDistrict: globalDistrict, selectedCrimeType: globalC
                 onClick={() => handleInspect(trend.districtName, trend.districtId)}
                 style={{ background: 'var(--bg-panel-alt)', padding: '2px 4px', borderRadius: '4px', border: '1px solid var(--border-color)', cursor: 'pointer' }}
               >
-                📍 <strong>{trend.districtName}</strong>: <strong style={{ color: 'var(--accent-danger)' }}>+{trend.pctChange}%</strong> spike
+                📍 <strong>{trend.districtName}</strong>: <strong style={{ color: isColorblind ? '#d81b60' : 'var(--accent-danger)' }}>+{trend.pctChange}%</strong> spike
               </span>
             ))}
           </div>
@@ -960,7 +1012,7 @@ function CrimeMap({ selectedDistrict: globalDistrict, selectedCrimeType: globalC
             overlayBg={overlayBg} overlayBorder={overlayBorder}
           />
 
-          <MapLegend activeLayer={activeLayer} activeVisLayers={activeVisLayers} theme={theme} overlayBg={overlayBg} overlayBorder={overlayBorder} />
+          <MapLegend activeLayer={activeLayer} activeVisLayers={activeVisLayers} theme={theme} overlayBg={overlayBg} overlayBorder={overlayBorder} isColorblind={isColorblind} />
 
           <TimelineControls 
             startIndex={startIndex} setStartIndex={setStartIndex}
@@ -1041,28 +1093,28 @@ function CrimeMap({ selectedDistrict: globalDistrict, selectedCrimeType: globalC
 
             {/* True Kernel Density Estimation Layer */}
             {(activeVisLayers.density || ['overall', 'murder', 'theft', 'women', 'cyber'].includes(activeLayer)) && weightedHeatPoints.length > 0 && (
-              <HeatmapLayer points={weightedHeatPoints} mapZoom={liveMapZoom} />
+              <HeatmapLayer points={weightedHeatPoints} mapZoom={liveMapZoom} isColorblind={isColorblind} />
             )}
 
             {/* Choropleth Grid Layer */}
             {activeVisLayers.choropleth && liveMapZoom < 9 && binnedGridCells.length > 0 && (
-              <ChoroplethLayer cells={binnedGridCells} theme={theme} />
+              <ChoroplethLayer cells={binnedGridCells} theme={theme} isColorblind={isColorblind} />
             )}
 
             {/* Graduated Points Layer */}
             {activeVisLayers.graduated && liveMapZoom >= 9 && liveMapZoom < 13 && binnedGridCells.length > 0 && (
-              <GraduatedPointsLayer cells={binnedGridCells} />
+              <GraduatedPointsLayer cells={binnedGridCells} isColorblind={isColorblind} />
             )}
 
             {/* Raw Incident Pins Cluster Layer */}
             {activeVisLayers.rawPins && liveMapZoom >= 13 && secureCases.length > 0 && (
-              <MarkerClusterGroup points={secureCases} />
+              <MarkerClusterGroup points={secureCases} isColorblind={isColorblind} />
             )}
 
             {/* Spatiotemporal overlay hours */}
             {timeOfDayFilter !== 'all' && secureCases.map((p, idx) => {
-              let color = '#ffaa00'; 
-              if (timeOfDayFilter === 'night') color = '#9b5de5'; 
+              let color = isColorblind ? '#e69f00' : '#ffaa00'; 
+              if (timeOfDayFilter === 'night') color = isColorblind ? '#0072b2' : '#9b5de5'; 
               return (
                 <CircleMarker
                   key={`spatio_${idx}`}
@@ -1079,7 +1131,7 @@ function CrimeMap({ selectedDistrict: globalDistrict, selectedCrimeType: globalC
                 key={`fore_tom_${idx}`}
                 center={[p.lat + 0.005 * Math.sin(idx), p.lng + 0.005 * Math.cos(idx)]}
                 radius={24}
-                pathOptions={{ fillColor: '#ff4d4d', color: '#ff4d4d', weight: 1.5, dashArray: '4, 4', fillOpacity: 0.2 }}
+                pathOptions={{ fillColor: isColorblind ? '#d81b60' : '#ff4d4d', color: isColorblind ? '#d81b60' : '#ff4d4d', weight: 1.5, dashArray: '4, 4', fillOpacity: 0.2 }}
               />
             ))}
 
@@ -1088,7 +1140,7 @@ function CrimeMap({ selectedDistrict: globalDistrict, selectedCrimeType: globalC
                 key={`fore_week_${idx}`}
                 center={[p.lat + 0.008 * Math.cos(idx), p.lng + 0.008 * Math.sin(idx)]}
                 radius={36}
-                pathOptions={{ fillColor: '#ffaa00', color: '#ffaa00', weight: 1.5, dashArray: '5, 5', fillOpacity: 0.15 }}
+                pathOptions={{ fillColor: isColorblind ? '#e69f00' : '#ffaa00', color: isColorblind ? '#e69f00' : '#ffaa00', weight: 1.5, dashArray: '5, 5', fillOpacity: 0.15 }}
               />
             ))}
 
@@ -1098,7 +1150,7 @@ function CrimeMap({ selectedDistrict: globalDistrict, selectedCrimeType: globalC
                 key={`cctv_${idx}`}
                 center={[p.lat + 0.002, p.lng - 0.002]}
                 radius={5}
-                pathOptions={{ fillColor: '#00e676', color: '#fff', weight: 1, fillOpacity: 0.9 }}
+                pathOptions={{ fillColor: isColorblind ? '#0072b2' : '#00e676', color: '#fff', weight: 1, fillOpacity: 0.9 }}
               />
             ))}
 
@@ -1108,23 +1160,23 @@ function CrimeMap({ selectedDistrict: globalDistrict, selectedCrimeType: globalC
                 key={`school_${idx}`}
                 center={[p.lat - 0.003, p.lng + 0.003]}
                 radius={7}
-                pathOptions={{ fillColor: '#1e90ff', color: '#fff', weight: 1, fillOpacity: 0.9 }}
+                pathOptions={{ fillColor: isColorblind ? '#56b4e9' : '#1e90ff', color: '#fff', weight: 1, fillOpacity: 0.9 }}
               />
             ))}
 
             {activeLayer === 'emergency' && districts.map((d, i) => {
               const c = districtCenters[d.SourceDistrictID || d.DistrictID]; if (!c) return null;
-              return <CircleMarker key={i} center={[c.lat + (i % 2 ? 0.05 : -0.05), c.lng + (i % 3 ? 0.03 : -0.03)]} radius={6} pathOptions={{ fillColor: '#ff4d4d', color: '#ff4d4d', weight: 1, fillOpacity: 0.8 }} />;
+              return <CircleMarker key={i} center={[c.lat + (i % 2 ? 0.05 : -0.05), c.lng + (i % 3 ? 0.03 : -0.03)]} radius={6} pathOptions={{ fillColor: isColorblind ? '#d81b60' : '#ff4d4d', color: isColorblind ? '#d81b60' : '#ff4d4d', weight: 1, fillOpacity: 0.8 }} />;
             })}
 
             {activeLayer === 'patrols' && districts.map((d, i) => {
               const c = districtCenters[d.SourceDistrictID || d.DistrictID]; if (!c) return null;
-              return <CircleMarker key={i} center={[c.lat + 0.02, c.lng - 0.02]} radius={7} pathOptions={{ fillColor: 'var(--accent-primary)', color: '#fff', weight: 1.5, fillOpacity: 0.9 }} />;
+              return <CircleMarker key={i} center={[c.lat + 0.02, c.lng - 0.02]} radius={7} pathOptions={{ fillColor: isColorblind ? '#e69f00' : 'var(--accent-primary)', color: '#fff', weight: 1.5, fillOpacity: 0.9 }} />;
             })}
 
             {showAiPredictions && districts.slice(0, 3).map(d => {
               const c = districtCenters[d.SourceDistrictID || d.DistrictID]; if (!c) return null;
-              return <CircleMarker key={d.DistrictID} center={[c.lat, c.lng]} radius={45} pathOptions={{ fillColor: '#9b5de5', color: '#9b5de5', weight: 1.5, dashArray: '5, 8', fillOpacity: 0.12 }} />;
+              return <CircleMarker key={d.DistrictID} center={[c.lat, c.lng]} radius={45} pathOptions={{ fillColor: isColorblind ? '#0072b2' : '#9b5de5', color: isColorblind ? '#0072b2' : '#9b5de5', weight: 1.5, dashArray: '5, 8', fillOpacity: 0.12 }} />;
             })}
 
             {districts.map(d => {
@@ -1134,7 +1186,7 @@ function CrimeMap({ selectedDistrict: globalDistrict, selectedCrimeType: globalC
           </MapContainer>
         </div>
 
-        <DistrictDrawer data={inspectedDistrict} isCommandMode={isCommandMode} onClose={() => setInspectedDistrict(null)} />
+        <DistrictDrawer data={inspectedDistrict} isCommandMode={isCommandMode} isColorblind={isColorblind} onClose={() => setInspectedDistrict(null)} />
       </div>
     </div>
   );

@@ -55,7 +55,9 @@ export function filterDashboardCases({
   });
 }
 
-export function buildDashboardViewModel(filteredCases, accessLevel) {
+export function buildDashboardViewModel(filteredCases, accessLevel, options = {}) {
+  const selectedDistrict = typeof options === 'string' ? options : (options?.selectedDistrict || 'all');
+  const isSingleDistrict = selectedDistrict !== 'all';
   const secureCases = getSecureCaseViews(filteredCases, accessLevel);
   const totalCases = secureCases.length;
   const solvedStatuses = new Set(['Charge Sheeted', 'Closed', 'Convicted']);
@@ -262,12 +264,36 @@ export function buildDashboardViewModel(filteredCases, accessLevel) {
       actionUrl: `/cases?caseId=${c.CaseMasterID}`
     }));
 
+  // Risk status card logic: adapts based on whether all districts or a specific district is active
+  const isHighRisk = totals.heinous >= 2;
+  const isModRisk = totals.heinous === 1;
+
+  const riskCard = isSingleDistrict
+    ? {
+        label: 'High-Risk Status',
+        value: isHighRisk ? 'High Risk' : isModRisk ? 'Moderate Risk' : 'Low Risk',
+        caption: totals.heinous > 0
+          ? `${totals.heinous} heinous offence${totals.heinous > 1 ? 's' : ''}`
+          : 'Zero heinous offences',
+        status: isHighRisk ? 'danger' : isModRisk ? 'warning' : 'success',
+        tone: isHighRisk ? 'red' : isModRisk ? 'amber' : 'green',
+        isDistrictRisk: true,
+      }
+    : {
+        label: 'High-Risk Districts',
+        value: highRiskDistrictsCount.toLocaleString(),
+        caption: 'Hotspot Jurisdictions',
+        status: highRiskDistrictsCount >= 5 ? 'danger' : highRiskDistrictsCount >= 2 ? 'warning' : 'success',
+        tone: highRiskDistrictsCount >= 5 ? 'red' : highRiskDistrictsCount >= 2 ? 'amber' : 'green',
+        isDistrictRisk: false,
+      };
+
   const opsStats = {
     condensedStats: [
-      { label: 'FIR Registered', value: totalCases.toLocaleString(), caption: 'Total Caseload', status: 'neutral' },
-      { label: 'High-Risk Districts', value: highRiskDistrictsCount.toLocaleString(), caption: 'Hotspot Jurisdictions', status: highRiskDistrictsCount >= 5 ? 'danger' : highRiskDistrictsCount >= 2 ? 'warning' : 'success' },
-      { label: 'Heinous Crime Cases', value: totals.heinous.toLocaleString(), caption: 'Critical Caseload', status: totals.heinous >= 5 ? 'danger' : totals.heinous >= 2 ? 'warning' : 'success' },
-      { label: 'Case Clearance Rate', value: `${clearanceRate}%`, caption: 'Disposal Velocity', status: clearanceRate >= 45 ? 'success' : clearanceRate >= 30 ? 'warning' : 'danger' }
+      { label: 'FIR Registered', value: totalCases.toLocaleString(), caption: 'Total Caseload', status: 'neutral', tone: 'blue' },
+      riskCard,
+      { label: 'Heinous Crime Cases', value: totals.heinous.toLocaleString(), caption: 'Critical Caseload', status: totals.heinous >= 5 ? 'danger' : totals.heinous >= 2 ? 'warning' : 'success', tone: totals.heinous >= 5 ? 'red' : totals.heinous >= 2 ? 'amber' : 'green' },
+      { label: 'Case Clearance Rate', value: `${clearanceRate}%`, caption: 'Disposal Velocity', status: clearanceRate >= 45 ? 'success' : clearanceRate >= 30 ? 'warning' : 'danger', tone: clearanceRate >= 45 ? 'green' : clearanceRate >= 30 ? 'amber' : 'red' }
     ],
     funnelStats: [
       { label: 'FIR Registered', value: totalCases.toLocaleString(), caption: 'Total Caseload', status: 'neutral' },
@@ -276,7 +302,7 @@ export function buildDashboardViewModel(filteredCases, accessLevel) {
       { label: 'Chargesheet Rate', value: `${totalCases ? Math.round((chargeSheetedCount / totalCases) * 100) : 0}%`, caption: 'Resolution Rate', status: 'neutral' }
     ],
     healthStats: [
-      { label: 'High-Risk Districts', value: highRiskDistrictsCount.toLocaleString(), caption: 'Hotspot Jurisdictions', status: highRiskDistrictsCount >= 5 ? 'danger' : highRiskDistrictsCount >= 2 ? 'warning' : 'success' },
+      riskCard,
       { label: 'Crime Hotspots', value: crimeHotspotsCount.toLocaleString(), caption: 'Critical Stations', status: crimeHotspotsCount >= 5 ? 'danger' : crimeHotspotsCount >= 2 ? 'warning' : 'success' },
       { label: 'Avg Investigation Time', value: `${avgInvestigationTime} Days`, caption: 'Analytical Velocity', status: avgInvestigationTime > 45 ? 'warning' : 'success' },
       { label: 'Long Pending Cases', value: longPendingCasesCount.toLocaleString(), caption: 'Over 180 Days', status: longPendingCasesCount >= 10 ? 'danger' : longPendingCasesCount >= 3 ? 'warning' : 'success' }

@@ -88,31 +88,92 @@ html[data-theme='dark'] {
 /* Colorblind-Safe Mode Overrides */
 html.colorblind-safe,
 html.colorblind-safe[data-theme='light'] {
-  --accent-success: #008080 !important;
-  --accent-danger: #d81b60 !important;
-  --accent-warning: #e65100 !important;
-  --chart-green: #008080 !important;
-  --chart-red: #d81b60 !important;
-  --chart-gold: #e65100 !important;
+  --accent-primary: #0072b2 !important; /* Accessible deep blue */
+  --accent-success: #0072b2 !important; /* Low Risk / Safe / Solved */
+  --accent-danger: #d81b60 !important;  /* High Risk / Critical / Heinous (Magenta) */
+  --accent-warning: #e69f00 !important; /* Medium Risk / Warning (Amber/Orange) */
+  --chart-blue: #0072b2 !important;
+  --chart-green: #56b4e9 !important;    /* Sky Blue */
+  --chart-red: #d81b60 !important;      /* Magenta */
+  --chart-gold: #e69f00 !important;     /* Orange */
+  --chart-indigo: #0072b2 !important;
+  --chart-cyan: #56b4e9 !important;
 }
 
 html.colorblind-safe[data-theme='dark'] {
-  --accent-success: #4db6ac !important;
-  --accent-danger: #ff4081 !important;
-  --accent-warning: #ffb74d !important;
-  --chart-green: #4db6ac !important;
-  --chart-red: #ff4081 !important;
-  --chart-gold: #ffb74d !important;
+  --accent-primary: #56b4e9 !important;
+  --accent-success: #56b4e9 !important;
+  --accent-danger: #d81b60 !important;
+  --accent-warning: #e69f00 !important;
+  --chart-blue: #56b4e9 !important;
+  --chart-green: #0072b2 !important;
+  --chart-red: #d81b60 !important;
+  --chart-gold: #e69f00 !important;
+  --chart-indigo: #56b4e9 !important;
+  --chart-cyan: #73a2c6 !important;
 }
 
-/* Map Colorblind-Safe Layer & Marker Filters */
-html.colorblind-safe .leaflet-container {
-  filter: contrast(1.15) saturate(1.4) hue-rotate(25deg) !important;
+/* Map Colorblind-Safe Layer, Marker, and Cluster Styling */
+html.colorblind-safe .custom-pin-icon div,
+html.colorblind-safe .custom-pin-icon.colorblind-pin div {
+  background-color: #0072b2 !important;
+  border: 2px solid #ffffff !important;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.7) !important;
 }
 
-html.colorblind-safe .custom-pin-icon div {
-  background-color: #008080 !important;
-  border-color: #ffffff !important;
+/* Leaflet MarkerCluster Colorblind-Safe Palettes (Sky Blue / Amber / Magenta) */
+html.colorblind-safe .marker-cluster-small {
+  background-color: rgba(86, 180, 233, 0.5) !important;
+}
+html.colorblind-safe .marker-cluster-small div {
+  background-color: rgba(86, 180, 233, 0.95) !important;
+  color: #0b1a2e !important;
+  font-weight: 800 !important;
+}
+
+html.colorblind-safe .marker-cluster-medium {
+  background-color: rgba(230, 159, 0, 0.5) !important;
+}
+html.colorblind-safe .marker-cluster-medium div {
+  background-color: rgba(230, 159, 0, 0.95) !important;
+  color: #1a0f00 !important;
+  font-weight: 800 !important;
+}
+
+html.colorblind-safe .marker-cluster-large {
+  background-color: rgba(216, 27, 96, 0.5) !important;
+}
+html.colorblind-safe .marker-cluster-large div {
+  background-color: rgba(216, 27, 96, 0.95) !important;
+  color: #ffffff !important;
+  font-weight: 800 !important;
+}
+
+/* Colorblind-Safe Badges, Chips and Severity Elements across Dashboard */
+html.colorblind-safe .badge-danger,
+html.colorblind-safe .badge-critical,
+html.colorblind-safe .risk-high,
+html.colorblind-safe .tag-heinous {
+  background-color: #d81b60 !important;
+  color: #ffffff !important;
+  border-color: #d81b60 !important;
+}
+
+html.colorblind-safe .badge-warning,
+html.colorblind-safe .badge-medium,
+html.colorblind-safe .risk-medium {
+  background-color: #e69f00 !important;
+  color: #1a0f00 !important;
+  border-color: #e69f00 !important;
+}
+
+html.colorblind-safe .badge-success,
+html.colorblind-safe .badge-low,
+html.colorblind-safe .risk-low,
+html.colorblind-safe .tag-solved {
+  background-color: #0072b2 !important;
+  color: #ffffff !important;
+  border-color: #0072b2 !important;
 }
 
 /* Heatmap Layer Visibility & Rendering Rules */

@@ -128,7 +128,9 @@ function Predictions({
       });
     }
 
+    const isSingleDistrict = selectedDistrict && selectedDistrict !== 'all';
     const totalCases = result.length;
+    const heinousCasesCount = result.filter(c => c.isHeinous).length;
     const highRiskDistrictsCount = new Set(result.filter(c => c.isHeinous).map(c => c.districtID)).size;
     const crimeHotspotsCount = new Set(result.filter(c => c.isHeinous).map(c => c.PoliceStationID)).size;
     const avgInvestigationTime = Math.max(30, 45 + (totalCases % 15));
@@ -138,8 +140,29 @@ function Predictions({
     sixMonthsAgo.setDate(sixMonthsAgo.getDate() - 180);
     const longPendingCasesCount = result.filter(c => c.statusName === 'Under Investigation' && c.registeredDateObj < sixMonthsAgo).length;
 
+    const isHighRisk = heinousCasesCount >= 2;
+    const isModRisk = heinousCasesCount === 1;
+
+    const riskCard = isSingleDistrict
+      ? {
+          label: 'High-Risk Status',
+          value: isHighRisk ? 'High Risk' : isModRisk ? 'Moderate Risk' : 'Low Risk',
+          caption: heinousCasesCount > 0
+            ? `${heinousCasesCount} heinous offence${heinousCasesCount > 1 ? 's' : ''}`
+            : 'Zero heinous offences',
+          status: isHighRisk ? 'danger' : isModRisk ? 'warning' : 'success',
+          tone: isHighRisk ? 'red' : isModRisk ? 'amber' : 'green',
+        }
+      : {
+          label: 'High-Risk Districts',
+          value: highRiskDistrictsCount.toLocaleString(),
+          caption: 'Hotspot Jurisdictions',
+          status: highRiskDistrictsCount >= 5 ? 'danger' : highRiskDistrictsCount >= 2 ? 'warning' : 'success',
+          tone: highRiskDistrictsCount >= 5 ? 'red' : highRiskDistrictsCount >= 2 ? 'amber' : 'green',
+        };
+
     return [
-      { label: 'High-Risk Districts', value: highRiskDistrictsCount.toLocaleString(), caption: 'Hotspot Jurisdictions', status: highRiskDistrictsCount >= 5 ? 'danger' : highRiskDistrictsCount >= 2 ? 'warning' : 'success' },
+      riskCard,
       { label: 'Crime Hotspots', value: crimeHotspotsCount.toLocaleString(), caption: 'Critical Stations', status: crimeHotspotsCount >= 5 ? 'danger' : crimeHotspotsCount >= 2 ? 'warning' : 'success' },
       { label: 'Avg Investigation Time', value: `${avgInvestigationTime} Days`, caption: 'Analytical Velocity', status: avgInvestigationTime > 45 ? 'warning' : 'success' },
       { label: 'Long Pending Cases', value: longPendingCasesCount.toLocaleString(), caption: 'Over 180 Days', status: longPendingCasesCount >= 10 ? 'danger' : longPendingCasesCount >= 3 ? 'warning' : 'success' }

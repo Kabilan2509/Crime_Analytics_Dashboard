@@ -202,9 +202,27 @@ function DashboardModern({
   }), [cases, selectedDistrict, selectedCrimeType, searchQuery, dateRange]);
 
   const data = useMemo(
-    () => buildDashboardViewModel(filteredCases, session.accessLevel),
-    [filteredCases, session.accessLevel],
+    () => buildDashboardViewModel(filteredCases, session.accessLevel, { selectedDistrict }),
+    [filteredCases, session.accessLevel, selectedDistrict],
   );
+
+  const renderStatLabel = (label) => {
+    if (lang !== 'kn') return label;
+    if (label === 'High-Risk Status') return 'ಅಪಾಯದ ಸ್ಥಿತಿ';
+    if (label === 'High-Risk Districts') return 'ಹೆಚ್ಚಿನ ಅಪಾಯದ ಜಿಲ್ಲೆಗಳು';
+    if (label === 'FIR Registered') return 'ದಾಖಲಾದ ಎಫ್‌ಐಆರ್‌ಗಳು';
+    if (label === 'Heinous Crime Cases') return 'ಗಂಭೀರ ಅಪರಾಧ ಪ್ರಕರಣಗಳು';
+    if (label === 'Case Clearance Rate') return 'ಪ್ರಕರಣ ವಿಲೇವಾರಿ ದರ';
+    return label;
+  };
+
+  const renderStatValue = (val) => {
+    if (lang !== 'kn') return val;
+    if (val === 'High Risk') return 'ಹೆಚ್ಚಿನ ಅಪಾಯ';
+    if (val === 'Moderate Risk') return 'ಮಧ್ಯಮ ಅಪಾಯ';
+    if (val === 'Low Risk') return 'ಕಡಿಮೆ ಅಪಾಯ';
+    return val;
+  };
 
   return (
     <div className="md-dashboard">
@@ -361,6 +379,27 @@ function DashboardModern({
           color: #1e293b !important;
         }
 
+        .md-stat-red .md-stat-copy strong {
+          color: #cf3441 !important;
+        }
+
+        .md-stat-green .md-stat-copy strong {
+          color: #148965 !important;
+        }
+
+        .md-stat-amber .md-stat-copy strong {
+          color: #b9780f !important;
+        }
+
+        .md-stat-blue .md-stat-copy strong {
+          color: #205794 !important;
+        }
+
+        .md-stat-copy strong.is-text-val {
+          font-size: 21px !important;
+          letter-spacing: normal !important;
+        }
+
         .md-table th {
           background: #f8fafc !important;
           color: #475569 !important;
@@ -411,6 +450,18 @@ function DashboardModern({
         html[data-theme="dark"] .md-table td,
         html[data-theme="dark"] .md-page-heading h2 {
           color: var(--text-primary) !important;
+        }
+        html[data-theme="dark"] .md-stat-red .md-stat-copy strong {
+          color: #f87171 !important;
+        }
+        html[data-theme="dark"] .md-stat-green .md-stat-copy strong {
+          color: #4ade80 !important;
+        }
+        html[data-theme="dark"] .md-stat-amber .md-stat-copy strong {
+          color: #fbbf24 !important;
+        }
+        html[data-theme="dark"] .md-stat-blue .md-stat-copy strong {
+          color: #60a5fa !important;
         }
         html[data-theme="dark"] .md-page-heading p,
         html[data-theme="dark"] .md-stat-copy > span,
@@ -528,14 +579,23 @@ function DashboardModern({
 
       <section className="md-stats" aria-label="Operational statistics">
         {data.opsStats.condensedStats.map((stat, index) => {
-          const Icon = STAT_ICONS[index] || MdOutlineShield;
-          const tone = STAT_TONES[index] || 'blue';
+          const tone = stat.tone || (
+            stat.status === 'danger' ? 'red' :
+            stat.status === 'warning' ? 'amber' :
+            stat.status === 'success' ? 'green' :
+            (STAT_TONES[index] || 'blue')
+          );
+          const Icon = stat.isDistrictRisk
+            ? (stat.status === 'danger' || stat.status === 'warning' ? MdWarningAmber : MdCheckCircle)
+            : (STAT_ICONS[index] || MdOutlineShield);
+          const isTextVal = typeof stat.value === 'string' && isNaN(Number(String(stat.value).replace('%', '')));
+
           return (
             <article className={`md-stat md-stat-${tone}`} key={stat.label}>
               <div className="md-stat-icon"><Icon /></div>
               <div className="md-stat-copy">
-                <span>{stat.label}</span>
-                <strong>{stat.value}</strong>
+                <span>{renderStatLabel(stat.label)}</span>
+                <strong className={isTextVal ? 'is-text-val' : ''}>{renderStatValue(stat.value)}</strong>
                 <small>{stat.caption}</small>
               </div>
               <MdTrendingUp className="md-stat-trend" />
