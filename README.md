@@ -1,4 +1,4 @@
-The more with an PPT will open on the performance.# MADHUKAR - KSP Crime Intelligence Platform
+# MADHUKAR - KSP Crime Intelligence Platform
 
 **Modern Analytics and Data Hub for User-Friendly Karnataka Anti-Crime Response**
 
