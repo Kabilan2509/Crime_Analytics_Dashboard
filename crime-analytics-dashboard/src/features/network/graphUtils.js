@@ -1,10 +1,12 @@
 /**
- * graphUtils.js — Enhanced Criminal Network Graph Builder
+ * graphUtils.js — Forensic Criminal Network Graph Builder
+ * 
  * Builds node-link data from live crime records with real names,
- * degree-weighted sizing, and co-accused relationship edges.
+ * degree-weighted sizing, and forensic Modus Operandi (MO) & co-accused relationship edges.
  */
 
-// ─── Node color palette ───────────────────────────────────────────────────────
+import { calculateCaseSimilarity, isSpecificEntity } from '../../utils/similarityEngine';
+
 export const ENTITY = {
   criminal: { color: '#ff4d6d', glow: 'rgba(255,77,109,0.4)',  label: 'Accused / Suspect' },
   case:     { color: '#4fc3f7', glow: 'rgba(79,195,247,0.4)',  label: 'FIR Case'           },
@@ -136,13 +138,26 @@ export function buildNetworkData(cases, accused, victims, districts, stations) {
   // 4. Accused nodes + co-accused edges
   const accusedByCaseId = {};  // caseId → [criminalNodeId]
   const casesByAccusedId = {}; // criminalNodeId → [caseNodeId]
+  const accusedNameMap = {};   // normalizedName → criminalNodeId
   relationRows(accused, 'accused', ['ROWID', 'AccusedMasterID', 'AccusedID']).forEach((acc, idx) => {
     const resolvedCaseId = caseKeyToId.get(String(acc.CaseMasterID ?? acc.CaseID));
     if (!resolvedCaseId) return;
     const caseNodeId = `case_${resolvedCaseId}`;
-    const accusedId = acc.ROWID || acc.AccusedMasterID || acc.AccusedID || idx;
-    const criminalId = `accused_${accusedId}`;
     const fullName = acc.AccusedName || acc.Name || acc.FullName || acc.FirstName;
+    const isNamed = isSpecificEntity(fullName);
+
+    // If verified named individual, merge into a canonical repeat offender node
+    // Otherwise keep distinct row-based ID so "Unknown" suspects never merge!
+    const accusedId = acc.ROWID || acc.AccusedMasterID || acc.AccusedID || idx;
+    let criminalId = `accused_${accusedId}`;
+    if (isNamed) {
+      const norm = fullName.trim().toLowerCase();
+      if (!accusedNameMap[norm]) {
+        accusedNameMap[norm] = `accused_named_${norm.replace(/[^a-z0-9]/g, '_')}`;
+      }
+      criminalId = accusedNameMap[norm];
+    }
+
     const displayName = fullName
       ? String(fullName).trim().split(/\s+/).slice(0, 2).join(' ')
       : `Accused #${accusedId || idx + 101}`;
@@ -161,8 +176,10 @@ export function buildNetworkData(cases, accused, victims, districts, stations) {
     // Track accused per case for co-accused edges
     if (!accusedByCaseId[resolvedCaseId]) accusedByCaseId[resolvedCaseId] = [];
     accusedByCaseId[resolvedCaseId].push(criminalId);
-    if (!casesByAccusedId[criminalId]) casesByAccusedId[criminalId] = [];
-    casesByAccusedId[criminalId].push(caseNodeId);
+    if (isNamed) {
+      if (!casesByAccusedId[criminalId]) casesByAccusedId[criminalId] = [];
+      casesByAccusedId[criminalId].push(caseNodeId);
+    }
   });
 
   // Co-accused edges (accused who share the same case)
@@ -199,36 +216,61 @@ export function buildNetworkData(cases, accused, victims, districts, stations) {
     edges.push({ source: victimId, target: caseNodeId, type: 'victim_of', strength: 0.5 });
   });
 
-  // 6. Pattern matches are indexed, not pairwise compared.  This is critical
-  // when the production data store grows beyond a prototype-sized result set.
-  const patternBuckets = new Map();
-  activeCases.forEach(c => {
-    const station = c.policeStationName || c.unit?.UnitName || c.unit?.PoliceStationName;
-    if (!c.majorHeadName || !station) return;
-    const key = `${c.majorHeadName}::${station}`;
-    const bucket = patternBuckets.get(key) || [];
-    // Keep only a small recent candidate window; broad similarity belongs in a
-    // server-side graph query, not in a browser canvas.
-    bucket.slice(-12).forEach(other => {
-      const a = new Date(c.registeredDateObj || c.RegisteredDate);
-      const b = new Date(other.registeredDateObj || other.RegisteredDate);
-      if (!Number.isNaN(a.valueOf()) && !Number.isNaN(b.valueOf()) && Math.abs(a - b) <= 7 * 86400000) {
-        edges.push({ source: `case_${c.ROWID || c.CaseMasterID}`, target: `case_${other.ROWID || other.CaseMasterID}`, type: 'pattern_match', strength: 0.1 });
-      }
+  // 6. Forensic Modus Operandi (MO) & Repeat Pattern Linkages
+  // Uses multi-factor scoring (shared suspect, specific minor head, shared penal section,
+  // MO keywords, spatio-temporal cluster) with strict threshold (>= 60) to eliminate
+  // irrelevant generic matches.
+  const seenPairs = new Set();
+  const addPatternEdge = (source, target, strength, reason, score) => {
+    if (source === target) return;
+    const pairKey = [source, target].sort().join('::');
+    if (seenPairs.has(pairKey)) return;
+    seenPairs.add(pairKey);
+    edges.push({
+      source, target,
+      type: 'pattern_match',
+      strength: strength || 0.6,
+      reason: reason || 'Modus Operandi Pattern Match',
+      score: score || 60
     });
-    bucket.push(c);
-    patternBuckets.set(key, bucket);
-  });
+  };
 
-  // Repeat accused are high-confidence FIR-to-FIR routes. They are shown
-  // directly as a pattern link as well as through the person record.
+  // High-Confidence Repeat Suspect Routes (Verified Named Accused Only)
   Object.entries(casesByAccusedId).forEach(([criminalId, linkedCases]) => {
     const uniqueCases = [...new Set(linkedCases)];
-    for (let i = 0; i < Math.min(uniqueCases.length, 10); i++) {
-      for (let j = i + 1; j < Math.min(uniqueCases.length, 10); j++) {
-        edges.push({ source: uniqueCases[i], target: uniqueCases[j], type: 'pattern_match', strength: 0.95, reason: `Shared accused: ${criminalId}` });
+    if (uniqueCases.length < 2) return;
+    const node = nodes.find(n => n.id === criminalId);
+    const suspectLabel = node?.label || 'Verified Suspect';
+    for (let i = 0; i < Math.min(uniqueCases.length, 6); i++) {
+      for (let j = i + 1; j < Math.min(uniqueCases.length, 6); j++) {
+        addPatternEdge(uniqueCases[i], uniqueCases[j], 0.95, `Shared accused: ${suspectLabel}`, 95);
       }
     }
+  });
+
+  // Forensic MO Pattern Bucketing (Group by specific minor offence sub-head or station)
+  const candidateBuckets = new Map();
+  activeCases.forEach(c => {
+    const minor = (c.minorHeadName || '').trim().toLowerCase();
+    const station = (c.policeStationName || c.unit?.UnitName || '').trim().toLowerCase();
+    const hasSpecificMinor = minor && minor !== 'unknown' && minor !== 'others';
+
+    // Index by specific minor head (e.g. "motor vehicle theft") or fallback to station
+    const key = hasSpecificMinor ? `minor::${minor}` : `station::${station}`;
+    if (!candidateBuckets.has(key)) candidateBuckets.set(key, []);
+    const bucket = candidateBuckets.get(key);
+
+    // Test similarity against candidate window
+    bucket.slice(-15).forEach(other => {
+      const sim = calculateCaseSimilarity(c, other);
+      if (sim.isSimilar) { // Enforces strict >= 60 forensic threshold
+        const sourceId = `case_${c.ROWID || c.CaseMasterID}`;
+        const targetId = `case_${other.ROWID || other.CaseMasterID}`;
+        addPatternEdge(sourceId, targetId, sim.strength, sim.primaryReason, sim.score);
+      }
+    });
+
+    bucket.push(c);
   });
 
   // Deterministic investigation lanes: geography → FIR → people.  Unlike a

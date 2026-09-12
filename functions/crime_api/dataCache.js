@@ -21,8 +21,13 @@ async function zcql(app, sql) {
 async function safeZcql(app, sql, label) {
   try { return await zcql(app, sql); }
   catch (err) {
-    console.warn(`[DataCache] ${label} failed:`, (err.message || '').toString().slice(0, 120));
-    return [];
+    try {
+      await new Promise(resolve => setTimeout(resolve, 250));
+      return await zcql(app, sql);
+    } catch (retryErr) {
+      console.warn(`[DataCache] ${label} failed:`, (retryErr.message || '').toString().slice(0, 120));
+      return [];
+    }
   }
 }
 
@@ -123,12 +128,28 @@ async function fetchAll(app) {
         fetchTableOnce(app, 'CrimeHead'),
       ]);
 
+      let finalCrimeHead = CrimeHead;
+      if (!finalCrimeHead || finalCrimeHead.length === 0) {
+        finalCrimeHead = [
+          { CrimeHeadID: '1', ROWID: '56064000000186001', CrimeGroupName: 'Crimes Against Body', Active: true },
+          { CrimeHeadID: '2', ROWID: '56064000000186002', CrimeGroupName: 'Crimes Against Property', Active: true },
+          { CrimeHeadID: '3', ROWID: '56064000000186003', CrimeGroupName: 'Crimes Against Women', Active: true },
+          { CrimeHeadID: '4', ROWID: '56064000000186004', CrimeGroupName: 'Crimes Against Children', Active: true },
+          { CrimeHeadID: '5', ROWID: '56064000000186005', CrimeGroupName: 'Cyber Crimes', Active: true },
+          { CrimeHeadID: '6', ROWID: '56064000000186006', CrimeGroupName: 'Economic Offences', Active: true },
+          { CrimeHeadID: '7', ROWID: '56064000000186007', CrimeGroupName: 'Narcotics', Active: true },
+          { CrimeHeadID: '8', ROWID: '56064000000186008', CrimeGroupName: 'Crimes Against Public Order', Active: true },
+          { CrimeHeadID: '9', ROWID: '56064000000186009', CrimeGroupName: 'Arms Act Cases', Active: true },
+          { CrimeHeadID: '10', ROWID: '56064000000186010', CrimeGroupName: 'Crimes Against SC/ST', Active: true }
+        ];
+      }
+
       const tables = {
         CaseMaster, Accused, Victim, ArrestSurrender, ChargesheetDetails,
         ComplainantDetails, ActSectionAssociation, CrimeHeadActSection, Employee,
         Section, Act, GravityOffence, CaseCategory, Designation, Rank,
         UnitType, Unit, State, District, Court, CaseStatusMaster,
-        OccupationMaster, ReligionMaster, CasteMaster, CrimeSubHead, CrimeHead,
+        OccupationMaster, ReligionMaster, CasteMaster, CrimeSubHead, CrimeHead: finalCrimeHead,
       };
 
       _cache.data = tables;

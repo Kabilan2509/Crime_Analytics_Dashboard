@@ -5,6 +5,7 @@
  */
 
 import { caseViews } from '../../data/schemaSelectors';
+import { findSimilarCases } from '../../utils/similarityEngine';
 
 export function executeQuery(intent, params) {
   let results = [];
@@ -86,8 +87,15 @@ export function executeQuery(intent, params) {
     }
 
     case 'SIMILAR': {
-      results = caseViews.slice(2, 7); // Mock similar
-      summary = `Found 5 cases sharing similar modus operandi (MO), crime category, and temporal proximity.`;
+      const baseCase = caseViews.find(c => String(c.CaseMasterID) === String(params.caseId)) || caseViews.find(c => c.isHeinous) || caseViews[0];
+      const matches = findSimilarCases(baseCase, caseViews, { maxResults: 5, minScore: 50 });
+      results = matches.map(m => m.caseObj);
+      if (results.length > 0) {
+        summary = `Correlated ${results.length} cases with high-confidence forensic similarity to ${baseCase.displayCrimeNo || `FIR-${baseCase.CaseMasterID}`}: ${matches[0].reason}.`;
+      } else {
+        results = caseViews.filter(c => c.minorHeadName === baseCase.minorHeadName && c.CaseMasterID !== baseCase.CaseMasterID).slice(0, 5);
+        summary = `No direct cross-case suspect overlaps detected. Displaying closest cases sharing sub-head "${baseCase.minorHeadName}".`;
+      }
       suggestions = [
         'Explain matching features (XAI)',
         'Check communication log correlations',

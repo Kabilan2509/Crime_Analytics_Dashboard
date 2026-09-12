@@ -11,6 +11,7 @@
 
 import * as sampleData from '../data/sampleData';
 import { caseViews, hydrateCatalystSchema } from '../data/schemaSelectors';
+import { resolveCrimeMajorHead, resolveCrimeMinorHead } from '../utils/crimeTaxonomy';
 
 // ─── Data-source selection ─────────────────────────────────────────────
 // Catalyst's local server uses localhost, so hostname detection cannot reliably
@@ -222,8 +223,19 @@ function normalizeCatalystCases(rows, masters, tables) {
       districtID: districtId == null ? null : String(districtId),
       districtName: district?.DistrictName || 'Unknown',
       policeStationName: station?.UnitName || station?.PoliceStationName || 'Unknown',
-      majorHeadName: crimeHeads[String(item.CrimeMajorHeadID)]?.CrimeGroupName || 'Unknown',
-      minorHeadName: crimeSubHeads[String(item.CrimeMinorHeadID)]?.CrimeHeadName || 'Unknown',
+      majorHeadName: resolveCrimeMajorHead(
+        item.CrimeMajorHeadID,
+        crimeHeads[String(item.CrimeMajorHeadID)]?.CrimeGroupName,
+        item.CrimeMinorHeadID,
+        item.BriefFacts
+      ),
+      minorHeadName: resolveCrimeMinorHead(
+        item.CrimeMinorHeadID,
+        item.CrimeMajorHeadID,
+        crimeSubHeads[String(item.CrimeMinorHeadID)]?.CrimeHeadName,
+        crimeHeads[String(item.CrimeMajorHeadID)]?.CrimeGroupName,
+        item.BriefFacts
+      ),
       statusName: statuses[String(item.CaseStatusID)]?.CaseStatusName || 'Unknown',
       categoryName: caseCategories[String(item.CaseCategoryID)]?.LookupValue || 'Unknown',
       courtName: courts[String(item.CourtID)]?.CourtName || 'Unassigned',

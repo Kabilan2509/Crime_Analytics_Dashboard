@@ -472,31 +472,8 @@ function buildOfficerCallsign(id, unitID, seedName) {
 }
 
 // ---------------------------------------------------------------------------
-// Brief facts templates
+// Locations used in brief facts template substitution
 // ---------------------------------------------------------------------------
-const briefFactsTemplates = [
-  'Complainant reported theft of mobile phone and wallet near {location}.',
-  'Accused allegedly assaulted the victim with a sharp weapon at {location}.',
-  'Online fraud reported — complainant lost Rs. {amount} via fake UPI link.',
-  'Domestic violence complaint filed by wife against husband at {location}.',
-  'Motor vehicle theft reported. Two-wheeler bearing registration KA-{reg} missing from parking area.',
-  'Chain snatching incident near {location}. Gold chain worth Rs. {amount} snatched by bike-borne miscreants.',
-  'House burglary reported. Cash and jewellery worth Rs. {amount} stolen from residence at {location}.',
-  'Complainant reported cyberbullying and threatening messages on social media.',
-  'Drug seizure — {quantity} grams of contraband substance recovered from accused at {location}.',
-  'Road rage incident. Accused attacked complainant with iron rod near {location}.',
-  'Stalking complaint filed. Accused repeatedly followed and harassed complainant near {location}.',
-  'Forgery and cheating — accused forged property documents and cheated complainant of Rs. {amount}.',
-  'Child reported missing from school premises at {location}. Investigation initiated.',
-  'Accused persons created unlawful assembly and caused riot near {location}.',
-  'Illegal arms — country-made pistol and ammunition recovered from accused at {location}.',
-  'Complainant reported identity theft. Fraudulent bank transactions worth Rs. {amount} detected.',
-  'Dowry harassment — complainant\'s family demanded Rs. {amount} as additional dowry.',
-  'Atrocity against SC/ST community member reported at {location}.',
-  'NDPS Act violation — accused found in possession of {quantity} grams of ganja at {location}.',
-  'Accident case — rash and negligent driving caused injury to pedestrian at {location}.',
-];
-
 const locations = [
   'MG Road', 'Brigade Road', 'Jayanagar 4th Block', 'Koramangala 5th Block',
   'Whitefield Main Road', 'HSR Layout Sector 2', 'Indiranagar 100 Feet Road',
@@ -505,11 +482,85 @@ const locations = [
   'Peenya Industrial Area', 'Yeshwanthpur Circle', 'KR Market',
   'Mysuru Devaraja Market', 'Mangaluru Hampankatta', 'Hubli Lamington Road',
   'Belagavi Khanapur Road', 'Kalaburagi Super Market', 'Tumakuru Bus Stand area',
-  'Davanagere PJ Extension', 'Shivamogga JC Road', 'Ballari Cowl Bazaar'
+  'Davanagere PJ Extension', 'Shivamogga JC Road', 'Ballari Cowl Bazaar',
 ];
 
-function generateBriefFacts() {
-  let fact = pick(briefFactsTemplates);
+// Brief facts templates organized deterministically by CrimeMajorHeadID (1 to 10)
+// Ensures crimes against property (burglary, theft) or SC/ST are NEVER stamped on Crimes Against Body!
+const briefFactsByHead = {
+  1: [ // Head 1: Crimes Against Body (Murder, Attempt to Murder, Assault, etc.)
+    'Accused allegedly assaulted the victim with a sharp weapon at {location}.',
+    'Road rage incident. Accused attacked complainant with iron rod near {location}.',
+    'Grievous hurt inflicted during a physical altercation near {location}. Accused fled scene.',
+    'Complainant was wrongfully restrained and physically assaulted near {location}.',
+    'Attempt to murder reported — accused attacked victim following a personal dispute at {location}.',
+    'Fatal altercation reported following heated argument over property boundary at {location}.',
+  ],
+  2: [ // Head 2: Crimes Against Property (Robbery, Dacoity, Burglary, Theft, etc.)
+    'House burglary reported. Cash and jewellery worth Rs. {amount} stolen from residence at {location}.',
+    'Complainant reported theft of mobile phone and wallet near {location}.',
+    'Motor vehicle theft reported. Two-wheeler bearing registration KA-{reg} missing from parking area.',
+    'Chain snatching incident near {location}. Gold chain worth Rs. {amount} snatched by bike-borne miscreants.',
+    'Dacoity reported — armed miscreants forced entry into commercial premises near {location} and stole Rs. {amount}.',
+    'Daytime house break-in reported at {location}. Safe broken and valuables stolen.',
+  ],
+  3: [ // Head 3: Crimes Against Women (Dowry Death, Cruelty, Molestation, Stalking, etc.)
+    'Domestic violence complaint filed by wife against husband at {location}.',
+    'Stalking complaint filed. Accused repeatedly followed and harassed complainant near {location}.',
+    'Dowry harassment — complainant\'s family demanded Rs. {amount} as additional dowry.',
+    'Molestation reported — accused harassed and misbehaved with woman near {location}.',
+    'Cruelty by husband and matrimonial dispute reported under Section 498A IPC at {location}.',
+  ],
+  4: [ // Head 4: Crimes Against Children (Child Abuse, Labour, POCSO, Missing Children, etc.)
+    'Child reported missing from school premises at {location}. Investigation initiated.',
+    'POCSO case registered regarding inappropriate conduct against a minor at {location}.',
+    'Child labour incident reported — minor rescued from commercial establishment at {location}.',
+    'Complaint registered regarding trafficking attempt of minor at {location}.',
+  ],
+  5: [ // Head 5: Cyber Crimes (Online Fraud, Identity Theft, Cyberbullying, Hacking, etc.)
+    'Online fraud reported — complainant lost Rs. {amount} via fake UPI link.',
+    'Complainant reported cyberbullying and threatening messages on social media.',
+    'Complainant reported identity theft. Fraudulent bank transactions worth Rs. {amount} detected.',
+    'Phishing attack reported — complainant tricked into downloading malicious APK resulting in Rs. {amount} loss.',
+    'Unauthorized hacking and ransomware attack reported on computer system at {location}.',
+  ],
+  6: [ // Head 6: Economic Offences (Cheating, Forgery, Counterfeiting, Bank Fraud, etc.)
+    'Forgery and cheating — accused forged property documents and cheated complainant of Rs. {amount}.',
+    'Bank fraud reported — accused obtained loan of Rs. {amount} using forged financial statements.',
+    'Counterfeit currency circulating near {location} — fake notes seized from accused.',
+    'Investment cheating scheme busted — accused defrauded multiple victims of Rs. {amount} at {location}.',
+  ],
+  7: [ // Head 7: Narcotics (Ganja, Cocaine, NDPS, Drug Trafficking, etc.)
+    'Drug seizure — {quantity} grams of contraband substance recovered from accused at {location}.',
+    'NDPS Act violation — accused found in possession of {quantity} grams of ganja at {location}.',
+    'Narcotics raid conducted near {location} — contraband narcotics seized and peddler apprehended.',
+    'Accused intercepted while transporting {quantity} grams of prohibited narcotic substances at {location}.',
+  ],
+  8: [ // Head 8: Crimes Against Public Order (Rioting, Unlawful Assembly, Affray, etc.)
+    'Accused persons created unlawful assembly and caused riot near {location}.',
+    'Affray and public nuisance created by unruly mob at {location}.',
+    'Criminal intimidation and disruption of public peace reported near {location}.',
+    'Stone pelting and damage to public transit reported during demonstration near {location}.',
+  ],
+  9: [ // Head 9: Arms Act Cases (Illegal Possession, Trafficking, etc.)
+    'Illegal arms — country-made pistol and ammunition recovered from accused at {location}.',
+    'Arms trafficking suspected — unregistered firearms seized from vehicle during check at {location}.',
+    'Illegal possession and brandishing of deadly firearms reported near {location}.',
+    'Unauthorized arms manufacturing workshop raided by special squad near {location}.',
+  ],
+  10: [ // Head 10: Crimes Against SC/ST (Atrocity Against SC/ST, Denial of Rights, etc.)
+    'Atrocity against SC/ST community member reported at {location}.',
+    'Case registered under POA Act — casteist slurs and verbal intimidation directed at complainant at {location}.',
+    'Denial of rights and social discrimination against SC/ST community members reported at {location}.',
+    'Atrocity case registered — complainant assaulted and subjected to caste-based abuse near {location}.',
+  ],
+};
+
+const briefFactsTemplates = Object.values(briefFactsByHead).flat();
+
+function generateBriefFacts(crimeHeadID, crimeSubHeadID) {
+  const templates = briefFactsByHead[crimeHeadID] || briefFactsTemplates;
+  let fact = pick(templates);
   fact = fact.replace('{location}', pick(locations));
   fact = fact.replace('{amount}', String(randInt(5, 500) * 1000));
   fact = fact.replace('{reg}', `${randInt(1, 72)}-${String.fromCharCode(65 + randInt(0, 25))}${String.fromCharCode(65 + randInt(0, 25))}-${randInt(1000, 9999)}`);
@@ -691,7 +742,7 @@ for (let i = 0; i < TOTAL_CASES; i++) {
     InfoReceivedPSDate: fmtTime(infoReceivedDate),
     latitude: coords.latitude,
     longitude: coords.longitude,
-    BriefFacts: generateBriefFacts(),
+    BriefFacts: generateBriefFacts(crimeHeadID, crimeSubHeadID),
   });
 }
 

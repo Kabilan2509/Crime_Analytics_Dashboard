@@ -1,5 +1,6 @@
 import { getAverageResponseHours, getMonthLabel } from '../../data/schemaSelectors';
 import { getSecureCaseViews } from '../../security/securityUtils';
+import { resolveCrimeMinorHead, resolveCrimeMajorHead } from '../../utils/crimeTaxonomy';
 
 function matchesSearch(item, query) {
   if (!query) return true;
@@ -103,7 +104,18 @@ export function buildDashboardViewModel(filteredCases, accessLevel, options = {}
 
   const distributionMap = new Map();
   secureCases.forEach((item) => {
-    const categoryName = item.minorHeadName || item.majorHeadName || 'Unknown';
+    let categoryName = (item.minorHeadName && item.minorHeadName !== 'Unknown')
+      ? item.minorHeadName
+      : (item.majorHeadName && item.majorHeadName !== 'Unknown')
+        ? item.majorHeadName
+        : resolveCrimeMinorHead(item.CrimeMinorHeadID, item.CrimeMajorHeadID, item.minorHeadName, item.majorHeadName, item.briefFacts || item.BriefFacts);
+
+    if (!categoryName || categoryName === 'Unknown') {
+      categoryName = resolveCrimeMajorHead(item.CrimeMajorHeadID, item.majorHeadName, item.CrimeMinorHeadID, item.briefFacts || item.BriefFacts);
+    }
+    if (!categoryName || categoryName === 'Unknown') {
+      categoryName = 'Other Offences';
+    }
     distributionMap.set(categoryName, (distributionMap.get(categoryName) || 0) + 1);
   });
   const palette = [
@@ -258,7 +270,11 @@ export function buildDashboardViewModel(filteredCases, accessLevel, options = {}
       crimeNo: c.displayCrimeNo,
       crimeNoDisplay: `Cr No ${c.displayCrimeNo}`,
       station: c.policeStationName,
-      category: c.minorHeadName || c.majorHeadName,
+      category: (c.minorHeadName && c.minorHeadName !== 'Unknown')
+        ? c.minorHeadName
+        : (c.majorHeadName && c.majorHeadName !== 'Unknown')
+          ? c.majorHeadName
+          : resolveCrimeMinorHead(c.CrimeMinorHeadID, c.CrimeMajorHeadID, c.minorHeadName, c.majorHeadName, c.briefFacts || c.BriefFacts),
       registeredDate: c.registeredDateObj.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
       status: c.statusName,
       actionUrl: `/cases?caseId=${c.CaseMasterID}`

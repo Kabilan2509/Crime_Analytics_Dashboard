@@ -28,9 +28,11 @@ import {
   victims,
   accused,
   arrests,
+  chargesheets,
   chargesheetDetails,
   invArrestSurrenderAccused,
 } from './sampleData';
+import { resolveCrimeMajorHead, resolveCrimeMinorHead } from '../utils/crimeTaxonomy';
 
 function indexBy(items, key) {
   const index = {};
@@ -182,8 +184,19 @@ export const caseViews = cases.map((item) => {
     categoryName: caseCategoryMap[item.CaseCategoryID] || 'Unknown',
     gravityLabel: gravityMap[item.GravityOffenceID] || 'Unknown',
     statusName: caseStatusMap[item.CaseStatusID] || 'Unknown',
-    majorHeadName: majorHead?.CrimeGroupName || 'Unknown',
-    minorHeadName: minorHead?.CrimeHeadName || 'Unknown',
+    majorHeadName: resolveCrimeMajorHead(
+      item.CrimeMajorHeadID,
+      majorHead?.CrimeGroupName,
+      item.CrimeMinorHeadID,
+      occurrence?.BriefFacts ?? item.BriefFacts
+    ),
+    minorHeadName: resolveCrimeMinorHead(
+      item.CrimeMinorHeadID,
+      item.CrimeMajorHeadID,
+      minorHead?.CrimeHeadName,
+      majorHead?.CrimeGroupName,
+      occurrence?.BriefFacts ?? item.BriefFacts
+    ),
     districtID: district?.DistrictID || null,
     districtName: district?.DistrictName || 'Unknown',
     policeStationName: unit?.UnitName || 'Unknown',

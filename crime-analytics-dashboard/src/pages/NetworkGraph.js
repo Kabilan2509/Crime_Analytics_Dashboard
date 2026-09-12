@@ -14,6 +14,46 @@ const FILTER_CHIPS = [
   { key: 'station',  label: 'Stations' },
 ];
 
+const TIME_RANGE_OPTIONS = [
+  { key: 'all',  label: 'All Time' },
+  { key: '30d',  label: 'Last 30 Days' },
+  { key: '90d',  label: 'Last 90 Days' },
+  { key: '180d', label: 'Last 6 Months' },
+  { key: '1y',   label: 'Last 1 Year' },
+  { key: '2025', label: 'Year 2025' },
+  { key: '2024', label: 'Year 2024' },
+];
+
+function matchesTimeRange(dateObj, rangeKey, anchorDate) {
+  if (!rangeKey || rangeKey === 'all') return true;
+  if (!dateObj || Number.isNaN(dateObj.getTime())) return false;
+  const ref = anchorDate || new Date();
+
+  if (rangeKey === '30d') {
+    const cutoff = new Date(ref.getTime() - 30 * 24 * 60 * 60 * 1000);
+    return dateObj >= cutoff;
+  }
+  if (rangeKey === '90d') {
+    const cutoff = new Date(ref.getTime() - 90 * 24 * 60 * 60 * 1000);
+    return dateObj >= cutoff;
+  }
+  if (rangeKey === '180d') {
+    const cutoff = new Date(ref.getTime() - 180 * 24 * 60 * 60 * 1000);
+    return dateObj >= cutoff;
+  }
+  if (rangeKey === '1y') {
+    const cutoff = new Date(ref.getTime() - 365 * 24 * 60 * 60 * 1000);
+    return dateObj >= cutoff;
+  }
+  if (rangeKey === '2025') {
+    return dateObj.getFullYear() === 2025;
+  }
+  if (rangeKey === '2024') {
+    return dateObj.getFullYear() === 2024;
+  }
+  return true;
+}
+
 const REPULSION = 6000;
 const SPRING_K = 0.004;
 const IDEAL_LEN = 110;
@@ -73,12 +113,23 @@ export default function NetworkGraph() {
   const [qCategory, setQCategory] = useState('all');
   const [qDistrict, setQDistrict] = useState('all');
   const [qStation, setQStation] = useState('all');
+  const [qTimeRange, setQTimeRange] = useState('all');
+  const [showPatternMatches, setShowPatternMatches] = useState(true);
   
   // Graph State
   const [filterType, setFilterType] = useState('all');
   const [selectedNode, setSelectedNode] = useState(null);
   const [hoveredNode, setHoveredNode] = useState(null);
   const [pinnedNodes, setPinnedNodes] = useState(new Set());
+
+  const maxDataTime = useMemo(() => {
+    let max = 0;
+    secureCases.forEach(c => {
+      const t = c.registeredDateObj?.getTime();
+      if (t && t > max) max = t;
+    });
+    return max ? new Date(max) : new Date();
+  }, [secureCases]);
 
   const crimeTypesList = useMemo(() => {
     const types = new Set();
@@ -119,6 +170,10 @@ export default function NetworkGraph() {
       const stName = c.policeStationName || c.unit?.UnitName || c.unit?.PoliceStationName;
       if (qStation !== 'all' && stName !== qStation) match = false;
       
+      if (!matchesTimeRange(c.registeredDateObj, qTimeRange, maxDataTime)) {
+        match = false;
+      }
+
       if (qSearch) {
         const term = qSearch.toLowerCase();
         // Deep search across all case metadata (including nested unit, district, and arrays)
@@ -138,7 +193,7 @@ export default function NetworkGraph() {
       .sort((a, b) => Number(Boolean(b.isHeinous)) - Number(Boolean(a.isHeinous)))
       .slice(0, CASE_WINDOW);
     return { ...buildNetworkData(queryWindow, accused, victims, districts, units), totalCaseMatches: matchingCases.length };
-  }, [hasQueried, secureCases, qCategory, qDistrict, qStation, qSearch]);
+  }, [hasQueried, secureCases, qCategory, qDistrict, qStation, qSearch, qTimeRange, maxDataTime]);
 
   const { visNodes, visEdges, nodeMap, hiddenCount, totalCaseMatches, patternCount } = useMemo(() => {
     // A type chip is a focus lens, not a destructive filter. Keep the direct
@@ -185,21 +240,23 @@ export default function NetworkGraph() {
     const validIds = new Set(topCaseIds);
 
     // 2. Expand Hop 1: Recursively pull in ALL extra FIRs linked via Pattern Matches (the full chain)
-    let addedNewCase = true;
-    while (addedNewCase) {
-      addedNewCase = false;
-      rawGraph.edges.forEach(e => {
-        if (e.type === 'pattern_match') {
-          if (validIds.has(e.source) && !validIds.has(e.target)) {
-            validIds.add(e.target);
-            addedNewCase = true;
+    if (showPatternMatches) {
+      let addedNewCase = true;
+      while (addedNewCase) {
+        addedNewCase = false;
+        rawGraph.edges.forEach(e => {
+          if (e.type === 'pattern_match') {
+            if (validIds.has(e.source) && !validIds.has(e.target)) {
+              validIds.add(e.target);
+              addedNewCase = true;
+            }
+            if (validIds.has(e.target) && !validIds.has(e.source)) {
+              validIds.add(e.source);
+              addedNewCase = true;
+            }
           }
-          if (validIds.has(e.target) && !validIds.has(e.source)) {
-            validIds.add(e.source);
-            addedNewCase = true;
-          }
-        }
-      });
+        });
+      }
     }
 
     // 3. Expand Hop 2: Pull in Accused, Victims, and Stations for ALL valid cases (but explicitly block new cases)
@@ -231,7 +288,10 @@ export default function NetworkGraph() {
     });
 
     const finalIds = new Set(nodes.map(n => n.id));
-    const edges = rawGraph.edges.filter(e => finalIds.has(e.source) && finalIds.has(e.target));
+    let edges = rawGraph.edges.filter(e => finalIds.has(e.source) && finalIds.has(e.target));
+    if (!showPatternMatches) {
+      edges = edges.filter(e => e.type !== 'pattern_match');
+    }
     const map = new Map(nodes.map(n => [n.id, n]));
     
     return {
@@ -240,7 +300,7 @@ export default function NetworkGraph() {
       totalCaseMatches: rawGraph.totalCaseMatches || 0,
       patternCount: edges.filter(edge => edge.type === 'pattern_match').length,
     };
-  }, [rawGraph, filterType]);
+  }, [rawGraph, filterType, showPatternMatches]);
 
   const deg = useMemo(() => {
     const d = {};
@@ -619,55 +679,67 @@ export default function NetworkGraph() {
 
   // UI Components
   if (!hasQueried) {
-    const activeFilters = (qSearch ? 1 : 0) + (qCategory !== 'all' ? 1 : 0) + (qStation !== 'all' ? 1 : 0);
-    const canRun = activeFilters >= 1; 
+    const activeFilters = (qSearch ? 1 : 0) + (qCategory !== 'all' ? 1 : 0) + (qDistrict !== 'all' ? 1 : 0) + (qStation !== 'all' ? 1 : 0) + (qTimeRange !== 'all' ? 1 : 0);
+    const canRun = true; 
 
     return (
       <div className="page-content animate-fade-in text-inverse" style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ maxWidth: '600px', width: '100%', background: 'var(--bg-panel)', borderRadius: '16px', padding: '40px', border: '1px solid var(--border-color)', boxShadow: '0 24px 60px rgba(0,0,0,0.4)', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ maxWidth: '640px', width: '100%', background: 'var(--bg-panel)', borderRadius: '16px', padding: '36px', border: '1px solid var(--border-color)', boxShadow: '0 24px 60px rgba(0,0,0,0.4)', position: 'relative', overflow: 'hidden' }}>
           
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '4px', background: 'linear-gradient(90deg, #ff4d6d, #7b2ff7, #4fc3f7)' }} />
 
-          <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-            <div style={{ width: '64px', height: '64px', borderRadius: '16px', background: 'rgba(123,47,247,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px auto', border: '1px solid rgba(123,47,247,0.3)' }}>
-              <MdSecurity size={32} color="#7b2ff7" />
+          <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+            <div style={{ width: '60px', height: '60px', borderRadius: '16px', background: 'rgba(123,47,247,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px auto', border: '1px solid rgba(123,47,247,0.3)' }}>
+              <MdSecurity size={30} color="#7b2ff7" />
             </div>
-            <h1 style={{ fontSize: '24px', margin: '0 0 8px 0', color: '#fff' }}>Intelligence Sandbox</h1>
-            <p style={{ color: 'var(--text-muted)', fontSize: '14px', lineHeight: 1.6, margin: 0 }}>
-              The database contains millions of records. To prevent intelligence overload, 
-              construct a focused query to generate a specific target network.
+            <h1 style={{ fontSize: '22px', margin: '0 0 6px 0', color: '#fff' }}>Criminal Network Intelligence</h1>
+            <p style={{ color: 'var(--text-muted)', fontSize: '13px', lineHeight: 1.5, margin: 0 }}>
+              Trace organized crime syndicates, repeat offenders, and Modus Operandi links across jurisdictions.
             </p>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '6px', fontWeight: 700, letterSpacing: '0.05em' }}>TARGET IDENTIFIER (FIR / NAME)</label>
+              <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '6px', fontWeight: 700, letterSpacing: '0.05em' }}>TARGET IDENTIFIER (FIR / NAME / CRIME NO)</label>
               <input 
                 type="text" 
                 value={qSearch}
                 onChange={e => setQSearch(e.target.value)}
-                placeholder="e.g. FIR-1234, John Doe..."
-                style={{ width: '100%', boxSizing: 'border-box', padding: '12px 16px', borderRadius: '8px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', outline: 'none', fontSize: '14px' }}
+                placeholder="e.g. FIR-1234, Ramesh, Robbery..."
+                style={{ width: '100%', boxSizing: 'border-box', padding: '10px 14px', borderRadius: '8px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', outline: 'none', fontSize: '13px' }}
               />
             </div>
 
-            <div style={{ display: 'flex', gap: '16px' }}>
+            <div style={{ display: 'flex', gap: '14px' }}>
               <div style={{ flex: 1 }}>
                 <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '6px', fontWeight: 700, letterSpacing: '0.05em' }}>CRIME CATEGORY</label>
                 <select 
                   value={qCategory}
                   onChange={e => setQCategory(e.target.value)}
-                  style={{ width: '100%', boxSizing: 'border-box', padding: '12px 16px', borderRadius: '8px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', outline: 'none', fontSize: '14px', cursor: 'pointer' }}
+                  style={{ width: '100%', boxSizing: 'border-box', padding: '10px 14px', borderRadius: '8px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', outline: 'none', fontSize: '13px', cursor: 'pointer' }}
                 >
                   {crimeTypesList.map(t => <option key={t} value={t}>{t === 'all' ? 'Any Category' : t}</option>)}
                 </select>
               </div>
               <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '6px', fontWeight: 700, letterSpacing: '0.05em' }}>TIME RANGE</label>
+                <select 
+                  value={qTimeRange}
+                  onChange={e => setQTimeRange(e.target.value)}
+                  style={{ width: '100%', boxSizing: 'border-box', padding: '10px 14px', borderRadius: '8px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', outline: 'none', fontSize: '13px', cursor: 'pointer' }}
+                >
+                  {TIME_RANGE_OPTIONS.map(opt => <option key={opt.key} value={opt.key}>{opt.label}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '14px' }}>
+              <div style={{ flex: 1 }}>
                 <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '6px', fontWeight: 700, letterSpacing: '0.05em' }}>DISTRICT</label>
                 <select 
                   value={qDistrict}
                   onChange={e => { setQDistrict(e.target.value); setQStation('all'); }}
-                  style={{ width: '100%', boxSizing: 'border-box', padding: '12px 16px', borderRadius: '8px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', outline: 'none', fontSize: '14px', cursor: 'pointer' }}
+                  style={{ width: '100%', boxSizing: 'border-box', padding: '10px 14px', borderRadius: '8px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', outline: 'none', fontSize: '13px', cursor: 'pointer' }}
                 >
                   {districtList.map(t => <option key={t} value={t}>{t === 'all' ? 'Any District' : t}</option>)}
                 </select>
@@ -678,10 +750,61 @@ export default function NetworkGraph() {
                   value={qStation}
                   onChange={e => setQStation(e.target.value)}
                   disabled={qDistrict === 'all'}
-                  style={{ width: '100%', boxSizing: 'border-box', padding: '12px 16px', borderRadius: '8px', background: qDistrict === 'all' ? 'rgba(0,0,0,0.1)' : 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: qDistrict === 'all' ? 'rgba(255,255,255,0.3)' : '#fff', outline: 'none', fontSize: '14px', cursor: qDistrict === 'all' ? 'not-allowed' : 'pointer', transition: 'all 0.2s' }}
+                  style={{ width: '100%', boxSizing: 'border-box', padding: '10px 14px', borderRadius: '8px', background: qDistrict === 'all' ? 'rgba(0,0,0,0.1)' : 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: qDistrict === 'all' ? 'rgba(255,255,255,0.3)' : '#fff', outline: 'none', fontSize: '13px', cursor: qDistrict === 'all' ? 'not-allowed' : 'pointer', transition: 'all 0.2s' }}
                 >
                   {stationList.map(t => <option key={t} value={t}>{t === 'all' ? (qDistrict === 'all' ? 'Select District First' : 'Any Station') : t}</option>)}
                 </select>
+              </div>
+            </div>
+
+            {/* SIMILAR PATTERN MATCHES (MO) TOGGLE ROW */}
+            <div 
+              onClick={() => setShowPatternMatches(prev => !prev)}
+              role="button"
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '10px 14px', borderRadius: '8px',
+                background: showPatternMatches ? 'rgba(255, 77, 109, 0.08)' : 'rgba(255, 255, 255, 0.03)',
+                border: `1px solid ${showPatternMatches ? 'rgba(255, 77, 109, 0.3)' : 'rgba(255, 255, 255, 0.08)'}`,
+                cursor: 'pointer', transition: 'all 0.2s', userSelect: 'none'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{
+                  width: '8px', height: '8px', borderRadius: '50%',
+                  background: showPatternMatches ? '#ff4d6d' : '#64748b',
+                  boxShadow: showPatternMatches ? '0 0 8px #ff4d6d' : 'none',
+                  transition: 'all 0.2s'
+                }} />
+                <div>
+                  <span style={{ fontSize: '12px', fontWeight: 700, color: showPatternMatches ? '#ff6b8b' : 'var(--text-secondary)' }}>
+                    Similar Pattern Matches (MO)
+                  </span>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginLeft: '8px' }}>
+                    Trace repeat MO & related FIRs
+                  </span>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '11px', fontWeight: 700, color: showPatternMatches ? '#ff4d6d' : 'var(--text-muted)' }}>
+                  {showPatternMatches ? 'ON' : 'OFF'}
+                </span>
+                <div
+                  style={{
+                    width: '32px', height: '18px', borderRadius: '9px',
+                    background: showPatternMatches ? '#ff4d6d' : 'rgba(255, 255, 255, 0.2)',
+                    position: 'relative', transition: 'background 0.2s', flexShrink: 0
+                  }}
+                >
+                  <div style={{
+                    width: '14px', height: '14px', borderRadius: '50%',
+                    background: '#fff', position: 'absolute', top: '2px',
+                    left: showPatternMatches ? '16px' : '2px',
+                    transition: 'left 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.3)'
+                  }} />
+                </div>
               </div>
             </div>
 
@@ -689,15 +812,15 @@ export default function NetworkGraph() {
               disabled={!canRun}
               onClick={() => setHasQueried(true)}
               style={{
-                marginTop: '16px', width: '100%', padding: '14px', borderRadius: '8px',
+                marginTop: '10px', width: '100%', padding: '13px', borderRadius: '8px',
                 background: canRun ? 'linear-gradient(135deg, #7b2ff7, #512da8)' : 'rgba(255,255,255,0.05)',
                 color: canRun ? '#fff' : 'rgba(255,255,255,0.3)',
-                border: 'none', fontSize: '15px', fontWeight: 700, cursor: canRun ? 'pointer' : 'not-allowed',
+                border: 'none', fontSize: '14px', fontWeight: 700, cursor: canRun ? 'pointer' : 'not-allowed',
                 boxShadow: canRun ? '0 8px 20px rgba(123,47,247,0.3)' : 'none',
                 transition: 'all 0.2s'
               }}
             >
-              {canRun ? 'Initialize Network Graph' : 'Select at least 1 filter to query'}
+              Initialize Network Graph
             </button>
           </div>
         </div>
@@ -724,23 +847,84 @@ export default function NetworkGraph() {
         >
           ← New Query
         </button>
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           {[
             { label: 'Nodes', value: visNodes.length, c: '#4fc3f7' },
-            { label: 'Links', value: visEdges.length, c: '#ce93d8' },
-            { label: 'MO routes', value: patternCount, c: '#ff4d6d' }
+            { label: 'Links', value: visEdges.length, c: '#ce93d8' }
           ].map(s => (
             <div key={s.label} style={{ padding: '6px 14px', borderRadius: '20px', background: 'rgba(7,16,28,0.85)', border: `1px solid ${s.c}30`, fontSize: '12px', backdropFilter: 'blur(10px)' }}>
               <span style={{ color: s.c, fontWeight: 700 }}>{s.value}</span>
               <span style={{ color: 'var(--text-muted)', marginLeft: '6px' }}>{s.label}</span>
             </div>
           ))}
+
+          {/* SIMILAR PATTERN MATCHES (MO) TOGGLE PILL */}
+          <div
+            onClick={() => setShowPatternMatches(prev => !prev)}
+            role="button"
+            title="Toggle Similar Modus Operandi (MO) Pattern Matches On/Off"
+            style={{
+              display: 'flex', alignItems: 'center', gap: '8px',
+              padding: '5px 12px', borderRadius: '20px',
+              background: showPatternMatches ? 'rgba(255, 77, 109, 0.12)' : 'rgba(7,16,28,0.85)',
+              border: `1px solid ${showPatternMatches ? 'rgba(255, 77, 109, 0.4)' : 'rgba(255,255,255,0.15)'}`,
+              cursor: 'pointer', userSelect: 'none',
+              backdropFilter: 'blur(10px)', transition: 'all 0.2s'
+            }}
+          >
+            <span style={{
+              fontSize: '11px', fontWeight: 700,
+              color: showPatternMatches ? '#ff4d6d' : 'var(--text-muted)'
+            }}>
+              MO PATTERNS{showPatternMatches ? ` (${patternCount})` : ''}
+            </span>
+            <div style={{
+              width: '28px', height: '16px', borderRadius: '8px',
+              background: showPatternMatches ? '#ff4d6d' : 'rgba(255,255,255,0.2)',
+              position: 'relative', transition: 'background 0.2s', flexShrink: 0
+            }}>
+              <div style={{
+                width: '12px', height: '12px', borderRadius: '50%',
+                background: '#fff', position: 'absolute', top: '2px',
+                left: showPatternMatches ? '14px' : '2px',
+                transition: 'left 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.3)'
+              }} />
+            </div>
+          </div>
+
+          {/* TIME RANGE SELECTOR PILL */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '6px',
+            padding: '4px 12px', borderRadius: '20px',
+            background: 'rgba(7,16,28,0.85)',
+            border: '1px solid rgba(79,195,247,0.35)',
+            fontSize: '12px', backdropFilter: 'blur(10px)'
+          }}>
+            <span style={{ color: '#4fc3f7', fontSize: '11px', fontWeight: 700 }}>PERIOD:</span>
+            <select
+              value={qTimeRange}
+              onChange={e => setQTimeRange(e.target.value)}
+              style={{
+                background: 'transparent', border: 'none',
+                color: '#fff', fontSize: '12px', fontWeight: 600,
+                outline: 'none', cursor: 'pointer'
+              }}
+            >
+              {TIME_RANGE_OPTIONS.map(opt => (
+                <option key={opt.key} value={opt.key} style={{ background: '#07101c', color: '#fff' }}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {totalCaseMatches > CASE_WINDOW && (
             <div style={{ padding: '6px 14px', borderRadius: '20px', background: 'rgba(79,195,247,0.08)', border: '1px solid rgba(79,195,247,0.24)', fontSize: '12px', color: '#9bdff8', backdropFilter: 'blur(10px)' }}>
               {totalCaseMatches.toLocaleString()} FIRs matched · first {CASE_WINDOW} loaded
             </div>
           )}
-            {hiddenCount > 0 && (
+          {hiddenCount > 0 && (
             <div style={{ padding: '6px 14px', borderRadius: '20px', background: 'rgba(255,193,7,0.08)', border: '1px solid rgba(255,193,7,0.24)', fontSize: '12px', color: '#ffd54f', backdropFilter: 'blur(10px)' }}>
               +{hiddenCount.toLocaleString()} clustered
             </div>
@@ -848,10 +1032,51 @@ export default function NetworkGraph() {
                     NETWORK IMPACT ({connectedSet ? connectedSet.size - 1 : 0} CONNECTIONS)
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                    {breakdown.pattern > 0 && (
-                      <div style={{ background: 'rgba(255, 77, 109, 0.1)', padding: '10px', borderRadius: '8px', border: `1px solid rgba(255, 77, 109, 0.5)`, gridColumn: '1 / -1' }}>
-                        <div style={{ fontSize: '18px', fontWeight: 700, color: '#ff4d6d' }}>{breakdown.pattern}</div>
-                        <div style={{ fontSize: '10px', color: '#ff4d6d', marginTop: '2px' }}>SIMILAR PATTERN MATCHES (MO)</div>
+                    {(breakdown.pattern > 0 || selectedNode.type === 'case') && (
+                      <div 
+                        onClick={() => setShowPatternMatches(prev => !prev)}
+                        role="button"
+                        title="Toggle Similar MO Patterns"
+                        style={{
+                          background: showPatternMatches ? 'rgba(255, 77, 109, 0.08)' : 'rgba(255, 255, 255, 0.03)',
+                          padding: '10px 12px', borderRadius: '8px',
+                          border: `1px solid ${showPatternMatches ? 'rgba(255, 77, 109, 0.35)' : 'rgba(255,255,255,0.08)'}`,
+                          gridColumn: '1 / -1',
+                          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                          cursor: 'pointer', userSelect: 'none', transition: 'all 0.2s'
+                        }}
+                      >
+                        <div>
+                          <div style={{ fontSize: '16px', fontWeight: 700, color: showPatternMatches ? '#ff4d6d' : 'var(--text-muted)' }}>
+                            {showPatternMatches ? breakdown.pattern : 'OFF'}
+                          </div>
+                          <div style={{ fontSize: '10px', color: showPatternMatches ? '#ff859b' : 'var(--text-muted)', marginTop: '2px' }}>
+                            SIMILAR PATTERN MATCHES (MO)
+                          </div>
+                        </div>
+                        <div style={{
+                          display: 'flex', alignItems: 'center', gap: '6px',
+                          padding: '4px 8px', borderRadius: '12px',
+                          background: showPatternMatches ? 'rgba(255, 77, 109, 0.15)' : 'rgba(255,255,255,0.05)',
+                          border: `1px solid ${showPatternMatches ? 'rgba(255, 77, 109, 0.3)' : 'rgba(255,255,255,0.1)'}`
+                        }}>
+                          <span style={{ fontSize: '10px', fontWeight: 700, color: showPatternMatches ? '#ff4d6d' : 'var(--text-muted)' }}>
+                            {showPatternMatches ? 'ON' : 'OFF'}
+                          </span>
+                          <div style={{
+                            width: '26px', height: '14px', borderRadius: '7px',
+                            background: showPatternMatches ? '#ff4d6d' : 'rgba(255,255,255,0.2)',
+                            position: 'relative', transition: 'background 0.2s', flexShrink: 0
+                          }}>
+                            <div style={{
+                              width: '10px', height: '10px', borderRadius: '50%',
+                              background: '#fff', position: 'absolute', top: '2px',
+                              left: showPatternMatches ? '14px' : '2px',
+                              transition: 'left 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                              boxShadow: '0 1px 2px rgba(0,0,0,0.3)'
+                            }} />
+                          </div>
+                        </div>
                       </div>
                     )}
                     {[

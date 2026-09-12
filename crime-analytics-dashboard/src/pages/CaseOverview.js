@@ -15,6 +15,7 @@ import { playAlertSound } from '../utils/audioAlert';
 import { accused, victims, complainantDetails } from '../data/sampleData';
 import { useSecurity } from '../context/SecurityContext';
 import { getSecureCaseViews } from '../security/securityUtils';
+import { findSimilarCases } from '../utils/similarityEngine';
 
 // Helper function to check if a case is restricted for the current officer session
 const checkIsCaseRestricted = (c, session) => {
@@ -384,52 +385,10 @@ function CaseOverview() {
     ];
   }, [activeCase]);
 
-  // Compute case overlaps
+  // Compute case overlaps with forensic accuracy (score >= 60)
   const hiddenAssociations = useMemo(() => {
     if (!activeCase) return [];
-    const activeCaseAccusedNames = new Set((activeCase.accused || []).map(a => a.AccusedName).filter(Boolean));
-    const activeComplainants = new Set((activeCase.complainants || []).map(c => c.ComplainantName));
-    const activeVictims = new Set(activeCase.victims?.map(v => v.VictimName));
-
-    const matches = [];
-    secureCases.forEach(other => {
-      if (other.CaseMasterID === activeCase.CaseMasterID) return;
-
-      const otherAccused = other.accused || [];
-      const sharedAccused = otherAccused.filter(a => activeCaseAccusedNames.has(a.AccusedName));
-      if (sharedAccused.length > 0) {
-        matches.push({
-          caseId: other.CaseMasterID,
-          crimeNo: other.displayCrimeNo || `FIR-${other.CaseMasterID}`,
-          reason: `Shared suspect: ${sharedAccused.map(a => a.AccusedName).join(', ')}`,
-          type: 'Suspect'
-        });
-        return;
-      }
-
-      const otherVictims = other.victims || [];
-      const sharedVictims = otherVictims.filter(v => activeVictims.has(v.VictimName));
-      if (sharedVictims.length > 0) {
-        matches.push({
-          caseId: other.CaseMasterID,
-          crimeNo: other.displayCrimeNo || `FIR-${other.CaseMasterID}`,
-          reason: `Shared victim: ${sharedVictims.map(v => v.VictimName).join(', ')}`,
-          type: 'Victim'
-        });
-        return;
-      }
-
-      if (other.PoliceStationID === activeCase.PoliceStationID && other.CrimeMajorHeadID === activeCase.CrimeMajorHeadID) {
-        matches.push({
-          caseId: other.CaseMasterID,
-          crimeNo: other.displayCrimeNo || `FIR-${other.CaseMasterID}`,
-          reason: `Precinct MO match: ${other.minorHeadName || other.majorHeadName}`,
-          type: 'MO / Venue'
-        });
-      }
-    });
-
-    return matches.slice(0, 3);
+    return findSimilarCases(activeCase, secureCases, { maxResults: 4, minScore: 60 });
   }, [activeCase, secureCases]);
 
   // Action bars permissions checks
