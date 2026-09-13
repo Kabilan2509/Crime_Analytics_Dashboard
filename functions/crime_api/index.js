@@ -727,5 +727,309 @@ app.post('/api/security/verify-otp', async (req, res) => {
   }
 });
 
+// ═══════════════════════════════════════════════════════════════════════════
+// ROUTES: Dynamic Per-Officer MFA & PII Access Control
+// ═══════════════════════════════════════════════════════════════════════════
+const mfaService = require('./mfaService');
+const localMfaProfiles = new Map();
+
+function getCatalystAdminApp(req) {
+  try {
+    return catalyst.initialize(req, { scope: 'admin' });
+  } catch (_) {
+    return catalyst.initialize(req);
+  }
+}
+
+// 1. Check MFA Status for an officer (Returns QR if not active / enrolled, or ENROLLED)
+app.get('/api/mfa/status', async (req, res) => {
+  try {
+    const catalystApp = getCatalystAdminApp(req);
+    const email = String(req.query.email || '').trim().toLowerCase();
+
+    if (!email || !email.includes('@')) {
+      return res.status(400).json({ error: 'Valid officer email is required' });
+    }
+
+    const dataTable = catalystApp.datastore().table('UserMFA');
+    const existingRows = await optionalQuery(catalystApp, `SELECT ROWID, UserEmail, EncryptedSecret, IsActive, LastVerifiedAt FROM UserMFA WHERE UserEmail = '${email}'`, 'UserMFA');
+
+    let row = existingRows && existingRows.length > 0 ? existingRows[0] : null;
+    if (!row && localMfaProfiles.has(email)) {
+      row = localMfaProfiles.get(email);
+    }
+
+    if (row && (row.IsActive === true || String(row.IsActive).toLowerCase() === 'true')) {
+      return res.status(200).json({
+        status: 'ENROLLED',
+        userEmail: email,
+        lastVerifiedAt: row.LastVerifiedAt || null,
+        message: 'Officer is enrolled in Authenticator 2FA.'
+      });
+    }
+
+    // Not enrolled or setup required -> Generate a unique Base32 secret
+    const secret = mfaService.generateBase32Secret();
+    const encryptedSecret = mfaService.encryptSecret(secret);
+    const uri = mfaService.generateOtpauthURI(email, secret, 'KSP Intelligence');
+    const qrDataUrl = await mfaService.generateQrDataUrl(uri);
+
+    try {
+      if (row && row.ROWID) {
+        await dataTable.updateRow({
+          ROWID: row.ROWID,
+          EncryptedSecret: encryptedSecret,
+          IsActive: false,
+        });
+      } else {
+        const inserted = await dataTable.insertRow({
+          UserEmail: email,
+          EncryptedSecret: encryptedSecret,
+          IsActive: false,
+        });
+        if (inserted && inserted.ROWID) row = inserted;
+      }
+    } catch (dbErr) {
+      console.warn('[MFA Status] DataStore write notice:', dbErr.message);
+      localMfaProfiles.set(email, {
+        UserEmail: email,
+        EncryptedSecret: encryptedSecret,
+        IsActive: false,
+      });
+    }
+
+    return res.status(200).json({
+      status: 'SETUP_REQUIRED',
+      userEmail: email,
+      qrDataUrl,
+      secret,
+      uri,
+      message: 'Scan the QR code with Google Authenticator or enter the setup key.'
+    });
+  } catch (err) {
+    console.error('[MFA Status] Error:', err);
+    return res.status(500).json({ error: errorMessage(err) });
+  }
+});
+
+// 2. Verify 6-digit TOTP code (Activates user on setup, or authorizes PII unlock)
+app.post('/api/mfa/verify', async (req, res) => {
+  try {
+    const catalystApp = getCatalystAdminApp(req);
+    const email = String(req.body.email || '').trim().toLowerCase();
+    const token = String(req.body.token || '').trim();
+
+    if (!email || !token) {
+      return res.status(400).json({ error: 'Email and 6-digit Authenticator code are required' });
+    }
+
+    const dataTable = catalystApp.datastore().table('UserMFA');
+    const existingRows = await optionalQuery(catalystApp, `SELECT ROWID, UserEmail, EncryptedSecret, IsActive FROM UserMFA WHERE UserEmail = '${email}'`, 'UserMFA');
+
+    let row = existingRows && existingRows.length > 0 ? existingRows[0] : null;
+    if (!row && localMfaProfiles.has(email)) {
+      row = localMfaProfiles.get(email);
+    }
+
+    if (!row || !row.EncryptedSecret) {
+      return res.status(404).json({ error: 'Officer MFA profile not found. Please initiate setup first.' });
+    }
+
+    const plainSecret = mfaService.decryptSecret(row.EncryptedSecret);
+    if (!plainSecret) {
+      return res.status(500).json({ error: 'Failed to decrypt MFA security key' });
+    }
+
+    const isValid = mfaService.verifyTOTP(plainSecret, token, 1);
+    if (!isValid) {
+      return res.status(400).json({ error: 'Invalid 6-digit Authenticator code. Please check your Authenticator app and try again.' });
+    }
+
+    // Catalyst Datastore datetime format must be YYYY-MM-DD HH:mm:ss
+    const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
+    try {
+      if (row.ROWID) {
+        await dataTable.updateRow({
+          ROWID: row.ROWID,
+          IsActive: true,
+          LastVerifiedAt: now,
+        });
+      }
+    } catch (dbErr) {
+      console.warn('[MFA Verify] DataStore update notice:', dbErr.message);
+    }
+
+    localMfaProfiles.set(email, {
+      ...row,
+      IsActive: true,
+      LastVerifiedAt: now,
+    });
+
+    return res.status(200).json({
+      success: true,
+      verified: true,
+      userEmail: email,
+      message: 'PII access authorized.'
+    });
+  } catch (err) {
+    console.error('[MFA Verify] Error:', err);
+    return res.status(500).json({ error: errorMessage(err) });
+  }
+});
+
+// 3. Request MFA Reset (Lost Phone / Re-enroll) -> Sends 6-digit verification code to email
+app.post('/api/mfa/request-reset', async (req, res) => {
+  try {
+    const catalystApp = getCatalystAdminApp(req);
+    const emailAddress = String(req.body.email || '').trim().toLowerCase();
+    const badgeId = req.body.badgeId || '';
+    const officerName = req.body.officerName || 'Officer';
+
+    if (!emailAddress || !emailAddress.includes('@')) {
+      return res.status(400).json({ error: 'Valid officer email is required' });
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const cacheKey = `mfa-reset-${emailAddress.replace(/[^a-z0-9]/gi, '_')}`;
+
+    try {
+      const cache = catalystApp.cache();
+      const segment = cache.segment('56064000000013067');
+      await segment.put(cacheKey, otp, 5); // 5 minutes TTL
+    } catch (cacheErr) {
+      localOtpStorage.set(cacheKey, { otp, expires: Date.now() + 5 * 60 * 1000 });
+    }
+
+    let emailSent = false;
+    let mailError = null;
+    try {
+      const email = catalystApp.email();
+      const emailConfig = {
+        from_email: 'kabilanka2509@gmail.com',
+        to_email: [emailAddress],
+        subject: 'KSP Command Center — Authenticator Reset Verification Code',
+        html_mode: true,
+        content: `
+          <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #cbd5e1; border-radius: 8px; max-width: 500px; color: #1e293b;">
+            <h2 style="color: #5c2e91; margin: 0 0 12px 0; font-size: 20px; border-bottom: 2px solid #5c2e91; padding-bottom: 8px;">KSP MFA DEVICE RESET</h2>
+            <p style="font-size: 14px; line-height: 1.5;">Officer <strong>${officerName} ${badgeId ? `(${badgeId})` : ''}</strong> has requested to reset their Authenticator setup key.</p>
+            <p style="font-size: 14px; margin-top: 15px;">Use the verification code below to authorize the new Authenticator QR code:</p>
+            <div style="background: #f1f5f9; padding: 16px; border-radius: 6px; text-align: center; margin: 20px 0;">
+              <span style="font-size: 32px; font-weight: bold; color: #5c2e91; font-family: monospace; letter-spacing: 4px;">${otp}</span>
+            </div>
+            <p style="font-size: 12px; color: #64748b;">This code expires in 5 minutes. If you did not request this reset, contact the Command IT Administrator immediately.</p>
+          </div>
+        `
+      };
+      await email.sendMail(emailConfig);
+      emailSent = true;
+    } catch (err) {
+      mailError = err.message || err;
+      console.warn('[MFA Reset] Email send failed:', mailError);
+    }
+
+    return res.status(200).json({
+      success: true,
+      emailSent,
+      debugOtp: !emailSent ? otp : null,
+      message: emailSent
+        ? `Verification code sent to ${emailAddress}.`
+        : `Email delivery unavailable (${mailError}). For demo: ${otp}`
+    });
+  } catch (err) {
+    console.error('[MFA Request Reset] Error:', err);
+    return res.status(500).json({ error: errorMessage(err) });
+  }
+});
+
+// 4. Confirm Reset & Issue New QR Code
+app.post('/api/mfa/confirm-reset', async (req, res) => {
+  try {
+    const catalystApp = getCatalystAdminApp(req);
+    const emailAddress = String(req.body.email || '').trim().toLowerCase();
+    const code = String(req.body.code || '').trim();
+
+    if (!emailAddress || !code) {
+      return res.status(400).json({ error: 'Email and verification code are required' });
+    }
+
+    const cacheKey = `mfa-reset-${emailAddress.replace(/[^a-z0-9]/gi, '_')}`;
+    let savedOtp = null;
+
+    try {
+      const cache = catalystApp.cache();
+      const segment = cache.segment('56064000000013067');
+      savedOtp = await segment.getValue(cacheKey);
+    } catch (cacheErr) {
+      console.warn('[MFA Reset] Cache read failed:', cacheErr.message);
+    }
+
+    if (!savedOtp) {
+      const record = localOtpStorage.get(cacheKey);
+      if (record && record.expires > Date.now()) savedOtp = record.otp;
+    }
+
+    if (!savedOtp || String(savedOtp).trim() !== String(code).trim()) {
+      return res.status(400).json({ error: 'Invalid or expired verification code. Please request a new code.' });
+    }
+
+    // Code is valid! Clean up cache
+    try {
+      const cache = catalystApp.cache();
+      const segment = cache.segment('56064000000013067');
+      await segment.delete(cacheKey);
+    } catch (_) {
+      localOtpStorage.delete(cacheKey);
+    }
+
+    // Invalidate old secret, generate brand-new secret
+    const newSecret = mfaService.generateBase32Secret();
+    const newEncrypted = mfaService.encryptSecret(newSecret);
+    const uri = mfaService.generateOtpauthURI(emailAddress, newSecret, 'KSP Intelligence');
+    const qrDataUrl = await mfaService.generateQrDataUrl(uri);
+
+    const dataTable = catalystApp.datastore().table('UserMFA');
+    const existingRows = await optionalQuery(catalystApp, `SELECT ROWID FROM UserMFA WHERE UserEmail = '${emailAddress}'`, 'UserMFA');
+
+    let row = existingRows && existingRows.length > 0 ? existingRows[0] : null;
+
+    try {
+      if (row && row.ROWID) {
+        await dataTable.updateRow({
+          ROWID: row.ROWID,
+          EncryptedSecret: newEncrypted,
+          IsActive: false, // Must re-verify with first code
+        });
+      } else {
+        await dataTable.insertRow({
+          UserEmail: emailAddress,
+          EncryptedSecret: newEncrypted,
+          IsActive: false,
+        });
+      }
+    } catch (dbErr) {
+      console.warn('[MFA Confirm Reset] DataStore write notice:', dbErr.message);
+    }
+
+    localMfaProfiles.set(emailAddress, {
+      UserEmail: emailAddress,
+      EncryptedSecret: newEncrypted,
+      IsActive: false,
+    });
+
+    return res.status(200).json({
+      success: true,
+      status: 'SETUP_REQUIRED',
+      qrDataUrl,
+      secret: newSecret,
+      uri,
+      message: 'Old Authenticator key revoked. Scan the new QR code to re-enroll.'
+    });
+  } catch (err) {
+    console.error('[MFA Confirm Reset] Error:', err);
+    return res.status(500).json({ error: errorMessage(err) });
+  }
+});
+
 // ─── Express listener for Catalyst ────────────────────────────────────────
 module.exports = app;
