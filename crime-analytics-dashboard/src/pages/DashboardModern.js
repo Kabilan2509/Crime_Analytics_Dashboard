@@ -4,7 +4,8 @@ import {
   MdPendingActions, MdTrendingUp, MdWarningAmber,
   MdMap, MdBarChart, MdDescription, MdSmartToy, MdHub,
   MdAutoGraph, MdPeople, MdLink, MdFolderOpen, MdPsychology,
-  MdSettings, MdSecurity, MdAccessTime,
+  MdSettings, MdSecurity, MdAccessTime, MdExpandMore, MdExpandLess,
+  MdHourglassBottom, MdPersonSearch, MdOutlineInfo,
 } from 'react-icons/md';
 import {
   Area, AreaChart, Bar, BarChart, CartesianGrid, Cell,
@@ -19,6 +20,13 @@ import './DashboardModern.css';
 
 const STAT_ICONS = [MdOutlineShield, MdGavel, MdCheckCircle, MdPendingActions];
 const STAT_TONES = ['blue', 'red', 'green', 'amber'];
+
+const EXTENDED_PARAM_ICONS = {
+  heinous_cs_rate: MdGavel,
+  paci: MdSecurity,
+  inv_arrest_ratio: MdPersonSearch,
+  pai: MdHourglassBottom,
+};
 
 function DashboardTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
@@ -57,11 +65,21 @@ function DashboardModern({
   const [loadError, setLoadError] = useState('');
   const [activeConsoleTab, setActiveConsoleTab] = useState('ops');
   const [lang, setLang] = useState(() => localStorage.getItem('ksp-language') || 'en');
+  const [showMoreParams, setShowMoreParams] = useState(false);
+  const [theme, setTheme] = useState(() => document.documentElement.getAttribute('data-theme') || 'light');
 
   useEffect(() => {
     const handleLangChange = (e) => setLang(e.detail);
     window.addEventListener('ksp-language-change', handleLangChange);
     return () => window.removeEventListener('ksp-language-change', handleLangChange);
+  }, []);
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setTheme(document.documentElement.getAttribute('data-theme') || 'light');
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    return () => observer.disconnect();
   }, []);
 
   const TRANSLATIONS = {
@@ -206,6 +224,8 @@ function DashboardModern({
     [filteredCases, session.accessLevel, selectedDistrict],
   );
 
+  const chartGridColor = theme === 'dark' ? 'rgba(173, 193, 214, 0.15)' : '#e2e8f0';
+
   const renderStatLabel = (label) => {
     if (lang !== 'kn') return label;
     if (label === 'High-Risk Status') return 'ಅಪಾಯದ ಸ್ಥಿತಿ';
@@ -213,6 +233,10 @@ function DashboardModern({
     if (label === 'FIR Registered') return 'ದಾಖಲಾದ ಎಫ್‌ಐಆರ್‌ಗಳು';
     if (label === 'Heinous Crime Cases') return 'ಗಂಭೀರ ಅಪರಾಧ ಪ್ರಕರಣಗಳು';
     if (label === 'Case Clearance Rate') return 'ಪ್ರಕರಣ ವಿಲೇವಾರಿ ದರ';
+    if (label === 'Heinous CS Rate (60/90d)') return 'ಗಂಭೀರ ಪ್ರಕರಣಗಳ ದೋಷಾರೋಪಣಾ ದರ (೬೦/೯೦ ದಿನ)';
+    if (label === 'Preventive Action Index (PACI)') return 'ಮುನ್ನೆಚ್ಚರಿಕೆ ಕ್ರಮ ಸೂಚ್ಯಂಕ (PACI)';
+    if (label === 'Investigation-to-Arrest Ratio') return 'ತನಿಖೆ-ಬಂಧನ ಅನುಪಾತ';
+    if (label === 'Pendency Aging Index (PAI)') return 'ಬಾಕಿ ಉಳಿದ ಪ್ರಕರಣಗಳ ವಯಸ್ಸಿನ ಸೂಚ್ಯಂಕ (PAI)';
     return label;
   };
 
@@ -476,6 +500,69 @@ function DashboardModern({
         html[data-theme="dark"] .md-table tr:hover td {
           background: color-mix(in srgb, var(--bg-panel) 82%, var(--accent-primary) 18%) !important;
         }
+
+        .md-more-params-toggle-container {
+          display: flex;
+          justify-content: flex-end;
+          margin-top: -2px;
+          margin-bottom: 12px;
+        }
+
+        .md-more-params-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          background: #ffffff;
+          border: 1px solid #cbd5e1;
+          border-radius: 4px;
+          padding: 4px 12px;
+          font-size: 11px;
+          font-weight: 700;
+          color: #5c2e91;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+        }
+
+        .md-more-params-btn:hover {
+          background: #f8fafc;
+          border-color: #5c2e91;
+          color: #4a2176;
+        }
+
+        .md-more-params-btn.expanded {
+          background: #f3e8ff;
+          border-color: #5c2e91;
+          color: #5c2e91;
+        }
+
+        .md-stats-extended {
+          margin-bottom: 14px;
+          animation: fadeIn 0.25s ease;
+        }
+
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(-4px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        html[data-theme="dark"] .md-more-params-btn {
+          background: var(--bg-panel, #142132) !important;
+          border-color: var(--border-color, rgba(173, 193, 214, 0.18)) !important;
+          color: #c084fc !important;
+        }
+
+        html[data-theme="dark"] .md-more-params-btn:hover {
+          background: var(--bg-panel-alt, #19283b) !important;
+          border-color: #c084fc !important;
+          color: #e9d5ff !important;
+        }
+
+        html[data-theme="dark"] .md-more-params-btn.expanded {
+          background: rgba(192, 132, 252, 0.15) !important;
+          border-color: #c084fc !important;
+          color: #e9d5ff !important;
+        }
       `}</style>
 
       <div className="md-page-heading" style={{ marginBottom: '20px' }}>
@@ -604,6 +691,53 @@ function DashboardModern({
         })}
       </section>
 
+      <div className="md-more-params-toggle-container">
+        <button
+          type="button"
+          className={`md-more-params-btn ${showMoreParams ? 'expanded' : ''}`}
+          onClick={() => setShowMoreParams(prev => !prev)}
+          aria-expanded={showMoreParams}
+        >
+          <span>
+            {showMoreParams
+              ? (lang === 'kn' ? 'ಕಡಿಮೆ ನಿಯತಾಂಕಗಳು' : 'Fewer Parameters')
+              : (lang === 'kn' ? 'ಹೆಚ್ಚಿನ ನಿಯತಾಂಕಗಳು' : 'More Parameters')}
+          </span>
+          {showMoreParams ? <MdExpandLess size={16} /> : <MdExpandMore size={16} />}
+        </button>
+      </div>
+
+      {showMoreParams && data?.opsStats?.extendedParams && (
+        <section className="md-stats md-stats-extended" aria-label="Extended operational parameters">
+          {data.opsStats.extendedParams.map((param) => {
+            const Icon = EXTENDED_PARAM_ICONS[param.id] || MdOutlineShield;
+            const isTextVal = typeof param.value === 'string' && isNaN(Number(String(param.value).replace(/[%x]/g, '')));
+
+            return (
+              <article
+                className={`md-stat md-stat-${param.tone}`}
+                key={param.id}
+              >
+                <div className="md-stat-icon"><Icon /></div>
+                <div className="md-stat-copy" style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px' }}>
+                    <span style={{ fontSize: '9px', lineHeight: 1.2 }}>{renderStatLabel(param.label)}</span>
+                    <span
+                      title={`${param.fullLabel}\n\nFormula: ${param.formula}\n\nWhy it matters: ${param.description}`}
+                      style={{ cursor: 'help', color: 'var(--text-muted, #8491a3)', display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}
+                    >
+                      <MdOutlineInfo size={14} />
+                    </span>
+                  </div>
+                  <strong className={isTextVal ? 'is-text-val' : ''}>{param.value}</strong>
+                  <small title={param.caption} style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{param.caption}</small>
+                </div>
+              </article>
+            );
+          })}
+        </section>
+      )}
+
       <div className="md-top-grid">
         <div className="md-panel md-map-panel">
           <div className="md-panel-head">
@@ -639,7 +773,7 @@ function DashboardModern({
                     <stop offset="1" stopColor="#5c2e91" stopOpacity=".01" />
                   </linearGradient>
                 </defs>
-                <CartesianGrid stroke="#e8edf4" vertical={false} />
+                <CartesianGrid stroke={chartGridColor} strokeDasharray="3 3" vertical={true} horizontal={true} />
                 <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#8592a5', fontSize: 11 }} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fill: '#8592a5', fontSize: 11 }} />
                 <Tooltip content={<DashboardTooltip />} />
@@ -663,7 +797,7 @@ function DashboardModern({
           <div className="md-panel-body">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data.crimeDistribution.slice(0, 7)} layout="vertical" margin={{ top: 8, right: 18, left: 8, bottom: 8 }}>
-                <CartesianGrid stroke="#edf1f6" horizontal={false} />
+                <CartesianGrid stroke={chartGridColor} strokeDasharray="3 3" horizontal={true} vertical={true} />
                 <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: '#8a97a9', fontSize: 10 }} />
                 <YAxis type="category" dataKey="name" width={142} axisLine={false} tickLine={false} tick={{ fill: '#526278', fontSize: 11 }} />
                 <Tooltip content={<DashboardTooltip />} />

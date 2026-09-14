@@ -450,7 +450,7 @@ function MapLegend({ activeLayer, activeVisLayers, theme, overlayBg, overlayBord
   };
 
   const activeOp = opLayerLegendMap[activeLayer];
-  const isHeatActive = activeVisLayers?.density || ['overall', 'murder', 'theft', 'women', 'cyber'].includes(activeLayer);
+  const isHeatActive = Boolean(activeVisLayers?.density);
 
   return (
     <div 
@@ -463,27 +463,28 @@ function MapLegend({ activeLayer, activeVisLayers, theme, overlayBg, overlayBord
         background: overlayBg,
         backdropFilter: 'blur(6px)',
         border: isColorblind ? '1.5px solid #0072b2' : overlayBorder,
-        padding: '6px 12px',
+        padding: '8px 18px',
         borderRadius: '20px',
         fontFamily: 'monospace',
-        fontSize: '10px',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.18)',
+        fontSize: '11px',
+        boxShadow: '0 4px 14px rgba(0,0,0,0.2)',
         color: 'var(--text-primary)',
         display: 'flex',
         alignItems: 'center',
-        gap: '12px',
-        pointerEvents: 'auto'
+        gap: '16px',
+        pointerEvents: 'auto',
+        minWidth: 'fit-content'
       }}
     >
-      <span style={{ fontWeight: 'bold', textTransform: 'uppercase', color: isColorblind ? '#0072b2' : 'var(--accent-primary)', fontSize: '9px', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+      <span style={{ fontWeight: 'bold', textTransform: 'uppercase', color: isColorblind ? '#0072b2' : 'var(--accent-primary)', fontSize: '10px', letterSpacing: '0.6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
         MAP LEGEND:
         {isColorblind && (
           <span style={{
             background: '#0072b2',
             color: '#ffffff',
-            padding: '1px 5px',
+            padding: '1px 6px',
             borderRadius: '10px',
-            fontSize: '8px',
+            fontSize: '9px',
             fontWeight: 800,
             letterSpacing: '0.3px'
           }}>
@@ -494,38 +495,53 @@ function MapLegend({ activeLayer, activeVisLayers, theme, overlayBg, overlayBord
 
       {activeOp && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span style={{ display: 'inline-block', width: '9px', height: '9px', borderRadius: '50%', backgroundColor: activeOp.color, border: '1px solid #fff' }} />
-          <span style={{ fontWeight: 'bold' }}>{activeOp.label}</span>
+          <span style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '50%', backgroundColor: activeOp.color, border: '1.5px solid #fff' }} />
+          <span style={{ fontWeight: 'bold', fontSize: '11px' }}>{activeOp.label}</span>
         </div>
       )}
 
       {isHeatActive && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span style={{ color: 'var(--text-muted)', fontSize: '9px' }}>Density:</span>
+          <span style={{ color: 'var(--text-muted)', fontSize: '10px' }}>Density:</span>
           <div style={{
             height: '8px',
-            width: '60px',
+            width: '75px',
             background: isColorblind 
               ? 'linear-gradient(to right, #00429d, #4771b2, #73a2c6, #e69f00, #d81b60)'
               : 'linear-gradient(to right, #4c1d95, #c026d3, #f97316, #ef4444, #fecaca)',
-            borderRadius: '2px'
+            borderRadius: '3px'
           }} />
-          <span style={{ fontSize: '8px', color: 'var(--text-muted)' }}>Low → High</span>
+          <span style={{ fontSize: '9px', color: 'var(--text-muted)' }}>Low → High</span>
+        </div>
+      )}
+
+      {activeVisLayers?.choropleth && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{ color: 'var(--text-muted)', fontSize: '10px' }}>Grid:</span>
+          <div style={{
+            height: '8px',
+            width: '75px',
+            background: isColorblind 
+              ? 'linear-gradient(to right, #0072b2, #56b4e9, #e69f00, #d81b60)'
+              : 'linear-gradient(to right, #38bdf8, #facc15, #f97316, #ef4444)',
+            borderRadius: '3px'
+          }} />
+          <span style={{ fontSize: '9px', color: 'var(--text-muted)' }}>Low → High</span>
         </div>
       )}
 
       {activeVisLayers?.graduated && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span style={{ color: 'var(--text-muted)', fontSize: '9px' }}>Tiers:</span>
-          <span style={{ color: isColorblind ? '#56b4e9' : '#facc15' }}>● Low</span>
-          <span style={{ color: isColorblind ? '#e69f00' : '#f97316' }}>● Med</span>
-          <span style={{ color: isColorblind ? '#d81b60' : '#ef4444' }}>● High</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '10px' }}>
+          <span style={{ color: 'var(--text-muted)' }}>Tiers:</span>
+          <span style={{ color: isColorblind ? '#56b4e9' : '#facc15', fontWeight: 600 }}>● Low</span>
+          <span style={{ color: isColorblind ? '#e69f00' : '#f97316', fontWeight: 600 }}>● Med</span>
+          <span style={{ color: isColorblind ? '#d81b60' : '#ef4444', fontWeight: 600 }}>● High</span>
         </div>
       )}
 
       {activeVisLayers?.rawPins && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: isColorblind ? '#0072b2' : '#3b82f6', border: '1.5px solid #fff' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px' }}>
+          <span style={{ display: 'inline-block', width: '9px', height: '9px', borderRadius: '50%', backgroundColor: isColorblind ? '#0072b2' : '#3b82f6', border: '1.5px solid #fff' }} />
           <span>Incident Pin</span>
         </div>
       )}
@@ -749,17 +765,76 @@ function CrimeMap({ selectedDistrict: globalDistrict, selectedCrimeType: globalC
 
   const [isPlaying, setIsPlaying] = useState(false);
   const timerRef = useRef(null);
+  const timelineRef = useRef({ startIndex, endIndex, isPlaying });
 
   useEffect(() => {
-    const handleEscape = event => {
+    timelineRef.current = { startIndex, endIndex, isPlaying };
+  }, [startIndex, endIndex, isPlaying]);
+
+  useEffect(() => {
+    const handleKeyDown = event => {
+      // Ignore when user is typing in form inputs, select dropdowns, or sliders
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target?.tagName) || event.target?.getAttribute('role') === 'slider') {
+        return;
+      }
+
       if (event.key === 'Escape') {
         setMapInteractive(false);
         setMapCenter(KARNATAKA_CENTER);
         setMapZoom(KARNATAKA_ZOOM);
+        return;
+      }
+
+      // Spacebar: Toggle Play / Pause
+      if (event.code === 'Space' || event.key === ' ') {
+        event.preventDefault();
+        const { startIndex: curStart, endIndex: curEnd, isPlaying: curPlaying } = timelineRef.current;
+        if (curPlaying) {
+          setIsPlaying(false);
+        } else {
+          if (curEnd >= 30) {
+            const width = curStart === 0 ? 3 : curEnd - curStart;
+            setStartIndex(0);
+            setEndIndex(Math.min(30, width));
+          }
+          setIsPlaying(true);
+        }
+        return;
+      }
+
+      // Right Arrow: Advance 1 frame
+      if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        setIsPlaying(false);
+        const { startIndex: curStart, endIndex: curEnd } = timelineRef.current;
+        if (curEnd < 30) {
+          const width = curEnd - curStart;
+          const nextStart = curStart + 1;
+          const nextEnd = Math.min(30, nextStart + width);
+          setStartIndex(nextStart);
+          setEndIndex(nextEnd);
+        }
+        return;
+      }
+
+      // Left Arrow: Previous 1 frame
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        setIsPlaying(false);
+        const { startIndex: curStart, endIndex: curEnd } = timelineRef.current;
+        if (curStart > 0) {
+          const width = curEnd - curStart;
+          const nextStart = Math.max(0, curStart - 1);
+          const nextEnd = nextStart + width;
+          setStartIndex(nextStart);
+          setEndIndex(nextEnd);
+        }
+        return;
       }
     };
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   useEffect(() => {
@@ -771,21 +846,24 @@ function CrimeMap({ selectedDistrict: globalDistrict, selectedCrimeType: globalC
   useEffect(() => {
     if (isPlaying) {
       timerRef.current = setInterval(() => {
-        setStartIndex(prevStart => {
-          const size = endIndex - prevStart;
-          const nextStart = prevStart + 1;
-          const nextEnd = nextStart + size;
-          if (nextEnd > 30) {
-            setIsPlaying(false);
-            return prevStart;
-          }
+        const { startIndex: curStart, endIndex: curEnd } = timelineRef.current;
+        if (curEnd >= 30) {
+          setIsPlaying(false);
+        } else {
+          const width = curEnd - curStart;
+          const nextStart = curStart + 1;
+          const nextEnd = Math.min(30, nextStart + width);
+          setStartIndex(nextStart);
           setEndIndex(nextEnd);
-          return nextStart;
-        });
+        }
       }, 1200);
-    } else clearInterval(timerRef.current);
-    return () => clearInterval(timerRef.current);
-  }, [isPlaying, endIndex]);
+    } else if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [isPlaying]);
 
   /* Data Scoping */
   const districtId = localDistrict !== 'all' ? localDistrict : globalDistrict;
@@ -1092,22 +1170,22 @@ function CrimeMap({ selectedDistrict: globalDistrict, selectedCrimeType: globalC
             <ZoomControlOverlay overlayBg={overlayBg} overlayBorder={overlayBorder} />
 
             {/* True Kernel Density Estimation Layer */}
-            {(activeVisLayers.density || ['overall', 'murder', 'theft', 'women', 'cyber'].includes(activeLayer)) && weightedHeatPoints.length > 0 && (
+            {activeVisLayers.density && weightedHeatPoints.length > 0 && (
               <HeatmapLayer points={weightedHeatPoints} mapZoom={liveMapZoom} isColorblind={isColorblind} />
             )}
 
             {/* Choropleth Grid Layer */}
-            {activeVisLayers.choropleth && liveMapZoom < 9 && binnedGridCells.length > 0 && (
+            {activeVisLayers.choropleth && binnedGridCells.length > 0 && (
               <ChoroplethLayer cells={binnedGridCells} theme={theme} isColorblind={isColorblind} />
             )}
 
             {/* Graduated Points Layer */}
-            {activeVisLayers.graduated && liveMapZoom >= 9 && liveMapZoom < 13 && binnedGridCells.length > 0 && (
+            {activeVisLayers.graduated && binnedGridCells.length > 0 && (
               <GraduatedPointsLayer cells={binnedGridCells} isColorblind={isColorblind} />
             )}
 
             {/* Raw Incident Pins Cluster Layer */}
-            {activeVisLayers.rawPins && liveMapZoom >= 13 && secureCases.length > 0 && (
+            {activeVisLayers.rawPins && secureCases.length > 0 && (
               <MarkerClusterGroup points={secureCases} isColorblind={isColorblind} />
             )}
 

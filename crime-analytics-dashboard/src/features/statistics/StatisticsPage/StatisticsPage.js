@@ -325,10 +325,51 @@ function StatisticsPage({ defaultDistrict = 'all', defaultCrimeType = 'all', def
         onReset={handleResetFilters}
       />
 
+      {!loading && !error && (filteredCasesForKPIs.length === 0 || (pageData.filteredList && pageData.filteredList.length === 0)) && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '12px 18px',
+          background: 'rgba(239, 68, 68, 0.09)',
+          border: '1.5px solid #ef4444',
+          borderRadius: '0px',
+          marginBottom: '20px',
+          color: '#ef4444',
+          fontFamily: 'Consolas, monospace',
+          fontSize: '12px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '18px', fontWeight: 'bold' }}>⚠️</span>
+            <span>
+              <strong>NO DATA FOUND:</strong> 0 crime records match your current filter parameters ({getActiveFilterSummary()}).
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={handleResetFilters}
+            style={{
+              padding: '6px 14px',
+              background: '#ef4444',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '0px',
+              fontWeight: 700,
+              fontSize: '11px',
+              cursor: 'pointer'
+            }}
+          >
+            Reset All Filters
+          </button>
+        </div>
+      )}
+
       {!loading && !error && (
         <ExportFooter
           filteredCases={pageData.filteredList}
           filterSummary={getActiveFilterSummary()}
+          summaryData={pageData.summary}
+          calculatedKPIs={calculatedKPIs}
           onResetFilters={handleResetFilters}
         />
       )}

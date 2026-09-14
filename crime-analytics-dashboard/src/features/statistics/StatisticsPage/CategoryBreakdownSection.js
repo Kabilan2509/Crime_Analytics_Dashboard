@@ -8,11 +8,11 @@ function CategoryBreakdownSection({ categoryData }) {
   const renderGenderSegmentBar = () => {
     const total = genderData.reduce((sum, g) => sum + g.count, 0) || 1;
     
-    // Define colors for gender
+    // Define colors for gender (vibrant purple for Other, avoiding dull grey)
     const colors = {
       Male: '#3897d8',
       Female: '#ff4d4d',
-      Other: '#8fa3ba'
+      Other: '#9333ea'
     };
 
     return (
@@ -35,7 +35,7 @@ function CategoryBreakdownSection({ categoryData }) {
                 key={g.name}
                 style={{
                   width: `${pct}%`,
-                  background: colors[g.name] || '#8fa3ba',
+                  background: colors[g.name] || '#9333ea',
                   height: '100%',
                   display: 'flex',
                   alignItems: 'center',
@@ -81,6 +81,8 @@ function CategoryBreakdownSection({ categoryData }) {
     );
   };
 
+  const topCategories = categories.slice(0, 6);
+
   return (
     <div id="category-section" style={{
       display: 'grid',
@@ -103,20 +105,29 @@ function CategoryBreakdownSection({ categoryData }) {
           <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Top crime heads ranked by volume</span>
         </div>
 
-        <div className="chart-container" style={{ width: '100%', height: '220px', display: 'flex', alignItems: 'center', flex: 1 }}>
+        <div className="chart-container" style={{ width: '100%', height: '240px', display: 'flex', alignItems: 'center', flex: 1 }}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
-              data={categories}
+              data={topCategories}
               layout="vertical"
-              margin={{ top: 5, right: 10, left: -20, bottom: 5 }}
+              margin={{ top: 5, right: 15, left: 10, bottom: 5 }}
             >
               <CartesianGrid stroke="var(--chart-grid)" strokeDasharray="3 3" horizontal={false} />
               <XAxis type="number" stroke="var(--text-muted)" fontSize={10} tickLine={false} />
-              <YAxis dataKey="name" type="category" stroke="var(--text-muted)" fontSize={10} tickLine={false} width={100} />
+              <YAxis
+                dataKey="name"
+                type="category"
+                stroke="var(--text-muted)"
+                fontSize={10}
+                tickLine={false}
+                width={125}
+                interval={0}
+                tickFormatter={(val) => (val && val.length > 18 ? `${val.slice(0, 16)}…` : val)}
+              />
               <Tooltip
                 contentStyle={{ background: 'var(--bg-panel)', borderColor: 'var(--border-color)', borderRadius: '8px', color: 'var(--text-primary)', fontFamily: 'inherit', fontSize: '11px' }}
               />
-              <Bar dataKey="count" name="Case Count" fill="var(--chart-indigo)" radius={[0, 4, 4, 0]} />
+              <Bar dataKey="count" name="Case Count" fill="var(--chart-indigo)" radius={[0, 4, 4, 0]} barSize={16} />
             </BarChart>
           </ResponsiveContainer>
         </div>

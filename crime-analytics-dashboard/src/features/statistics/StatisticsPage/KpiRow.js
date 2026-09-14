@@ -166,27 +166,38 @@ function KpiRow({ summaryData }) {
           <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Clearance Rate</span>
           <MdShield size={18} style={{ color: 'var(--accent-success)' }} />
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '10px', flex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline' }}>
-            <span style={{ fontSize: '28px', fontWeight: 700 }}>{clearanceRate}%</span>
-            {renderDelta(clearanceDelta, true)}
+        <div style={{ marginTop: '10px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline' }}>
+              <span style={{ fontSize: '28px', fontWeight: 700 }}>{clearanceRate}%</span>
+              {renderDelta(clearanceDelta, true)}
+            </div>
+            <span style={{ fontSize: '10.5px', fontWeight: 600, color: 'var(--accent-success)' }}>
+              {clearanceRate >= 45 ? 'Optimal' : 'Standard'}
+            </span>
           </div>
-          {/* Radial Ring Indicator */}
-          <div style={{ position: 'relative', width: '36px', height: '36px' }}>
-            <svg width="36" height="36" style={{ transform: 'rotate(-90deg)' }}>
-              <circle cx="18" cy="18" r="14" fill="transparent" stroke="var(--bg-panel-alt)" strokeWidth="4" />
-              <circle
-                cx="18"
-                cy="18"
-                r="14"
-                fill="transparent"
-                stroke="var(--accent-success)"
-                strokeWidth="4"
-                strokeDasharray={`${2 * Math.PI * 14}`}
-                strokeDashoffset={`${2 * Math.PI * 14 * (1 - clearanceRate / 100)}`}
-                strokeLinecap="round"
-              />
-            </svg>
+          {/* Horizontal percentage bar */}
+          <div 
+            style={{
+              width: '100%',
+              height: '8px',
+              backgroundColor: 'var(--bg-panel-alt, rgba(148, 163, 184, 0.2))',
+              borderRadius: '4px',
+              overflow: 'hidden',
+              marginTop: '6px',
+              border: '1px solid var(--border-color)'
+            }}
+            title={`Clearance Rate: ${clearanceRate}%`}
+          >
+            <div 
+              style={{
+                width: `${Math.min(100, Math.max(0, clearanceRate))}%`,
+                height: '100%',
+                backgroundColor: 'var(--accent-success, #00c853)',
+                borderRadius: '4px',
+                transition: 'width 0.4s ease'
+              }}
+            />
           </div>
         </div>
         <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px' }}>

@@ -363,17 +363,16 @@ export const statisticsApi = {
       result = monthlyBins;
     }
 
-    // YoY Comparison Chart: Current filtered year vs Previous year comparison
-    // Month aggregates
-    const curYear = end.getFullYear();
-    const prevYear = curYear - 1;
-
-    const curYearData = Array(12).fill(0);
-    const prevYearData = Array(12).fill(0);
+    // Multi-Year Monthly Aggregates for custom year-over-year comparisons
+    const yearlyMonthlyData = {};
+    const yearsSet = new Set(['2026', '2025', '2024']);
 
     caseViews.forEach(c => {
-      const y = c.registeredDateObj.getFullYear();
+      if (!c.registeredDateObj) return;
+      const y = String(c.registeredDateObj.getFullYear());
+      yearsSet.add(y);
       const m = c.registeredDateObj.getMonth();
+
       // Apply filters other than date
       let matchesFilters = true;
       if (filters.jurisdictionLevel === 'district' && filters.selectedDistrict !== 'all') {
@@ -387,21 +386,31 @@ export const statisticsApi = {
       }
       
       if (matchesFilters) {
-        if (y === curYear) curYearData[m] += 1;
-        if (y === prevYear) prevYearData[m] += 1;
+        if (!yearlyMonthlyData[y]) yearlyMonthlyData[y] = Array(12).fill(0);
+        yearlyMonthlyData[y][m] += 1;
       }
     });
 
+    const availableYears = Array.from(yearsSet).sort((a, b) => Number(b) - Number(a));
+    availableYears.forEach(yr => {
+      if (!yearlyMonthlyData[yr]) yearlyMonthlyData[yr] = Array(12).fill(0);
+    });
+
     const monthsLabel = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const curYear = availableYears[0] || '2026';
+    const prevYear = availableYears[1] || '2025';
+
     const yoyComparison = monthsLabel.map((name, i) => ({
       name,
-      current: curYearData[i],
-      previous: prevYearData[i]
+      current: yearlyMonthlyData[curYear] ? yearlyMonthlyData[curYear][i] : 0,
+      previous: yearlyMonthlyData[prevYear] ? yearlyMonthlyData[prevYear][i] : 0
     }));
 
     return delay({
       trendData: result,
       yoyData: yoyComparison,
+      yearlyMonthlyData,
+      availableYears,
       granularity
     });
   },

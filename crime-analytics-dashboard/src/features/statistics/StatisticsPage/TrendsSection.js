@@ -1,8 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 
 function TrendsSection({ trendsData }) {
-  const { trendData = [], yoyData = [], granularity = 'monthly' } = trendsData;
+  const {
+    trendData = [],
+    yoyData = [],
+    yearlyMonthlyData = {},
+    availableYears = ['2026', '2025', '2024'],
+    granularity = 'monthly'
+  } = trendsData;
 
   // Toggleable series state for line chart
   const [visibleSeries, setVisibleSeries] = useState({
@@ -13,7 +19,21 @@ function TrendsSection({ trendsData }) {
     Other: true
   });
 
+  const [baseYear, setBaseYear] = useState('2026');
   const [compareYear, setCompareYear] = useState('2025');
+
+  const monthsLabel = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const dynamicYoyData = useMemo(() => {
+    return monthsLabel.map((name, i) => {
+      const valA = yearlyMonthlyData[baseYear] ? yearlyMonthlyData[baseYear][i] : 0;
+      const valB = yearlyMonthlyData[compareYear] ? yearlyMonthlyData[compareYear][i] : 0;
+      return {
+        name,
+        [baseYear]: valA,
+        [compareYear]: valB
+      };
+    });
+  }, [baseYear, compareYear, yearlyMonthlyData]);
 
   const toggleSeries = (key) => {
     setVisibleSeries(prev => ({
@@ -127,15 +147,17 @@ function TrendsSection({ trendsData }) {
         padding: '20px',
         boxShadow: 'var(--shadow-card)'
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
           <div>
             <h3 style={{ margin: 0, fontFamily: "'Source Sans 3', sans-serif", fontSize: '18px', color: 'var(--text-primary)' }}>Yearly Comparison</h3>
-            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Comparison of case volume aggregates</span>
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Multi-year cohort volume comparison</span>
           </div>
-          <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600 }}>Compare:</span>
             <select
-              value={compareYear}
-              onChange={e => setCompareYear(e.target.value)}
+              value={baseYear}
+              onChange={e => setBaseYear(e.target.value)}
+              aria-label="Select base comparison year"
               style={{
                 padding: '4px 8px',
                 border: '1px solid var(--border-color)',
@@ -143,19 +165,42 @@ function TrendsSection({ trendsData }) {
                 background: 'var(--bg-panel-alt)',
                 color: 'var(--text-primary)',
                 fontSize: '11px',
+                fontWeight: 600,
                 outline: 'none',
                 cursor: 'pointer'
               }}
             >
-              <option value="2025">2026 vs 2025</option>
-              <option value="2024">2026 vs 2024</option>
+              {availableYears.map(yr => (
+                <option key={`base_${yr}`} value={yr}>{yr}</option>
+              ))}
+            </select>
+            <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)' }}>vs</span>
+            <select
+              value={compareYear}
+              onChange={e => setCompareYear(e.target.value)}
+              aria-label="Select comparison year"
+              style={{
+                padding: '4px 8px',
+                border: '1px solid var(--border-color)',
+                borderRadius: '6px',
+                background: 'var(--bg-panel-alt)',
+                color: 'var(--text-primary)',
+                fontSize: '11px',
+                fontWeight: 600,
+                outline: 'none',
+                cursor: 'pointer'
+              }}
+            >
+              {availableYears.map(yr => (
+                <option key={`comp_${yr}`} value={yr}>{yr}</option>
+              ))}
             </select>
           </div>
         </div>
 
         <div className="chart-container" style={{ width: '100%', height: '280px', marginTop: '10px' }}>
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={yoyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+            <BarChart data={dynamicYoyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <CartesianGrid stroke="var(--chart-grid)" strokeDasharray="3 3" vertical={false} />
               <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={11} tickLine={false} />
               <YAxis domain={[0, 'auto']} stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
@@ -164,8 +209,8 @@ function TrendsSection({ trendsData }) {
               />
               <Legend verticalAlign="top" height={36} iconType="circle" wrapperStyle={{ fontSize: '11px' }} />
               
-              <Bar dataKey="current" name="Current Year (2026)" fill="var(--chart-blue)" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="previous" name={`Comparison Year (${compareYear})`} fill="rgba(112, 131, 154, 0.4)" radius={[4, 4, 0, 0]} />
+              <Bar dataKey={baseYear} name={`Year ${baseYear}`} fill="var(--chart-blue, #3897d8)" radius={[4, 4, 0, 0]} />
+              <Bar dataKey={compareYear} name={`Year ${compareYear}`} fill="#f59e0b" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>

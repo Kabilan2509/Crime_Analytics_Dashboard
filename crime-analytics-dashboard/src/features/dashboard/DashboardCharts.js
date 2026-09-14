@@ -74,7 +74,7 @@ function DashboardCharts({ monthlyTrend, crimeDistribution, stacked = false }) {
         <div className="chart-container" style={{ height: '220px', flex: 1, marginTop: '8px' }}>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={monthlyTrend} margin={{ bottom: 5, left: -10, right: 10 }}>
-              <CartesianGrid stroke={gridColor} strokeDasharray="1 3" vertical={false} />
+              <CartesianGrid stroke={gridColor} strokeDasharray="3 3" vertical={true} horizontal={true} />
               <XAxis dataKey="month" stroke={mutedTextColor} tickLine={false} axisLine={false} style={{ fontSize: '11px', fontFamily: 'Consolas, monospace' }} />
               <YAxis stroke={mutedTextColor} tickLine={false} axisLine={false} style={{ fontSize: '11px', fontFamily: 'Consolas, monospace' }} />
               <Tooltip content={<ChartTooltip />} />
@@ -98,7 +98,7 @@ function DashboardCharts({ monthlyTrend, crimeDistribution, stacked = false }) {
         <div className="chart-container" style={{ height: '220px', flex: 1, marginTop: '8px' }}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={crimeDistribution} layout="vertical" margin={{ left: 10, right: 15, bottom: 15 }}>
-              <CartesianGrid stroke={gridColor} strokeDasharray="1 3" horizontal={false} />
+              <CartesianGrid stroke={gridColor} strokeDasharray="3 3" horizontal={true} vertical={true} />
               <XAxis type="number" stroke={mutedTextColor} tickLine={false} axisLine={false} style={{ fontSize: '11px', fontFamily: 'Consolas, monospace' }} label={{ value: 'TOTAL CASE WORKLOAD', position: 'insideBottom', offset: -8, fill: mutedTextColor, fontSize: '9px', fontFamily: 'Consolas, monospace', letterSpacing: '1px' }} />
               <YAxis
                 type="category"
