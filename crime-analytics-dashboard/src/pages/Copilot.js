@@ -44,12 +44,12 @@ function Copilot() {
       id: 'welcome',
       type: 'ai',
       intent: 'WELCOME',
-      content: 'Welcome Commissioner. I am MADHUKAR, the KSP AI Command Intelligence Copilot — powered by live Catalyst Data Store. I can:\n\n• Query real FIR records across all 31 Karnataka districts\n• Identify crime hotspots, temporal patterns, and repeat offenders\n• Cross-reference accused, victims, and case linkages\n• Generate intelligence briefings and risk assessments\n• Support officer workload and IO queries\n\nHow can I assist you today?',
+      content: 'Welcome Officer. I am MADHUKAR, the KSP Command Intelligence Copilot — connected to the statewide crime registry. I assist Investigating Officers and Command Staff with:\n\n• Statewide FIR analysis and case statistics\n• Crime hotspot and peak incident hour detection\n• Repeat offender tracking across jurisdictions\n• Preventative threat assessments and patrol recommendations\n• Station workload and investigating officer case status\n\nHow can I assist your investigation today?',
       suggestions: [
-        "Generate today's intelligence briefing",
-        'Which district has the most heinous crimes?',
+        "Generate operational intelligence briefing",
+        'Which district has the highest heinous crimes?',
         'Find repeat offenders in Bengaluru City',
-        'Show robbery cases in Mysuru this month',
+        'Assess crime threat level for Mysuru',
       ],
       timestamp: new Date(),
     }
@@ -134,12 +134,12 @@ function Copilot() {
   };
 
   const presetQueries = [
-    "Generate today's intelligence briefing",
+    "Generate operational intelligence briefing",
     'Which district has the most crimes this month?',
     'Find repeat offenders in Bengaluru City',
     'Show robbery cases in Raichur',
     'Show crimes after 10 PM this week',
-    'Predict crime risk for Kalaburagi',
+    'Assess crime threat level for Kalaburagi',
     'Who is the IO for FIR 100230?',
     'Show pending cases in Mysuru',
   ];

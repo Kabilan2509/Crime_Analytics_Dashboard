@@ -343,7 +343,11 @@ async function runConversation(app, httpReq, messages, tools, executeTool) {
     });
     conversation.push({
       role: 'user',
-      content: `Here are the data results from the crime database:\n\n${resultLines.join('\n\n')}\n\nBased on this data, please provide a concise, well-formatted intelligence analysis. Use markdown with **bold** numbers. Be specific and actionable.`,
+      content: `Here are the operational facts from the police crime database:\n\n${resultLines.join('\n\n')}\n\nINSTRUCTIONS FOR YOUR RESPONSE:
+1. Provide a direct, factual answer tailored for police officers and investigators.
+2. Highlight key figures, locations, and dates using **bold**.
+3. Do NOT explain or mention any algorithms, ML models, feature weights, or technical code. State only the direct crime facts and the practical police takeaways (such as patrol focus, surveillance, or high-risk stations).
+4. Keep the tone professional, objective, and authoritative.`,
     });
   }
 

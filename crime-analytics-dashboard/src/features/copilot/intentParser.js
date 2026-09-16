@@ -7,7 +7,16 @@
 export function parseIntent(query) {
   const q = (query || '').toLowerCase().trim();
 
-  if (/\b(predict|forecast|risk)\b/.test(q)) return { intent: 'RISK_PREDICTION', params: {} };
+  // Guard against out-of-scope coding, trivia, and non-police requests
+  const isCoding = /\b(python|javascript|typescript|java|c\+\+|html|css|sql query|bash|shell script|write code|give me code|debug|function\s*\(|class\s+\w+|import\s+\w+|def\s+\w+|compile|leetcode)\b/i.test(q);
+  const isCasual = /\b(tell me a joke|write a poem|write an essay|sing a song|recipe|how to cook|who is president|capital of|movie recommendation|play a game|weather today|weather forecast|translate this to french|calculate 2\+|\bmath problem\b)\b/i.test(q);
+  const explicitCode = /\b(code|script|program|snippet)\b/i.test(q) && !/\b(crime|penal code|ipc|bns|fir|section|law)\b/i.test(q);
+
+  if (isCoding || isCasual || explicitCode) {
+    return { intent: 'OUT_OF_SCOPE', params: { query: q } };
+  }
+
+  if (/\b(predict|forecast|risk|threat)\b/.test(q)) return { intent: 'RISK_PREDICTION', params: {} };
   if (/\b(briefing|brief|summary|daily|status)\b/.test(q)) return { intent: 'DAILY_BRIEFING', params: {} };
   if (/\b(repeat|offender|habitual|criminal history)\b/.test(q)) return { intent: 'REPEAT_OFFENDER', params: { type: 'repeat' } };
   if (/\b(who is|io|investigating officer)\b/.test(q)) return { intent: 'OFFICER_QUERY', params: {} };

@@ -3,18 +3,20 @@ import { MdSmartToy, MdPerson, MdSearch, MdStorage, MdWarning, MdTrendingUp } fr
 import { BarChart, Bar, ResponsiveContainer, XAxis, Tooltip, Cell } from 'recharts';
 
 const INTENT_LABELS = {
-  CRIME_COUNT:      '📊 Crime Count',
-  HOTSPOT:          '🔥 Hotspot Analysis',
-  CRIME_TYPE:       '🔍 Crime Type Filter',
-  REPEAT_OFFENDER:  '⚠️ Repeat Offender',
-  TEMPORAL_PATTERN: '⏱️ Temporal Pattern',
-  SIMILAR_CASE:     '🔗 Similar Cases',
-  CROSS_REFERENCE:  '🕸️ Cross Reference',
-  STATION_WORKLOAD: '🏢 Station Workload',
-  OFFICER_QUERY:    '👮 Officer Query',
-  DAILY_BRIEFING:   '📋 Intelligence Briefing',
-  RISK_PREDICTION:  '🎯 Risk Prediction',
-  WELCOME:          '👋 Welcome',
+  CRIME_COUNT:         '📊 Crime Volume',
+  HOTSPOT:             '🔥 Hotspot Analysis',
+  CRIME_TYPE:          '🔍 Offence Category',
+  REPEAT_OFFENDER:     '⚠️ Habitual Offenders',
+  TEMPORAL_PATTERN:    '⏱️ Peak Incident Hours',
+  SIMILAR_CASE:        '🔗 Linked MO Cases',
+  CROSS_REFERENCE:     '🕸️ Case Cross-Reference',
+  STATION_WORKLOAD:    '🏢 Station Workload',
+  OFFICER_QUERY:       '👮 Investigating Officer',
+  DAILY_BRIEFING:      '📋 Operational Briefing',
+  RISK_PREDICTION:     '🎯 Threat Assessment',
+  POLICE_INTELLIGENCE: '🛡️ Police Intelligence',
+  OUT_OF_SCOPE:        '🚫 Operational Scope Notice',
+  WELCOME:             '👋 Welcome',
 };
 
 const CHART_COLORS = ['#3b82f6','#8b5cf6','#06b6d4','#10b981','#f59e0b','#ef4444'];
@@ -64,7 +66,7 @@ function PredictionCard({ predictions }) {
     }}>
       <div style={{ fontSize: '10px', color: '#ef4444', fontWeight: 700, marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
         <MdWarning size={11} style={{ verticalAlign: 'middle', marginRight: '4px' }} />
-        Risk Assessment
+        Jurisdictional Threat Assessment
       </div>
       {predictions.map((p, i) => {
         const score = Number(p.score) || 0;
@@ -78,8 +80,7 @@ function PredictionCard({ predictions }) {
             <span style={{ fontSize: '12px', fontWeight: 700, color, minWidth: '40px', textAlign: 'right' }}>
               {score}/100
             </span>
-            {p.riskLabel && <span style={{ fontSize: '10px', color }}>{p.riskLabel}</span>}
-            {p.confidence && <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{Math.round(p.confidence * 100)}% conf.</span>}
+            {p.riskLabel && <span style={{ fontSize: '10px', color, fontWeight: 700 }}>{p.riskLabel}</span>}
           </div>
         );
       })}
