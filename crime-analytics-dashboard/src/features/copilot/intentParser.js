@@ -16,7 +16,15 @@ export function parseIntent(query) {
     return { intent: 'OUT_OF_SCOPE', params: { query: q } };
   }
 
-  if (/\b(predict|forecast|risk|threat)\b/.test(q)) return { intent: 'RISK_PREDICTION', params: {} };
+  if (/\b(predict|forecast|risk|threat)\b/.test(q)) {
+    const matchedDist = [
+      'bagalkote','ballari','belagavi','bengaluru','bidar','chamarajanagara','chikkaballapura',
+      'chikkamagaluru','chitradurga','dakshina kannada','davanagere','dharwad','gadag','hassan',
+      'haveri','kalaburagi','kodagu','kolar','koppal','mandya','mysuru','raichur',
+      'ramanagara','shivamogga','tumakuru','udupi','uttara kannada','vijayapura','yadgir'
+    ].find(d => q.includes(d));
+    return { intent: 'RISK_PREDICTION', params: { district: matchedDist || '' } };
+  }
   if (/\b(briefing|brief|summary|daily|status)\b/.test(q)) return { intent: 'DAILY_BRIEFING', params: {} };
   if (/\b(repeat|offender|habitual|criminal history)\b/.test(q)) return { intent: 'REPEAT_OFFENDER', params: { type: 'repeat' } };
   if (/\b(who is|io|investigating officer)\b/.test(q)) return { intent: 'OFFICER_QUERY', params: {} };

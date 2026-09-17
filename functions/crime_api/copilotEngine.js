@@ -91,10 +91,28 @@ function buildMaps(tables) {
   const statusByRowId = {};
   caseStatuses.forEach(s => { statusByRowId[String(s.ROWID)] = s; });
 
+  // Pre-index CrimeHead for O(1) lookups (avoids O(n²) find() inside predict_risk forEach)
+  const crimeHeadById = {};
+  (tables.CrimeHead || []).forEach(h => {
+    if (h.ROWID != null)       crimeHeadById[String(h.ROWID)]       = h.CrimeGroupName || 'Other Crimes';
+    if (h.CrimeHeadID != null) crimeHeadById[String(h.CrimeHeadID)] = h.CrimeGroupName || 'Other Crimes';
+  });
+
+  // Pre-index pending case status IDs for O(1) checks
+  const pendingStatusIds = new Set(['1']); // ID 1 is conventionally "under investigation"
+  caseStatuses.forEach(s => {
+    const label = JSON.stringify(s).toLowerCase();
+    if (/pending|investigation|under/i.test(label)) {
+      if (s.ROWID != null)        pendingStatusIds.add(String(s.ROWID));
+      if (s.CaseStatusID != null) pendingStatusIds.add(String(s.CaseStatusID));
+    }
+  });
+
   return {
     districtByName, districtById,
     stationById, stationIdsByDistrictId,
     heinousRowId, employeeByRowId, statusByRowId,
+    crimeHeadById, pendingStatusIds,
   };
 }
 
@@ -349,6 +367,22 @@ const TOOL_DEFINITIONS = [
       parameters: { type: 'object', properties: {}, required: [] },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'get_cases_by_district',
+      description: 'List recent FIRs for a specific district. Use for: "show cases in X", "recent FIRs in X", "list crimes in X", "what happened in X".',
+      parameters: {
+        type: 'object',
+        properties: {
+          district:  { type: 'string', description: 'District name' },
+          limit:     { type: 'number', description: 'Max FIRs to return (default 10)' },
+          dateRange: { type: 'string', enum: ['7d','30d','90d','365d','all'] },
+        },
+        required: ['district'],
+      },
+    },
+  },
 ];
 
 // ─── Tool Executor ────────────────────────────────────────────────────────────
@@ -553,12 +587,83 @@ function makeExecuteTool(tables, maps) {
 
       case 'predict_risk': {
         const cfg = getConfig();
-        let distCases = filterByDistrict(allCases, args.district, maps);
-        const heinousCases = filterHeinous(distCases, maps);
-        const statScore = distCases.length > 0
-          ? Math.min(100, Math.round((heinousCases.length / distCases.length) * 100 * 1.5 + Math.log(distCases.length + 1) * 5))
-          : 0;
+        const districtQuery = (args.district || '').trim();
+        let distCases = filterByDistrict(allCases, districtQuery, maps);
 
+        // Guard: if no cases found, try a broader partial match before giving up
+        if (distCases.length === 0 && districtQuery) {
+          const lower = districtQuery.toLowerCase();
+          distCases = allCases.filter(c => {
+            const dName = (getDistrictForCase(c, maps) || '').toLowerCase();
+            return dName.includes(lower) || lower.includes(dName.split(' ')[0]);
+          });
+        }
+
+        // Still no data — return a clear "no data" result instead of a misleading 0/100
+        if (distCases.length === 0) {
+          return {
+            glmResult: {
+              district: districtQuery,
+              noDataFound: true,
+              message: `No FIR records found for "${districtQuery}" in the crime registry. Verify the district name or check if data has been loaded for this jurisdiction.`,
+              availableDistricts: (tables.District || []).map(d => d.DistrictName).filter(Boolean).slice(0, 10),
+            },
+            uiData: { results: [], chartData: [], sources: [`Crime Registry — no data for ${districtQuery}`], predictions: [] },
+          };
+        }
+
+        const heinousCases = filterHeinous(distCases, maps);
+
+        // Station breakdown & workload — uses O(1) pendingStatusIds
+        const stationBreakdown = {};
+        distCases.forEach(c => {
+          const st = maps.stationById[String(c.PoliceStationID)];
+          const name = st?.UnitName || `Station ${c.PoliceStationID}`;
+          if (!stationBreakdown[name]) stationBreakdown[name] = { total: 0, heinous: 0, pending: 0 };
+          stationBreakdown[name].total++;
+          if (String(c.GravityOffenceID) === String(maps.heinousRowId) || String(c.GravityOffenceID) === '1') {
+            stationBreakdown[name].heinous++;
+          }
+          if (maps.pendingStatusIds.has(String(c.CaseStatusID))) {
+            stationBreakdown[name].pending++;
+          }
+        });
+        const topStations = Object.entries(stationBreakdown)
+          .sort(([,a],[,b]) => b.total - a.total)
+          .map(([name, d]) => ({ name, ...d }));
+
+        // Category breakdown — O(1) via crimeHeadById map
+        const headCounts = {};
+        distCases.forEach(c => {
+          const catName = maps.crimeHeadById[String(c.CrimeMajorHeadID)] || 'Other Crimes';
+          headCounts[catName] = (headCounts[catName] || 0) + 1;
+        });
+        const topCategories = Object.entries(headCounts)
+          .sort(([,a],[,b]) => b-a).slice(0, 4)
+          .map(([category, count]) => ({ category, count }));
+
+        // Night crime concentration (18:00 – 04:00)
+        let nightCrimes = 0;
+        distCases.forEach(c => {
+          if (c.CrimeRegisteredDate) {
+            const h = new Date(c.CrimeRegisteredDate).getHours();
+            if (!isNaN(h) && (h >= 18 || h < 4)) nightCrimes++;
+          }
+        });
+
+        // Tactical risk scoring
+        // Heinous ratio (up to 50 pts) + Case volume (up to 30 pts, log scale) + Pending burden (up to 20 pts)
+        const heinousRatio  = heinousCases.length / distCases.length;
+        const totalPending  = topStations.reduce((sum, s) => sum + s.pending, 0);
+        const pendingRatio  = totalPending / distCases.length;
+        const nightPct      = Math.round((nightCrimes / distCases.length) * 100);
+
+        const heinousComponent = Math.min(50, Math.round(heinousRatio * 100 * 1.5));
+        const volumeComponent  = Math.min(30, Math.round(Math.log(distCases.length + 1) * 8));
+        const pendingComponent = Math.min(20, Math.round(pendingRatio * 20));
+        let baseStatScore = Math.min(100, heinousComponent + volumeComponent + pendingComponent);
+
+        // Attempt ML scoring (QuickML)
         if (cfg.quickml_endpoint_key && cfg.quickml_endpoint_url && distCases.length > 0) {
           try {
             const samples = [...distCases]
@@ -566,62 +671,80 @@ function makeExecuteTool(tables, maps) {
               .slice(0, 5)
               .filter(c => c.CrimeMajorHeadID && c.PoliceStationID && c.CaseStatusID && c.CaseCategoryID);
 
-            let heinousPred = 0, total = 0, avgLike = 0;
+            let heinousPred = 0, mlTotal = 0, avgLike = 0;
             for (const c of samples) {
               const result = await callQuickML(cfg, {
                 CrimeMajorHeadID: c.CrimeMajorHeadID, latitude: parseFloat(c.latitude)||0,
                 CaseStatusID: c.CaseStatusID, CaseCategoryID: c.CaseCategoryID,
                 PoliceStationID: c.PoliceStationID, longitude: parseFloat(c.longitude)||0,
               });
-              const predicted = result?.result?.[0];
+              const predicted  = result?.result?.[0];
               const likelihood = parseFloat(result?.likelihood_score?.[0] || 0);
-              avgLike += likelihood; total++;
-              if (String(predicted) === String(maps.heinousRowId)) heinousPred++;
+              avgLike += likelihood; mlTotal++;
+              if (String(predicted) === String(maps.heinousRowId) || String(predicted) === '1') heinousPred++;
             }
 
-            if (total > 0) {
-              const mlScore = Math.round((heinousPred / total) * 100);
-              avgLike = avgLike / total;
-              const riskLabel = mlScore > 70 ? 'HIGH RISK' : mlScore > 40 ? 'MODERATE RISK' : 'LOW RISK';
+            if (mlTotal > 0) {
+              const mlScore  = Math.min(100, Math.max(baseStatScore, Math.round((heinousPred / mlTotal) * 100)));
+              avgLike        = avgLike / mlTotal;
+              const riskLabel = mlScore >= 70 ? 'HIGH RISK' : mlScore >= 35 ? 'MODERATE RISK' : 'LOW RISK';
               return {
                 glmResult: {
-                  district: args.district,
-                  threatAssessment: 'Crime Severity & Recurrence Analysis',
+                  district: districtQuery,
+                  threatAssessment: 'Crime Severity, Recurrence & Jurisdiction Analysis (AI-Assisted)',
                   threatScore: mlScore,
                   confidenceRate: `${Math.round(avgLike * 100)}%`,
                   riskLevel: riskLabel,
                   totalCasesAnalyzed: distCases.length,
                   historicalHeinousCases: heinousCases.length,
+                  heinousRate: `${Math.round(heinousRatio * 100)}%`,
+                  activePendingCases: totalPending,
+                  nightCrimePercentage: `${nightPct}%`,
+                  topAffectedStations: topStations.slice(0, 3),
+                  predominantCrimeCategories: topCategories,
                 },
                 uiData: {
-                  results: [],
-                  chartData: [{ name: 'High Threat Probability', cases: mlScore }, { name: 'Normal Incident Profile', cases: 100 - mlScore }],
-                  sources: [`Crime Intelligence Database (${args.district})`],
-                  predictions: [{ district: args.district, score: mlScore, riskLabel, confidence: avgLike }],
+                  results: topStations.map(s => ({
+                    CrimeNo: `${s.total} cases (${s.heinous} heinous)`,
+                    policeStationName: s.name,
+                    crimeGroupName: `${s.pending} pending investigation`,
+                  })),
+                  chartData: topCategories.map(c => ({ name: c.category.replace('Crimes Against ', ''), cases: c.count })),
+                  sources: [`Crime Intelligence Registry — ${districtQuery} (${distCases.length} FIRs)`],
+                  predictions: [{ district: districtQuery, score: mlScore, riskLabel, confidence: avgLike }],
                 },
               };
             }
           } catch (err) {
-            console.warn('[Tool predict_risk] Assessment error:', err.message);
+            console.warn('[Tool predict_risk] ML endpoint error, using statistical baseline:', err.message);
           }
         }
 
-        // Operational baseline calculation
-        const riskLabel = statScore > 70 ? 'HIGH RISK' : statScore > 40 ? 'MODERATE RISK' : 'LOW RISK';
+        // Statistical baseline (fallback when ML is unavailable)
+        const riskLabel = baseStatScore >= 70 ? 'HIGH RISK' : baseStatScore >= 35 ? 'MODERATE RISK' : 'LOW RISK';
         return {
           glmResult: {
-            district: args.district,
-            threatAssessment: 'Historical FIR Density Analysis',
-            threatScore: statScore,
+            district: districtQuery,
+            threatAssessment: 'Jurisdictional Crime Density & Severity Assessment',
+            threatScore: baseStatScore,
             riskLevel: riskLabel,
             totalCasesAnalyzed: distCases.length,
             historicalHeinousCases: heinousCases.length,
+            heinousRate: `${Math.round(heinousRatio * 100)}%`,
+            activePendingCases: totalPending,
+            nightCrimePercentage: `${nightPct}%`,
+            topAffectedStations: topStations.slice(0, 3),
+            predominantCrimeCategories: topCategories,
           },
           uiData: {
-            results: [],
-            chartData: [],
-            sources: [`Crime Intelligence Database (${args.district})`],
-            predictions: [{ district: args.district, score: statScore, riskLabel }],
+            results: topStations.map(s => ({
+              CrimeNo: `${s.total} cases (${s.heinous} heinous)`,
+              policeStationName: s.name,
+              crimeGroupName: `${s.pending} pending investigation`,
+            })),
+            chartData: topCategories.map(c => ({ name: c.category.replace('Crimes Against ', ''), cases: c.count })),
+            sources: [`Crime Intelligence Registry — ${districtQuery} (${distCases.length} FIRs)`],
+            predictions: [{ district: districtQuery, score: baseStatScore, riskLabel }],
           },
         };
       }
@@ -656,6 +779,52 @@ function makeExecuteTool(tables, maps) {
             results:   topDistricts.map(r => ({ CrimeNo: `${r.count} FIRs`, policeStationName: r.name, crimeGroupName: 'Last 7 days' })),
             chartData: topDistricts.map(r => ({ name: r.name.split(' ')[0], cases: r.count })),
             sources:   [`CaseMaster × ${weekCases.length} rows (last 7 days of dataset)`],
+            predictions: [],
+          },
+        };
+      }
+
+      case 'get_cases_by_district': {
+        let cases = filterByDistrict(allCases, args.district, maps);
+        if (args.dateRange) cases = filterByDate(cases, args.dateRange);
+        // Sort newest first
+        cases = [...cases].sort((a,b) =>
+          (b.CrimeRegisteredDate||'').localeCompare(a.CrimeRegisteredDate||'')
+        );
+        const limit = Math.min(args.limit || 10, 20);
+        const topCases = cases.slice(0, limit);
+
+        const caseRows = topCases.map(c => {
+          const station = maps.stationById[String(c.PoliceStationID)];
+          const catName = maps.crimeHeadById[String(c.CrimeMajorHeadID)] || 'Unclassified';
+          const isHeinous = String(c.GravityOffenceID) === String(maps.heinousRowId) || String(c.GravityOffenceID) === '1';
+          const isPending = maps.pendingStatusIds.has(String(c.CaseStatusID));
+          return {
+            firNo: c.CrimeNo || c.CaseMasterID || `#${c.ROWID}`,
+            station: station?.UnitName || `Station ${c.PoliceStationID}`,
+            crimeCategory: catName,
+            date: c.CrimeRegisteredDate ? c.CrimeRegisteredDate.split('T')[0] : 'Unknown',
+            heinous: isHeinous,
+            pendingInvestigation: isPending,
+          };
+        });
+
+        return {
+          glmResult: {
+            district: args.district,
+            totalFIRsInDistrict: cases.length,
+            showing: topCases.length,
+            dateRange: args.dateRange || 'all available data',
+            cases: caseRows,
+          },
+          uiData: {
+            results: caseRows.map(r => ({
+              CrimeNo: r.firNo,
+              policeStationName: r.station,
+              crimeGroupName: r.crimeCategory + (r.heinous ? ' ★ HEINOUS' : ''),
+            })),
+            chartData: [],
+            sources: [`CaseMaster — ${args.district} (${cases.length} total FIRs, showing ${topCases.length})`],
             predictions: [],
           },
         };
@@ -764,10 +933,16 @@ STRICT DOMAIN & LANGUAGE RULES:
      * Instead of "ZCQL query returned 20 rows": say "Found **20 registered FIRs** in this jurisdiction."
 
 3. EXECUTIVE POLICE BRIEFING FORMAT:
-   Always structure responses clearly for busy police commanders:
-   - **Direct Answer:** State the key numbers, FIR counts, or suspects in **bold** in the very first sentence.
-   - **Jurisdictional Breakdown:** Specify relevant police stations, districts, or crime categories.
-   - **Tactical Police Recommendation:** Give 1-2 practical police action items (e.g., intensive night beats, vehicle check-posts at boundary borders, enhanced surveillance on habitual suspects).
+   Always structure responses clearly, concisely, and efficiently for busy police commanders:
+   - **Direct Answer:** State the threat level (e.g. **MODERATE RISK**, **HIGH RISK**) and overall threat score (e.g. **50/100**) with the exact FIR breakdown in **bold** in the very first sentence.
+   - **Jurisdictional Breakdown:**
+     * Detail the most affected police stations with active and pending caseloads (e.g., **Kalaburagi Rural PS: 12 cases, 3 heinous, 8 pending**).
+     * List the primary crime categories driving the risk (e.g., Property offences, Narcotics, Cybercrimes).
+     * Note temporal vulnerability windows (e.g. **41% of incidents concentrated during night hours 18:00–04:00**).
+   - **Tactical Police Directives:**
+     * Provide specific, actionable directives citing actual station jurisdictions, target areas, patrol timing, and investigative follow-ups.
+     * NEVER output generic statements like "anti-anti-social behavior" or advise shifting patrols away from stations with pending investigations.
+     * Direct resources specifically toward the highest-incident stations and priority case categories.
 
 4. TOOL USAGE:
    - ALWAYS invoke the corresponding tools first to fetch real database figures before answering.
@@ -814,15 +989,23 @@ async function handleCopilotChat(app, httpReq, message, history = []) {
 
   // Build conversation messages
   const systemPrompt = buildSystemPrompt(tables);
+
+  // Normalize history — frontend sends either {type:'user'/'bot', text} or {role:'user'/'assistant', content}
+  const normalizedHistory = history.slice(-8).reduce((acc, h) => {
+    const role = h.role === 'assistant' || h.type === 'bot' || h.type === 'assistant' ? 'assistant' : 'user';
+    const content = (h.content || h.text || '').trim();
+    // Skip blank entries — GLM rejects empty content
+    if (!content) return acc;
+    acc.push({ role, content });
+    return acc;
+  }, []);
+
   const messages = [
     { role: 'system', content: systemPrompt },
-    // Include recent conversation history
-    ...history.slice(-8).map(h => ({
-      role: h.type === 'user' ? 'user' : 'assistant',
-      content: h.text || h.content || '',
-    })),
+    ...normalizedHistory,
     { role: 'user', content: message },
   ];
+
 
   // Create tool executor bound to this request's data
   const executeTool = makeExecuteTool(tables, maps);

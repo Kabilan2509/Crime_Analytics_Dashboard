@@ -26,6 +26,83 @@ export function executeQuery(intent, params) {
       return { results, summary, suggestions, chartData };
     }
 
+    case 'RISK_PREDICTION': {
+      const distName = (params.district || '').toLowerCase();
+      const distCases = distName
+        ? caseViews.filter(c => (c.districtName || '').toLowerCase().includes(distName))
+        : caseViews;
+      const heinous = distCases.filter(c => c.isHeinous);
+      const pending = distCases.filter(c => c.statusName === 'Under Investigation' || c.CaseStatusID === 1);
+
+      // Station breakdown
+      const stMap = {};
+      distCases.forEach(c => {
+        const name = c.policeStationName || 'Station';
+        if (!stMap[name]) stMap[name] = { total: 0, heinous: 0, pending: 0 };
+        stMap[name].total++;
+        if (c.isHeinous) stMap[name].heinous++;
+        if (c.statusName === 'Under Investigation' || c.CaseStatusID === 1) stMap[name].pending++;
+      });
+      const topStations = Object.entries(stMap)
+        .sort(([,a],[,b]) => b.total - a.total)
+        .map(([name, d]) => ({ name, ...d }));
+
+      // Crime categories
+      const headMap = {};
+      distCases.forEach(c => {
+        const name = c.majorHeadName || 'Other';
+        headMap[name] = (headMap[name] || 0) + 1;
+      });
+      const topCategories = Object.entries(headMap)
+        .sort(([,a],[,b]) => b-a).slice(0, 4);
+
+      // Night crimes
+      let nightCrimes = 0;
+      distCases.forEach(c => {
+        if (c.CrimeRegisteredDate) {
+          const h = parseInt(c.CrimeRegisteredDate.split(' ')[1]?.split(':')[0] || '12', 10);
+          if (h >= 18 || h < 4) nightCrimes++;
+        }
+      });
+
+      const heinousRatio = distCases.length > 0 ? (heinous.length / distCases.length) : 0;
+      const pendingRatio = distCases.length > 0 ? (pending.length / distCases.length) : 0;
+      const score = distCases.length > 0
+        ? Math.min(100, Math.round(heinousRatio * 75 + Math.log(distCases.length + 1) * 8 + pendingRatio * 15))
+        : 0;
+      const riskLabel = score >= 70 ? 'HIGH RISK' : score >= 35 ? 'MODERATE RISK' : 'LOW RISK';
+      const targetDist = distCases[0]?.districtName || 'Selected District';
+
+      summary = `The threat assessment for **${targetDist}** indicates a **${riskLabel}** level with a calculated threat score of **${score}/100**.\n\n` +
+        `**Jurisdictional Breakdown:**\n` +
+        `• **Total Cases Analyzed:** **${distCases.length}** FIRs\n` +
+        `• **Heinous / Severe Offences:** **${heinous.length}** (${Math.round(heinousRatio * 100)}% gravity ratio)\n` +
+        `• **Active Investigations Pending:** **${pending.length}** cases\n` +
+        `• **Night Incident Vulnerability:** **${Math.round((nightCrimes / (distCases.length || 1)) * 100)}%** concentrated between 18:00–04:00\n` +
+        (topStations.length ? `• **Highest-Incident Station:** **${topStations[0].name}** (**${topStations[0].total}** cases, **${topStations[0].heinous}** heinous, **${topStations[0].pending}** pending)\n` : '') +
+        (topCategories.length ? `• **Primary Offence Category:** **${topCategories[0][0]}** (**${topCategories[0][1]}** FIRs)\n\n` : '\n') +
+        `**Tactical Police Directives:**\n` +
+        `1. **Directed Station Deployment:** Prioritize anti-crime patrols under **${topStations[0]?.name || targetDist}** where the concentration of heinous offences and pending investigations is highest.\n` +
+        `2. **Night Interception & Check-posts:** Establish tactical vehicle checkpoints between **18:00 and 04:00 hrs** to curb property offences and narcotics transit.\n` +
+        `3. **Investigative Tasking:** Expedite charge-sheeting on the **${pending.length} pending investigations** to prevent bail-jumping and habitual offender recurrence.`;
+
+      results = topStations.map(s => ({
+        CrimeNo: `${s.total} cases (${s.heinous} heinous)`,
+        policeStationName: s.name,
+        crimeGroupName: `${s.pending} pending investigation`
+      }));
+      chartData = topCategories.map(([name, count]) => ({
+        name: name.replace('Crimes Against ', ''),
+        cases: count
+      }));
+      suggestions = [
+        `Show repeat offenders in ${targetDist}`,
+        `Show peak incident hours for ${targetDist}`,
+        `Find robbery cases in ${targetDist}`
+      ];
+      return { results, summary, suggestions, chartData };
+    }
+
     case 'SPATIAL': {
       const loc = (params.location || '').toLowerCase();
       results = caseViews.filter(c =>

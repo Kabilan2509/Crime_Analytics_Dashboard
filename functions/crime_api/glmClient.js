@@ -274,10 +274,10 @@ async function runConversation(app, httpReq, messages, tools, executeTool) {
   const allToolCalls = [];
 
   for (let round = 0; round < MAX_ROUNDS; round++) {
-    // Send tools only on the FIRST round (when no data has been fetched yet).
-    // After any tool call, send NO tools so GLM writes prose instead of calling more tools.
+    // Send tools on any round where no tool has been called yet.
+    // Once a tool executes, send NO tools so GLM writes prose instead of chaining more calls.
     const roundTools = allToolCalls.length === 0 ? tools : [];
-    console.log(`[GLM] Round ${round + 1}/${MAX_ROUNDS} — ${conversation.length} messages, tools: ${roundTools.length > 0 ? roundTools.length : 'none'}`);
+    console.log(`[GLM] Round ${round + 1}/${MAX_ROUNDS} — ${conversation.length} messages, tools: ${roundTools.length > 0 ? roundTools.length : 'none (prose mode)'}`);
 
     let response;
     try {
@@ -343,12 +343,25 @@ async function runConversation(app, httpReq, messages, tools, executeTool) {
     });
     conversation.push({
       role: 'user',
-      content: `Here are the operational facts from the police crime database:\n\n${resultLines.join('\n\n')}\n\nINSTRUCTIONS FOR YOUR RESPONSE:
-1. Provide a direct, factual answer tailored for police officers and investigators.
-2. Highlight key figures, locations, and dates using **bold**.
-3. Do NOT explain or mention any algorithms, ML models, feature weights, or technical code. State only the direct crime facts and the practical police takeaways (such as patrol focus, surveillance, or high-risk stations).
-4. Keep the tone professional, objective, and authoritative.`,
+      content: `Here are the operational facts from the Karnataka State Police crime database:
+
+${resultLines.join('\n\n')}
+
+STRICT RESPONSE INSTRUCTIONS — follow ALL of them:
+1. Write ONLY for Senior Police Officers. Be direct, factual, and authoritative.
+2. Use **bold** for: threat level, threat score, station names, case counts, and crime categories.
+3. NEVER mention machine learning, algorithms, model names, GLM, QuickML, API, database, code, or technical internals.
+4. If data shows "noDataFound: true", clearly state no FIRs were found for that district and suggest checking the spelling or using the daily briefing instead.
+5. For threat assessments, MANDATORY format:
+   - First sentence: threat level (**HIGH/MODERATE/LOW RISK**) + score (**XX/100**) + total FIRs analyzed.
+   - Then list each affected station with exact numbers: e.g. **Kalaburagi Rural PS — 12 cases, 3 heinous, 8 pending**.
+   - Then list crime categories driving the risk with counts.
+   - If nightCrimePercentage ≥ 30%, call for intensified night patrols (18:00–04:00).
+   - End with 2-3 specific tactical directives citing actual station names and crime types.
+6. For FIR list queries, present cases as a numbered list with FIR no, station, and category. Flag heinous cases with ★.
+7. Keep the total response under 300 words. Never repeat the same point twice.`,
     });
+
   }
 
   // Exhausted rounds — return best content so far
