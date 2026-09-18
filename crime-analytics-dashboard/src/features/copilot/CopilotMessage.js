@@ -274,15 +274,23 @@ function CopilotMessage({ msg, onSuggestionClick }) {
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', textAlign: 'left' }}>
                   <thead>
                     <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
+                      {msg.intent === 'STATION_CASE_LIST' || msg.intent === 'CASE_LIST' ? <>
+                        <th style={{ padding: '7px 10px', color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>FIR No</th>
+                        <th style={{ padding: '7px 10px', color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>Registered</th>
+                        <th style={{ padding: '7px 10px', color: 'var(--text-muted)', fontWeight: 600 }}>Crime Group</th>
+                        <th style={{ padding: '7px 10px', color: 'var(--text-muted)', fontWeight: 600 }}>Status</th>
+                        <th style={{ padding: '7px 10px', color: 'var(--text-muted)', fontWeight: 600 }}>Severity</th>
+                      </> : <>
                       <th style={{ padding: '7px 10px', color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>
                         {msg.intent === 'HOTSPOT' || msg.intent === 'STATION_WORKLOAD' ? 'Count' : 'FIR No'}
                       </th>
                       <th style={{ padding: '7px 10px', color: 'var(--text-muted)', fontWeight: 600 }}>
-                        {msg.intent === 'REPEAT_OFFENDER' ? 'Name' : msg.intent === 'OFFICER_QUERY' ? 'Officer' : 'Station / District'}
+                        {msg.intent === 'REPEAT_OFFENDER' || msg.intent === 'ACCUSED_SEARCH' ? 'Accused Name' : msg.intent === 'OFFICER_QUERY' ? 'Officer' : 'Station / District'}
                       </th>
                       <th style={{ padding: '7px 10px', color: 'var(--text-muted)', fontWeight: 600 }}>
-                        {msg.intent === 'STATION_WORKLOAD' ? 'Pending' : 'Crime Group / Status'}
+                        {msg.intent === 'ACCUSED_SEARCH' ? 'Crime / Station' : msg.intent === 'STATION_WORKLOAD' ? 'Pending' : 'Crime Group / Status'}
                       </th>
+                      </>}
                     </tr>
                   </thead>
                   <tbody>
@@ -291,6 +299,13 @@ function CopilotMessage({ msg, onSuggestionClick }) {
                         borderBottom: '1px solid var(--border-color)',
                         background: idx % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.015)',
                       }}>
+                        {msg.intent === 'STATION_CASE_LIST' || msg.intent === 'CASE_LIST' ? <>
+                          <td style={{ padding: '7px 10px', fontWeight: 600, color: 'var(--accent-secondary)', whiteSpace: 'nowrap' }}>{row.CrimeNo}</td>
+                          <td style={{ padding: '7px 10px', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>{row.registeredDate}</td>
+                          <td style={{ padding: '7px 10px', color: 'var(--text-secondary)' }}>{row.crimeGroupName}</td>
+                          <td style={{ padding: '7px 10px', color: 'var(--text-secondary)' }}>{row.status}</td>
+                          <td style={{ padding: '7px 10px', color: row.severity === 'Heinous' ? 'var(--accent-danger, #dc2626)' : 'var(--text-secondary)', fontWeight: row.severity === 'Heinous' ? 700 : 400 }}>{row.severity}</td>
+                        </> : <>
                         <td style={{ padding: '7px 10px', fontWeight: 600, color: 'var(--accent-secondary)', whiteSpace: 'nowrap' }}>
                           {row.CrimeNo}
                         </td>
@@ -300,6 +315,7 @@ function CopilotMessage({ msg, onSuggestionClick }) {
                         <td style={{ padding: '7px 10px', color: 'var(--text-secondary)' }}>
                           {row.crimeGroupName}
                         </td>
+                        </>}
                       </tr>
                     ))}
                   </tbody>

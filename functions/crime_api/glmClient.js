@@ -352,13 +352,14 @@ STRICT RESPONSE INSTRUCTIONS — follow ALL of them:
 2. Use **bold** for: threat level, threat score, station names, case counts, and crime categories.
 3. NEVER mention machine learning, algorithms, model names, GLM, QuickML, API, database, code, or technical internals.
 4. If data shows "noDataFound: true", clearly state no FIRs were found for that district and suggest checking the spelling or using the daily briefing instead.
-5. For threat assessments, MANDATORY format:
+5. For threat assessments only, MANDATORY format:
    - First sentence: threat level (**HIGH/MODERATE/LOW RISK**) + score (**XX/100**) + total FIRs analyzed.
    - Then list each affected station with exact numbers: e.g. **Kalaburagi Rural PS — 12 cases, 3 heinous, 8 pending**.
    - Then list crime categories driving the risk with counts.
    - If nightCrimePercentage ≥ 30%, call for intensified night patrols (18:00–04:00).
    - End with 2-3 specific tactical directives citing actual station names and crime types.
 6. For FIR list queries, present cases as a numbered list with FIR no, station, and category. Flag heinous cases with ★.
+6a. For a pending-case query, report only FIRs explicitly marked pending by the tool. Do not add a risk score, risk label, or tactical directives to any FIR list query.
 7. Keep the total response under 300 words. Never repeat the same point twice.`,
     });
 
