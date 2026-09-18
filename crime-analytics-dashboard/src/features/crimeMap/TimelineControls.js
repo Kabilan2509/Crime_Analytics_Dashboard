@@ -1,8 +1,8 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import {
-  MdCalendarMonth, MdPause, MdPlayArrow, MdRestartAlt,
-  MdSkipNext, MdSkipPrevious, MdTimeline, MdExpandLess, MdExpandMore,
-} from 'react-icons/md';
+  Calendar, Pause, Play, RotateCcw,
+  SkipForward, SkipBack, Activity, ChevronUp, ChevronDown,
+} from 'lucide-react';
 
 const MAX_INDEX = 30;
 
@@ -108,21 +108,19 @@ function TimelineControls({
         boxShadow: '0 8px 28px rgba(0,0,0,.32)', backdropFilter: 'blur(12px)',
         color: 'var(--text-primary)', fontFamily: 'Consolas, monospace',
       }}>
-        <span style={{ display: 'grid', placeItems: 'center', width: 30, height: 30, borderRadius: 7, color: '#60a5fa', background: 'rgba(59,130,246,.14)' }}>
-          <MdTimeline size={18} />
-        </span>
-        <button type="button" className="compact-timeline-btn" onClick={() => shiftWindow(-1)} disabled={startIndex === 0} title="Previous time window"><MdSkipPrevious size={16} /></button>
+        <Activity size={18} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
+        <button type="button" className="compact-timeline-btn" onClick={() => shiftWindow(-1)} disabled={startIndex === 0} title="Previous time window"><SkipBack size={16} strokeWidth={1.5} /></button>
         <button type="button" className="compact-timeline-btn compact-primary" onClick={togglePlayback} title={isPlaying ? 'Pause timeline' : 'Play timeline'}>
-          {isPlaying ? <MdPause size={16} /> : <MdPlayArrow size={16} />}<span>{isPlaying ? 'Pause' : 'Play'}</span>
+          {isPlaying ? <Pause size={16} strokeWidth={1.5} /> : <Play size={16} strokeWidth={1.5} />}<span>{isPlaying ? 'Pause' : 'Play'}</span>
         </button>
-        <button type="button" className="compact-timeline-btn" onClick={() => shiftWindow(1)} disabled={endIndex === MAX_INDEX} title="Next time window"><MdSkipNext size={16} /></button>
-        <button type="button" className="compact-timeline-btn" onClick={() => setRange(0, 30, 'all')} title="Reset timeline"><MdRestartAlt size={16} /></button>
+        <button type="button" className="compact-timeline-btn" onClick={() => shiftWindow(1)} disabled={endIndex === MAX_INDEX} title="Next time window"><SkipForward size={16} strokeWidth={1.5} /></button>
+        <button type="button" className="compact-timeline-btn" onClick={() => setRange(0, 30, 'all')} title="Reset timeline"><RotateCcw size={16} strokeWidth={1.5} /></button>
         <div style={{ minWidth: 170, padding: '0 10px', borderLeft: `1px solid ${border}`, borderRight: `1px solid ${border}` }}>
           <div style={{ fontSize: 11.5, fontWeight: 800, whiteSpace: 'nowrap' }}>{formatDate(startIndex)} - {formatDate(endIndex)}</div>
           <div style={{ marginTop: 2, fontSize: 10, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{visibleCount.toLocaleString()} visible cases</div>
         </div>
         <button type="button" className="compact-timeline-btn compact-expand" onClick={() => setCollapsed(false)} title="Expand timeline">
-          <MdExpandLess size={16} /><span>Timeline</span>
+          <ChevronUp size={16} strokeWidth={1.5} /><span>Timeline</span>
         </button>
         <style>{`
           .compact-timeline-btn{display:flex;align-items:center;justify-content:center;gap:4px;height:30px;min-width:30px;padding:0 8px;border:1px solid ${border};border-radius:6px;background:${subtleBg};color:var(--text-primary);cursor:pointer;transition:all .15s ease}.compact-timeline-btn:hover{filter:brightness(1.1)}.compact-timeline-btn:disabled{opacity:.3;cursor:not-allowed}.compact-timeline-btn span{font:700 11px Consolas,monospace}.compact-primary{padding:0 12px;background:#2563eb;border-color:#3b82f6;color:#fff}.compact-expand{color:#93c5fd}
@@ -141,7 +139,7 @@ function TimelineControls({
     }}>
       <div className="gis-timeline-head">
         <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-          <span className="gis-timeline-icon"><MdTimeline size={20} /></span>
+          <Activity size={18} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
           <div>
             <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase' }}>Temporal Intelligence</div>
             <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 2 }}>Drag either handle to refine the GIS incident window</div>
@@ -165,12 +163,12 @@ function TimelineControls({
             display: 'flex', alignItems: 'center', gap: 4, height: 30, padding: '0 10px',
             border: `1px solid ${border}`, borderRadius: 6, background: subtleBg,
             color: 'var(--text-primary)', font: '700 11px Consolas, monospace', cursor: 'pointer',
-          }}><MdExpandMore size={16} /> Collapse</button>
+          }}><ChevronDown size={16} strokeWidth={1.5} /> Collapse</button>
         </div>
       </div>
 
       <div className="gis-presets" aria-label="Timeline presets">
-        <MdCalendarMonth size={14} />
+        <Calendar size={16} strokeWidth={1.5} />
         {presets.map(preset => (
           <button key={preset.key} type="button" className={activePreset === preset.key ? 'active' : ''}
             onClick={() => setRange(preset.start, preset.end, preset.key)}>{preset.label}</button>
@@ -179,12 +177,12 @@ function TimelineControls({
 
       <div className="gis-timeline-main">
         <div className="gis-playback" style={{ background: subtleBg, borderColor: border }}>
-          <button type="button" onClick={() => shiftWindow(-1)} disabled={startIndex === 0} title="Move window backward"><MdSkipPrevious /></button>
+          <button type="button" onClick={() => shiftWindow(-1)} disabled={startIndex === 0} title="Move window backward"><SkipBack size={16} strokeWidth={1.5} /></button>
           <button type="button" className="primary" onClick={togglePlayback} title={isPlaying ? 'Pause timeline' : 'Play timeline'}>
-            {isPlaying ? <MdPause /> : <MdPlayArrow />}<span>{isPlaying ? 'Pause' : 'Play'}</span>
+            {isPlaying ? <Pause size={16} strokeWidth={1.5} /> : <Play size={16} strokeWidth={1.5} />}<span>{isPlaying ? 'Pause' : 'Play'}</span>
           </button>
-          <button type="button" onClick={() => shiftWindow(1)} disabled={endIndex === MAX_INDEX} title="Move window forward"><MdSkipNext /></button>
-          <button type="button" onClick={() => setRange(0, 30, 'all')} title="Reset timeline"><MdRestartAlt /></button>
+          <button type="button" onClick={() => shiftWindow(1)} disabled={endIndex === MAX_INDEX} title="Move window forward"><SkipForward size={16} strokeWidth={1.5} /></button>
+          <button type="button" onClick={() => setRange(0, 30, 'all')} title="Reset timeline"><RotateCcw size={16} strokeWidth={1.5} /></button>
         </div>
 
         <div className="gis-track-area" onMouseMove={handleHover} onMouseLeave={() => setHoverInfo(null)}>

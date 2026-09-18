@@ -81,7 +81,7 @@ function ComparisonSection({ comparisons }) {
                 />
                 <YAxis stroke="var(--text-muted)" fontSize={10} tickLine={false} axisLine={false} />
                 <Tooltip
-                  contentStyle={{ background: 'var(--bg-panel)', borderColor: 'var(--border-color)', borderRadius: '0px', color: 'var(--text-primary)', fontFamily: 'monospace', fontSize: '11px' }}
+                  contentStyle={{ background: 'var(--bg-panel)', borderColor: 'var(--border-color)', borderRadius: '0px', color: 'var(--text-primary)', fontFamily: 'inherit', fontSize: '11px' }}
                   formatter={(value) => [
                     metric === 'clearance' ? `${value}%` : value,
                     metric === 'clearance' ? 'Clearance' : metric === 'rate' ? 'Rate per 100k' : 'Total Cases'

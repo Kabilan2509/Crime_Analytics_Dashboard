@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { MdFilterList } from 'react-icons/md';
+import { Filter, ChevronDown, MapPin } from 'lucide-react';
 import { districts, crimeHeads } from '../../data/schemaSelectors';
 
 /* CommandCenterSelect dropdown matching command center specification */
@@ -72,7 +72,7 @@ function CommandCenterSelect({ value, onChange, options, label, isMulti = false 
         }}
       >
         <span>{displayLabel}</span>
-        <span style={{ fontSize: '9px', marginLeft: '6px', opacity: 0.7 }}>▼</span>
+        <ChevronDown size={16} strokeWidth={1.5} style={{ marginLeft: '6px', opacity: 0.7 }} />
       </button>
 
       {isOpen && (
@@ -207,7 +207,7 @@ function MapFilters({
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--accent-primary)', fontWeight: 'bold', fontSize: '12px', fontFamily: 'monospace', marginRight: '6px' }}>
-        <MdFilterList size={16} />
+        <Filter size={16} strokeWidth={1.5} />
         <span>FILTERS:</span>
       </div>
 
@@ -262,7 +262,10 @@ function MapFilters({
             whiteSpace: 'nowrap'
           }}
         >
-          📍 {activeCount} INCIDENTS
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+            <MapPin size={16} strokeWidth={1.5} />
+            <span>{activeCount} INCIDENTS</span>
+          </span>
         </div>
       )}
     </div>

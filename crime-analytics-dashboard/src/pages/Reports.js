@@ -18,16 +18,20 @@ import {
   Legend,
 } from 'recharts';
 import {
-  MdFileDownload,
-  MdDescription,
-  MdPictureAsPdf,
-  MdSearch,
-  MdAddCircle,
-  MdInfoOutline,
-  MdLaunch,
-  MdSecurity,
-  MdClose,
-} from 'react-icons/md';
+  Download,
+  FileText,
+  Search,
+  PlusCircle,
+  Info,
+  ExternalLink,
+  Shield,
+  X,
+  AlertTriangle,
+  TrendingUp,
+  TrendingDown,
+  Lightbulb,
+  Lock
+} from 'lucide-react';
 import { MapContainer, CircleMarker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import ThemeAwareTileLayer from '../components/ui/ThemeAwareTileLayer';
@@ -119,7 +123,7 @@ function ChartTooltip({ active, payload, label }) {
     <div className="chart-tooltip" style={{ margin: 0, padding: 0 }}>
       <p className="chart-tooltip-label" style={{ margin: '0 0 6px 0', fontSize: '11px', textTransform: 'uppercase', fontWeight: 600 }}>{label}</p>
       {payload.map((item) => (
-        <p key={item.name} style={{ color: item.color || item.fill, margin: '2px 0', fontSize: '12px', fontFamily: 'Consolas, monospace' }}>
+        <p key={item.name} style={{ color: item.color || item.fill, margin: '2px 0', fontSize: '12px' }}>
           {item.name}: {Number(item.value).toLocaleString()}
         </p>
       ))}
@@ -889,7 +893,7 @@ function Reports() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
         {showWarning && (
           <div style={{ backgroundColor: '#fffbeb', border: '1px solid #d97706', padding: '12px', color: '#b45309', fontSize: '11px', fontFamily: 'sans-serif' }}>
-            <strong>⚠️ Date Range Overridden:</strong> The Commissioner Morning Brief strictly queries the prior 24 hours of logs. User date filters have been temporarily scoped out.
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><AlertTriangle size={16} strokeWidth={1.5} style={{ color: 'var(--accent-warning)' }} /><strong>Date Range Overridden:</strong></span> The Commissioner Morning Brief strictly queries the prior 24 hours of logs. User date filters have been temporarily scoped out.
           </div>
         )}
 
@@ -1080,7 +1084,7 @@ function Reports() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               {escalationCategory.map(esc => (
                 <div key={esc.name} style={{ backgroundColor: '#fffbeb', borderLeft: '4px solid #d97706', padding: '8px 12px', fontSize: '11px' }}>
-                  🚨 <strong>{esc.name}</strong> has increased by <span style={{ color: '#dc2626', fontWeight: 'bold' }}>+{esc.pct}%</span> (Current: {esc.current} vs Baseline: {esc.base})
+                  <AlertTriangle size={16} strokeWidth={1.5} style={{ color: 'var(--accent-danger)', verticalAlign: 'middle', marginRight: '4px' }} /><strong>{esc.name}</strong> has increased by <span style={{ color: '#dc2626', fontWeight: 'bold' }}>+{esc.pct}%</span> (Current: {esc.current} vs Baseline: {esc.base})
                 </div>
               ))}
             </div>
@@ -1334,7 +1338,7 @@ function Reports() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
           <div>
             <h5 style={{ borderBottom: '1px solid #dc2626', paddingBottom: '4px', margin: '0 0 8px', fontSize: '11px', textTransform: 'uppercase', color: '#dc2626', fontFamily: 'sans-serif' }}>
-              📈 Top 5 Rising Crime Heads
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><TrendingUp size={16} strokeWidth={1.5} /> Top 5 Rising Crime Heads</span>
             </h5>
             <ul style={{ margin: 0, paddingLeft: '16px', fontSize: '11px', lineHeight: '18px' }}>
               {rising.map(r => (
@@ -1346,7 +1350,7 @@ function Reports() {
           </div>
           <div>
             <h5 style={{ borderBottom: '1px solid #16a34a', paddingBottom: '4px', margin: '0 0 8px', fontSize: '11px', textTransform: 'uppercase', color: '#16a34a', fontFamily: 'sans-serif' }}>
-              📉 Top 5 Falling Crime Heads
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><TrendingDown size={16} strokeWidth={1.5} /> Top 5 Falling Crime Heads</span>
             </h5>
             <ul style={{ margin: 0, paddingLeft: '16px', fontSize: '11px', lineHeight: '18px' }}>
               {falling.map(f => (
@@ -1428,7 +1432,7 @@ function Reports() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
         {!hasCyberFilter && (
           <div style={{ backgroundColor: '#fffbeb', border: '1px solid #d97706', padding: '12px', color: '#b45309', fontSize: '11px', fontFamily: 'sans-serif' }}>
-            <strong>💡 Auto-Filter Applied:</strong> Cyber Crime head was automatically selected by default.
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Lightbulb size={16} strokeWidth={1.5} /><strong>Auto-Filter Applied:</strong></span> Cyber Crime head was automatically selected by default.
           </div>
         )}
 
@@ -1696,7 +1700,7 @@ function Reports() {
     if (!stationId || stationId === 'all') {
       return (
         <article className="card" style={{ textAlign: 'center', padding: '30px', color: '#b45309', backgroundColor: '#fffbeb', border: '1px solid #d97706' }}>
-          <h4 style={{ margin: '0 0 8px', fontSize: '14px', textTransform: 'uppercase' }}>⚠️ Police Station Filter Required</h4>
+          <h4 style={{ margin: '0 0 8px', fontSize: '14px', textTransform: 'uppercase' }}><span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><AlertTriangle size={16} strokeWidth={1.5} style={{ color: 'var(--accent-warning)' }} /> Police Station Filter Required</span></h4>
           <p style={{ margin: 0, fontSize: '12px' }}>
             The Police Station Crime Review requires a specific station selected in the geography filter. Please select a District and specific Police Station in the Query Creator, click "Add Query Criteria", and re-submit the search.
           </p>
@@ -1745,7 +1749,7 @@ function Reports() {
         {/* Section 1: Station Snapshot */}
         <div style={{ border: '1px solid #cbd5e1', padding: '12px', display: 'flex', justifyStyle: 'space-between', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc' }}>
           <div>
-            <h4 style={{ margin: 0, fontSize: '14px', color: '#1e293b' }}>🏢 Jurisdiction Snapshot: {stationName}</h4>
+            <h4 style={{ margin: 0, fontSize: '14px', color: '#1e293b' }}>Jurisdiction Snapshot: {stationName}</h4>
             <span style={{ fontSize: '11px', color: '#64748b', display: 'block', marginTop: '2px' }}>
               State Jurisdiction Sector ID: PS-{stationId} • Active Circle Wing
             </span>
@@ -1826,7 +1830,7 @@ function Reports() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
           <div>
             <h5 style={{ borderBottom: '1px solid #ddd', paddingBottom: '4px', margin: '0 0 8px', fontSize: '11px', textTransform: 'uppercase', color: '#111', fontFamily: 'sans-serif' }}>
-              🚨 Beat Repeat Offender Index
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><AlertTriangle size={16} strokeWidth={1.5} style={{ color: 'var(--accent-danger)' }} /> Beat Repeat Offender Index</span>
             </h5>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10px' }}>
               <thead>
@@ -1849,7 +1853,7 @@ function Reports() {
           </div>
           <div>
             <h5 style={{ borderBottom: '1px solid #ddd', paddingBottom: '4px', margin: '0 0 8px', fontSize: '11px', textTransform: 'uppercase', color: '#111', fontFamily: 'sans-serif' }}>
-              🛡️ Beat Repeat Victim Profiles
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Shield size={16} strokeWidth={1.5} /> Beat Repeat Victim Profiles</span>
             </h5>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10px' }}>
               <thead>
@@ -1884,7 +1888,7 @@ function Reports() {
     if (!districtId || districtId === 'all') {
       return (
         <article className="card" style={{ textAlign: 'center', padding: '30px', color: '#b45309', backgroundColor: '#fffbeb', border: '1px solid #d97706' }}>
-          <h4 style={{ margin: '0 0 8px', fontSize: '14px', textTransform: 'uppercase' }}>⚠️ District Filter Required</h4>
+          <h4 style={{ margin: '0 0 8px', fontSize: '14px', textTransform: 'uppercase' }}><span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><AlertTriangle size={16} strokeWidth={1.5} style={{ color: 'var(--accent-warning)' }} /> District Filter Required</span></h4>
           <p style={{ margin: 0, fontSize: '12px' }}>
             The District Crime Review requires a specific District selected in the geography filter. Please select a specific District in the Query Creator, click "Add Query Criteria", and re-submit the search.
           </p>
@@ -1927,7 +1931,7 @@ function Reports() {
         {/* Section 1: District Snapshot */}
         <div style={{ border: '1px solid #cbd5e1', padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc' }}>
           <div>
-            <h4 style={{ margin: 0, fontSize: '14px', color: '#1e293b' }}>📍 District Demographics: {districtName}</h4>
+            <h4 style={{ margin: 0, fontSize: '14px', color: '#1e293b' }}>District Demographics: {districtName}</h4>
             <span style={{ fontSize: '11px', color: '#64748b', display: 'block', marginTop: '2px' }}>
               State Demographics Division ID: DIV-{districtId} • Police Range
             </span>
@@ -2434,7 +2438,6 @@ function Reports() {
         .reports-page {
           background-color: #faf8f5 !important;
           color: #1e293b !important;
-          font-family: 'Consolas', 'Courier New', Courier, monospace !important;
           display: flex !important;
           flex-direction: column !important;
           gap: 20px !important;
@@ -2454,11 +2457,10 @@ function Reports() {
         }
         .reports-page .card-title {
           color: #1e293b !important;
-          font-family: 'Consolas', 'Courier New', Courier, monospace !important;
           text-transform: uppercase !important;
           font-size: 13px !important;
           font-weight: 700 !important;
-          letter-spacing: 1.2px !important;
+          letter-spacing: 0.05em !important;
           margin: 0 !important;
           display: flex !important;
           align-items: center !important;
@@ -2496,7 +2498,6 @@ function Reports() {
           border: 1px solid #cbd5e1 !important;
           color: #1e293b !important;
           padding: 6px 10px !important;
-          font-family: 'Consolas', monospace !important;
           font-size: 12px !important;
           outline: none !important;
           border-radius: 0px !important;
@@ -2521,7 +2522,6 @@ function Reports() {
           gap: 6px !important;
           padding: 4px 10px !important;
           font-size: 11px !important;
-          font-family: 'Consolas', monospace !important;
           font-weight: bold !important;
           color: #ffffff !important;
           border-radius: 0px !important;
@@ -2545,7 +2545,6 @@ function Reports() {
           color: #ffffff !important;
           padding: 6px 16px !important;
           font-size: 12px !important;
-          font-family: 'Consolas', monospace !important;
           text-transform: uppercase !important;
           font-weight: bold !important;
           cursor: pointer !important;
@@ -2586,7 +2585,6 @@ function Reports() {
           border: none !important;
           color: #64748b !important;
           padding: 8px 16px !important;
-          font-family: 'Consolas', monospace !important;
           font-size: 13px !important;
           font-weight: bold !important;
           text-transform: uppercase !important;
@@ -2611,7 +2609,6 @@ function Reports() {
           border-collapse: collapse !important;
         }
         .reports-page .data-table th {
-          font-family: 'Consolas', 'Courier New', Courier, monospace !important;
           text-transform: uppercase !important;
           font-size: 11px !important;
           color: #64748b !important;
@@ -2716,7 +2713,7 @@ function Reports() {
       {/* Section 1 — Query Creator Panel */}
       <article className="card animate-fade-in" style={{ padding: 20 }}>
         <div className="card-header">
-          <h3 className="card-title"><MdDescription /> KSP Crime Data Explorer — Query Creator</h3>
+          <h3 className="card-title"><FileText size={16} strokeWidth={1.5} /> KSP Crime Data Explorer — Query Creator</h3>
         </div>
 
         {/* Step-by-Step Instructions Banner */}
@@ -2731,15 +2728,14 @@ function Reports() {
           borderLeft: '4px solid #002147',
           borderRadius: '4px',
           fontSize: '11.5px',
-          color: activeThemeColors.textColor,
-          fontFamily: 'Consolas, monospace'
+          color: activeThemeColors.textColor
         }}>
-          <MdInfoOutline size={22} style={{ color: '#002147', flexShrink: 0 }} />
+          <Info size={18} strokeWidth={1.5} style={{ color: 'var(--text-secondary)', flexShrink: 0 }} />
           <div style={{ lineHeight: '1.5' }}>
             <strong style={{ color: '#002147' }}>HOW TO APPLY FILTERS & COMPILE DOSSIER:</strong>
             {' '}1. Select your <strong>Report Template, Date Range, District, and Offense Category</strong> below.
             {' '}2. Click <strong style={{ color: 'var(--text-primary)', background: 'var(--bg-panel-alt)', padding: '1px 6px', border: '1px solid var(--border-color)', borderRadius: '3px' }}>+ Add Query Criteria</strong> to stage your query.
-            {' '}3. Click <strong style={{ color: '#fff', background: '#2563eb', padding: '1px 6px', borderRadius: '3px' }}>🔍 Submit Query</strong> to generate the live report briefing, charts, and case table.
+            {' '}3. Click <strong style={{ color: '#fff', background: '#2563eb', padding: '1px 6px', borderRadius: '3px' }}>Submit Query</strong> to generate the live report briefing, charts, and case table.
           </div>
         </div>
         
@@ -2880,10 +2876,10 @@ function Reports() {
           
           <div style={{ display: 'flex', gap: 10 }}>
             <button type="button" onClick={handleAddQuery} className="btn btn-secondary" style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              <MdAddCircle size={16} /> Add Query Criteria
+              <PlusCircle size={16} strokeWidth={1.5} /> Add Query Criteria
             </button>
             <button type="button" onClick={handleSubmitQuery} disabled={!isValid} className="btn" style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              <MdSearch size={16} /> Submit Query
+              <Search size={16} strokeWidth={1.5} /> Submit Query
             </button>
           </div>
         </div>
@@ -2896,7 +2892,7 @@ function Reports() {
               return (
                 <div key={pill.id} className={`filter-pill ${pillClass}`}>
                   <span>{pill.label}</span>
-                  <span onClick={() => handleRemovePill(pill.id)} className="pill-remove">✕</span>
+                  <span onClick={() => handleRemovePill(pill.id)} className="pill-remove" style={{ display: 'inline-flex', alignItems: 'center' }}><X size={16} strokeWidth={1.5} /></span>
                 </div>
               );
             })}
@@ -2907,7 +2903,7 @@ function Reports() {
       {/* Query creation guideline caveat note */}
       {!submittedQuery && (
         <article className="card animate-fade-in" style={{ textAlign: 'center', padding: '24px', color: activeThemeColors.mutedTextColor }}>
-          <MdDescription size={32} style={{ display: 'block', margin: '0 auto 12px' }} />
+          <FileText size={18} strokeWidth={1.5} style={{ display: 'block', margin: '0 auto 12px', color: 'var(--text-secondary)' }} />
           <h4 style={{ margin: '0 0 6px', textTransform: 'uppercase', fontSize: 13, fontWeight: 700 }}>Query Required to Generate Report</h4>
           <p style={{ fontSize: 12, maxWidth: 520, margin: '0 auto', lineHeight: '18px' }}>
             All queries require a date/year range, at least one geographical location (District), and at least one offence category (Crime Head) to be valid and submitted. Add criteria above, then click submit to visualize analytical data.
@@ -2927,15 +2923,16 @@ function Reports() {
             </div>
             
             <div style={{ display: 'flex', gap: 10 }}>
-              <button type="button" onClick={exportPDF} disabled={exporting} className="btn btn-secondary" style={{ height: 32, padding: '0 12px' }}><MdPictureAsPdf /> Export PDF</button>
-              <button type="button" onClick={exportXLSX} disabled={exporting} className="btn btn-secondary" style={{ height: 32, padding: '0 12px' }}><MdFileDownload /> Export XLSX</button>
-              <button type="button" onClick={exportCSV} disabled={exporting} className="btn btn-secondary" style={{ height: 32, padding: '0 12px' }}><MdFileDownload /> Export CSV</button>
+              <button type="button" onClick={exportPDF} disabled={exporting} className="btn btn-secondary" style={{ height: 32, padding: '0 12px' }}><FileText size={16} strokeWidth={1.5} /> Export PDF</button>
+              <button type="button" onClick={exportXLSX} disabled={exporting} className="btn btn-secondary" style={{ height: 32, padding: '0 12px' }}><Download size={16} strokeWidth={1.5} /> Export XLSX</button>
+              <button type="button" onClick={exportCSV} disabled={exporting} className="btn btn-secondary" style={{ height: 32, padding: '0 12px' }}><Download size={16} strokeWidth={1.5} /> Export CSV</button>
             </div>
           </div>
 
           {/* Dynamic Caveats */}
-          <div style={{ padding: '10px 14px', background: 'rgba(37, 99, 235, 0.05)', borderLeft: '3px solid #2563eb', fontSize: '11px', color: activeThemeColors.mutedTextColor, fontFamily: 'Consolas, monospace' }}>
-            🔴 DATA CAVEAT NOTE: Records reflect case status entries uploaded dynamically by respective Sho circles. Spatiotemporal coordinates are secured at source in compliance with privacy regulations. Click legends to isolate compared lines.
+          <div style={{ padding: '10px 14px', background: 'rgba(37, 99, 235, 0.05)', borderLeft: '3px solid #2563eb', fontSize: '11px', color: activeThemeColors.mutedTextColor, fontFamily: 'Consolas, monospace', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <AlertTriangle size={16} strokeWidth={1.5} style={{ color: 'var(--accent-warning)', flexShrink: 0 }} />
+            <span>DATA CAVEAT NOTE: Records reflect case status entries uploaded dynamically by respective Sho circles. Spatiotemporal coordinates are secured at source in compliance with privacy regulations. Click legends to isolate compared lines.</span>
           </div>
 
           {/* Results Area */}
@@ -2969,16 +2966,16 @@ function Reports() {
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={chartData.data} margin={{ top: 10, bottom: 5, left: -10, right: 10 }}>
                         <CartesianGrid stroke={activeThemeColors.gridColor} strokeDasharray="3 3" vertical={true} horizontal={true} strokeOpacity={0.6} />
-                        <XAxis dataKey="name" stroke={activeThemeColors.mutedTextColor} tickLine={false} axisLine={false} style={{ fontSize: '11px', fontFamily: 'Consolas, monospace' }} />
-                        <YAxis stroke={activeThemeColors.mutedTextColor} tickLine={false} axisLine={false} style={{ fontSize: '11px', fontFamily: 'Consolas, monospace' }} />
+                        <XAxis dataKey="name" stroke={activeThemeColors.mutedTextColor} tickLine={false} axisLine={false} style={{ fontSize: '11px' }} />
+                        <YAxis stroke={activeThemeColors.mutedTextColor} tickLine={false} axisLine={false} style={{ fontSize: '11px' }} />
                         <Tooltip content={<ChartTooltip />} />
                         <Legend 
                           verticalAlign="top" 
                           height={36} 
-                          wrapperStyle={{ fontFamily: 'Consolas, monospace', fontSize: '10px', textTransform: 'uppercase', cursor: 'pointer' }} 
+                          wrapperStyle={{ fontSize: '10px', textTransform: 'uppercase', cursor: 'pointer' }} 
                         />
                         {chartData.keys.map((key, index) => {
-                          const palette = ['#2563eb', '#d97706', '#16a34a', '#dc2626', '#8b5cf6', '#06b6d4'];
+                          const palette = ['#2563eb', '#d97706', '#16a34a', '#dc2626', '#64748b', '#3b82f6'];
                           const color = palette[index % palette.length];
                           return (
                             <Line 
@@ -3006,7 +3003,7 @@ function Reports() {
               <div className="table-wrap" style={{ overflowX: 'auto' }}>
                 <div style={{ padding: '0 0 10px', fontSize: '11px', color: activeThemeColors.mutedTextColor, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span>
-                    💡 Click on any case row below to open and inspect in the <strong>Case Registry</strong> ({hasCaseAccess ? 'Authorized Access' : 'Command Elevation Required'}).
+                    <Lightbulb size={16} strokeWidth={1.5} style={{ verticalAlign: 'middle', marginRight: '4px' }} /> Click on any case row below to open and inspect in the <strong>Case Registry</strong> ({hasCaseAccess ? 'Authorized Access' : 'Command Elevation Required'}).
                   </span>
                   <span style={{ fontWeight: 600, color: '#2563eb' }}>
                     {filteredCases.length} Matching Records
@@ -3041,7 +3038,7 @@ function Reports() {
                         <td>
                           <span style={{ color: '#2563eb', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px', textDecoration: 'underline' }}>
                             #{c.CaseMasterID}
-                            <MdLaunch size={11} style={{ opacity: 0.8 }} />
+                            <ExternalLink size={16} strokeWidth={1.5} style={{ opacity: 0.8 }} />
                           </span>
                         </td>
                         <td><strong>{isCommandMode ? c.FIRNo : maskText(c.FIRNo || `FIR-${c.CaseMasterID}`, 6, 4)}</strong></td>
@@ -3110,7 +3107,7 @@ function Reports() {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#dc2626' }}>
-                <MdSecurity size={24} />
+                <Shield size={18} strokeWidth={1.5} style={{ color: 'var(--accent-danger)' }} />
                 <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 800, textTransform: 'uppercase' }}>
                   Command Access Required
                 </h4>
@@ -3120,14 +3117,14 @@ function Reports() {
                 onClick={() => setAccessNotice(null)}
                 style={{ background: 'transparent', border: 'none', color: activeThemeColors.mutedTextColor, cursor: 'pointer', padding: 4 }}
               >
-                <MdClose size={18} />
+                <X size={16} strokeWidth={1.5} />
               </button>
             </div>
             <p style={{ fontSize: '12px', lineHeight: '1.5', margin: '0 0 12px', color: activeThemeColors.textColor }}>
               Access to Case Registry record <strong>#{accessNotice.caseId} ({accessNotice.crimeNo})</strong> at <strong>{accessNotice.station} ({accessNotice.district})</strong> requires <strong>Command Center</strong> or <strong>Administrator</strong> authorization.
             </p>
             <div style={{ padding: '8px 12px', background: 'rgba(220, 38, 38, 0.08)', borderRadius: '4px', fontSize: '11px', color: '#dc2626', marginBottom: '16px' }}>
-              🔒 Currently browsing in <em>{session?.role || 'Redacted Analyst'}</em> mode. To inspect full unredacted case registry details, please unlock Command Mode using your authorized officer credentials in the header.
+              <Lock size={16} strokeWidth={1.5} style={{ verticalAlign: 'middle', marginRight: '4px' }} /> Currently browsing in <em>{session?.role || 'Redacted Analyst'}</em> mode. To inspect full unredacted case registry details, please unlock Command Mode using your authorized officer credentials in the header.
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
               <button
@@ -3192,7 +3189,6 @@ const renderHeaderFooterShell = (reportTitle, filterDesc, content) => {
         <div style={{
           textAlign: 'right',
           fontSize: '10px',
-          fontFamily: 'Consolas, monospace',
           color: '#334155',
           border: '1.5px solid #8B0000',
           padding: '8px 14px',
@@ -3215,7 +3211,6 @@ const renderHeaderFooterShell = (reportTitle, filterDesc, content) => {
         borderLeft: '4px solid #002147',
         backgroundColor: 'rgba(0, 33, 71, 0.03)',
         fontSize: '11px',
-        fontFamily: 'Consolas, monospace',
         color: '#1e293b'
       }}>
         <strong style={{ color: '#002147' }}>OFFICIAL QUERY SCOPE:</strong> {filterDesc}
@@ -3235,8 +3230,7 @@ const renderHeaderFooterShell = (reportTitle, filterDesc, content) => {
         justifyContent: 'space-between',
         alignItems: 'flex-end',
         fontSize: '10px',
-        color: '#555',
-        fontFamily: 'Consolas, monospace'
+        color: '#555'
       }}>
         <div>
           <div style={{ fontWeight: 700, color: '#002147' }}>KARNATAKA STATE POLICE — MADHUKAR AUTOMATED INTELLIGENCE PLATFORM</div>

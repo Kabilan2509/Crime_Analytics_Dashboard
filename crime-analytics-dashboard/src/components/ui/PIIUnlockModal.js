@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
+import { Shield, AlertTriangle, X, Check, Smartphone } from 'lucide-react';
 import { useSecurity } from '../../context/SecurityContext';
 
 export default function PIIUnlockModal({ isOpen, onClose }) {
@@ -278,8 +279,8 @@ export default function PIIUnlockModal({ isOpen, onClose }) {
       >
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-          <strong id="pii-modal-title" style={{ fontSize: '13px', textTransform: 'uppercase', color: '#60a5fa', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span>🛡️</span> PII Access Verification
+          <strong id="pii-modal-title" style={{ fontSize: '13px', textTransform: 'uppercase', color: 'var(--accent-primary)', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Shield size={16} strokeWidth={1.5} /> PII Access Verification
           </strong>
           <button
             type="button"
@@ -290,24 +291,25 @@ export default function PIIUnlockModal({ isOpen, onClose }) {
               border: 'none',
               color: 'var(--text-secondary)',
               cursor: 'pointer',
-              fontSize: '15px',
               padding: '4px',
+              display: 'inline-flex',
+              alignItems: 'center',
             }}
           >
-            ✕
+            <X size={16} strokeWidth={1.5} />
           </button>
         </div>
 
         {/* Info or Error Alerts */}
         {infoMsg && (
-          <div style={{ fontSize: '11px', color: '#10b981', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.25)', padding: '8px 10px', borderRadius: '4px', marginBottom: '14px', lineHeight: '1.4' }}>
-            ✓ {infoMsg}
+          <div style={{ fontSize: '11px', color: 'var(--accent-success)', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.25)', padding: '8px 10px', borderRadius: '4px', marginBottom: '14px', lineHeight: '1.4', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Check size={16} strokeWidth={1.5} style={{ flexShrink: 0 }} /> {infoMsg}
           </div>
         )}
 
         {errorMsg && (
-          <div style={{ fontSize: '11px', color: '#f87171', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.25)', padding: '8px 10px', borderRadius: '4px', marginBottom: '14px', lineHeight: '1.4' }}>
-            ⚠️ {errorMsg}
+          <div style={{ fontSize: '11px', color: 'var(--accent-danger)', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.25)', padding: '8px 10px', borderRadius: '4px', marginBottom: '14px', lineHeight: '1.4', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <AlertTriangle size={16} strokeWidth={1.5} style={{ flexShrink: 0 }} /> {errorMsg}
           </div>
         )}
 
@@ -415,8 +417,8 @@ export default function PIIUnlockModal({ isOpen, onClose }) {
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <code style={{ fontSize: '11px', color: '#38bdf8', letterSpacing: '1px' }}>{mfaData.secret}</code>
-                  <button type="button" onClick={copySecret} style={{ background: 'transparent', border: 'none', color: copied ? '#10b981' : '#60a5fa', cursor: 'pointer', fontSize: '11px' }}>
-                    {copied ? '✓ Copied' : 'Copy'}
+                  <button type="button" onClick={copySecret} style={{ background: 'transparent', border: 'none', color: copied ? 'var(--accent-success)' : 'var(--accent-info, #60a5fa)', cursor: 'pointer', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                    {copied ? <><Check size={16} strokeWidth={1.5} /> Copied</> : 'Copy'}
                   </button>
                 </div>
               </div>
@@ -454,7 +456,7 @@ export default function PIIUnlockModal({ isOpen, onClose }) {
         {step === 'otp' && (
           <form onSubmit={handleVerifyOtp} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--bg-panel-alt)', padding: '10px', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
-              <span style={{ fontSize: '20px' }}>📱</span>
+              <Smartphone size={18} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
               <div>
                 <div style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-primary)' }}>{form.officerName || 'Officer'}</div>
                 <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{form.email}</div>
@@ -503,8 +505,8 @@ export default function PIIUnlockModal({ isOpen, onClose }) {
         {/* ── STEP: RESET-REQUEST (Lost Phone Initiation) ── */}
         {step === 'reset-request' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <div style={{ fontSize: '12px', color: '#f59e0b', background: 'rgba(245, 158, 11, 0.1)', padding: '10px', borderRadius: '6px', border: '1px solid rgba(245, 158, 11, 0.25)', lineHeight: '1.4' }}>
-              ⚠️ <strong>Authenticator Reset</strong>
+            <div style={{ fontSize: '12px', color: 'var(--accent-warning)', background: 'rgba(245, 158, 11, 0.1)', padding: '10px', borderRadius: '6px', border: '1px solid rgba(245, 158, 11, 0.25)', lineHeight: '1.4' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><AlertTriangle size={16} strokeWidth={1.5} /> <strong>Authenticator Reset</strong></span>
               <div style={{ marginTop: '4px', fontSize: '11px', color: 'var(--text-secondary)' }}>
                 We will send a 6-digit verification code to your registered email to revoke your old Authenticator and issue a new QR code.
               </div>

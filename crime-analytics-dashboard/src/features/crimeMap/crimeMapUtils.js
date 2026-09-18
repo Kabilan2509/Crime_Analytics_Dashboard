@@ -17,10 +17,10 @@ export const MAP_LAYERS = [
   { id: 'cyber', label: 'Cyber Crimes' },
   { id: 'emergency', label: '112 Emergency calls' },
   { id: 'patrols', label: 'Patrol Coverage' },
-  { id: 'forecast_tomorrow', label: "👁️ Tomorrow's Forecast" },
-  { id: 'forecast_week', label: '👁️ Next Week Forecast' },
-  { id: 'gis_cctv', label: '📹 CCTV Grid' },
-  { id: 'gis_schools', label: '🏫 Schools' },
+  { id: 'forecast_tomorrow', label: "Tomorrow's Forecast" },
+  { id: 'forecast_week', label: 'Next Week Forecast' },
+  { id: 'gis_cctv', label: 'CCTV Grid' },
+  { id: 'gis_schools', label: 'Schools' },
 ];
 
 /** Filter cases based on map-specific criteria */

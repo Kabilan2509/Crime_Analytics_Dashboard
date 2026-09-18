@@ -1,6 +1,6 @@
 import React from 'react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
-import { MdPeople, MdLocalPolice, MdVideocam, MdGroup } from 'react-icons/md';
+import { Users, Shield, Video, UserCheck } from 'lucide-react';
 
 function CategoryDemographicsOpsSection({ categoriesData, operations }) {
   const { categories = [], demographics = {} } = categoriesData;
@@ -38,7 +38,7 @@ function CategoryDemographicsOpsSection({ categoriesData, operations }) {
                   <XAxis type="number" stroke="var(--text-muted)" fontSize={8} tickLine={false} />
                   <YAxis dataKey="name" type="category" stroke="var(--text-muted)" fontSize={8} tickLine={false} width={90} />
                   <Tooltip
-                    contentStyle={{ background: 'var(--bg-panel)', borderColor: 'var(--border-color)', borderRadius: '0px', color: 'var(--text-primary)', fontFamily: 'monospace', fontSize: '9px' }}
+                    contentStyle={{ background: 'var(--bg-panel)', borderColor: 'var(--border-color)', borderRadius: '0px', color: 'var(--text-primary)', fontFamily: 'inherit', fontSize: '9px' }}
                   />
                   <Bar dataKey="count" fill="var(--chart-blue)" radius={[0, 2, 2, 0]} />
                 </BarChart>
@@ -57,9 +57,9 @@ function CategoryDemographicsOpsSection({ categoriesData, operations }) {
                   <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={8} tickLine={false} />
                   <YAxis stroke="var(--text-muted)" fontSize={8} tickLine={false} axisLine={false} />
                   <Tooltip
-                    contentStyle={{ background: 'var(--bg-panel)', borderColor: 'var(--border-color)', borderRadius: '0px', color: 'var(--text-primary)', fontFamily: 'monospace', fontSize: '9px' }}
+                    contentStyle={{ background: 'var(--bg-panel)', borderColor: 'var(--border-color)', borderRadius: '0px', color: 'var(--text-primary)', fontFamily: 'inherit', fontSize: '9px' }}
                   />
-                  <Bar dataKey="count" fill="var(--chart-indigo)" radius={[2, 2, 0, 0]} />
+                  <Bar dataKey="count" fill="var(--chart-blue)" radius={[2, 2, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -78,7 +78,7 @@ function CategoryDemographicsOpsSection({ categoriesData, operations }) {
           flexWrap: 'wrap'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-secondary)' }}>
-            <MdPeople size={14} />
+            <Users size={16} strokeWidth={1.5} />
             <strong>GENDER MIX:</strong>
           </div>
           {genderData.map(g => (
@@ -102,7 +102,7 @@ function CategoryDemographicsOpsSection({ categoriesData, operations }) {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '4px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <MdLocalPolice size={14} style={{ color: 'var(--accent-primary)' }} />
+                <Shield size={16} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
                 <span>Active Patrol Beat Coverage</span>
               </div>
               <strong style={{ color: getMetricColor(patrolPercent) }}>{patrolCoverage}</strong>
@@ -121,7 +121,7 @@ function CategoryDemographicsOpsSection({ categoriesData, operations }) {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '4px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <MdVideocam size={14} style={{ color: 'var(--accent-primary)' }} />
+                <Video size={16} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
                 <span>CCTV Cameras Active (Uptime)</span>
               </div>
               <strong style={{ color: getMetricColor(cctvUptime) }}>{cctvUptime}%</strong>
@@ -140,7 +140,7 @@ function CategoryDemographicsOpsSection({ categoriesData, operations }) {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '4px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <MdGroup size={14} style={{ color: 'var(--accent-primary)' }} />
+                <UserCheck size={16} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
                 <span>Available Duty Officers</span>
               </div>
               <strong style={{ color: getMetricColor(personnelAvailable) }}>{personnelAvailable}%</strong>

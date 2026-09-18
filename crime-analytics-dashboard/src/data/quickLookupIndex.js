@@ -63,13 +63,6 @@ export const QUICK_LOOKUP_INDEX = [
     description: "Look up a specific FIR/case and see full investigation details."
   },
   {
-    title: 'Evidence Workspace',
-    path: '/evidence',
-    section: 'Investigation',
-    keywords: ["evidence", "exhibits", "chain of custody", "forensics", "evidence list", "view evidence", "evidence manager", "case evidence"],
-    description: "Review and manage case evidence, photos, and forensic notes."
-  },
-  {
     title: 'Suspect Timeline',
     path: '/suspect-timeline',
     section: 'Investigation',

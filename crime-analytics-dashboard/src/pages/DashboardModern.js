@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  MdArrowForward, MdCheckCircle, MdGavel, MdOutlineShield,
-  MdPendingActions, MdTrendingUp, MdWarningAmber,
-  MdMap, MdBarChart, MdDescription, MdSmartToy, MdHub,
-  MdAutoGraph, MdPeople, MdLink, MdFolderOpen, MdPsychology,
-  MdSettings, MdSecurity, MdAccessTime, MdExpandMore, MdExpandLess,
-  MdHourglassBottom, MdPersonSearch, MdOutlineInfo,
-} from 'react-icons/md';
+  ArrowRight, CheckCircle2, Gavel, Shield,
+  Clock, AlertTriangle,
+  Map, BarChart3, FileText, Bot, Network,
+  LineChart, Users, FolderOpen, Brain,
+  Settings, ChevronDown, ChevronUp,
+  Hourglass, UserCheck, Info,
+} from 'lucide-react';
 import {
   Area, AreaChart, Bar, BarChart, CartesianGrid, Cell,
   ResponsiveContainer, Tooltip, XAxis, YAxis,
@@ -18,14 +18,14 @@ import { getCaseViews, getCronThreatAlerts, triggerCronThreatAssess } from '../s
 import { buildDashboardViewModel, filterDashboardCases } from '../features/dashboard/dashboardUtils';
 import './DashboardModern.css';
 
-const STAT_ICONS = [MdOutlineShield, MdGavel, MdCheckCircle, MdPendingActions];
+const STAT_ICONS = [Shield, Gavel, CheckCircle2, Clock];
 const STAT_TONES = ['blue', 'red', 'green', 'amber'];
 
 const EXTENDED_PARAM_ICONS = {
-  heinous_cs_rate: MdGavel,
-  paci: MdSecurity,
-  inv_arrest_ratio: MdPersonSearch,
-  pai: MdHourglassBottom,
+  heinous_cs_rate: Gavel,
+  paci: Shield,
+  inv_arrest_ratio: UserCheck,
+  pai: Hourglass,
 };
 
 function DashboardTooltip({ active, payload, label }) {
@@ -107,8 +107,6 @@ function DashboardModern({
       cardCasesDesc: "Officer case register with filtering, PII redactions, and records review.",
       cardTimelineTitle: "Suspect Timeline Tracker",
       cardTimelineDesc: "Track and audit criminal timeline across multiple operational periods.",
-      cardEvidenceTitle: "Evidence Workspace",
-      cardEvidenceDesc: "Correlate evidence attachments, digital evidence, and file records.",
       mapPanelTitle: "Karnataka crime density",
       mapPanelEyebrow: "Geospatial intelligence",
       trendPanelTitle: "Monthly crime and resolution trend",
@@ -152,8 +150,6 @@ function DashboardModern({
       cardCasesDesc: "ಶೋಧನೆ ಮತ್ತು ರೆಡಾಕ್ಷನ್‌ಗಳೊಂದಿಗೆ ಅಧಿಕಾರಿಗಳ ಪ್ರಕರಣಗಳ ನೋಂದಣಿ ಪಟ್ಟಿ.",
       cardTimelineTitle: "ಶಂಕಿತರ ಕಾಲಗತಿ ಟ್ರ್ಯಾಕರ್",
       cardTimelineDesc: "ವಿವಿಧಿ ಕಾರ್ಯಾಚರಣೆಯ ಅವಧಿಗಳಲ್ಲಿ ಅಪರಾಧಿಗಳ ಚಟುವಟಿಕೆಗಳ ಕಾಲಗತಿಯನ್ನು ಆಡಿಟ್ ಮಾಡಿ.",
-      cardEvidenceTitle: "ಸಾಕ್ಷ್ಯಧಾರಗಳ ಕಾರ್ಯಸ್ಥಳ",
-      cardEvidenceDesc: "ಅಪರಾಧ ಸ್ಥಳದ ಸಾಕ್ಷ್ಯಾಧಾರಗಳು, ಡಿಜಿಟಲ್ ಫೈಲ್‌ಗಳು ಮತ್ತು ದಾಖಲೆಗಳನ್ನು ಜೋಡಿಸಿ.",
       mapPanelTitle: "ಕರ್ನಾಟಕ ಅಪರಾಧ ಸಾಂದ್ರತೆ",
       mapPanelEyebrow: "ಭೌಗೋಳಿಕ ಜಾಣ್ಮೆ",
       trendPanelTitle: "ಮಾಸಿಕ ಅಪರಾಧ ಮತ್ತು ತನಿಖಾ ಪ್ರಗತಿ",
@@ -289,7 +285,7 @@ function DashboardModern({
         }
 
         .gov-tab-btn svg {
-          color: #64748b;
+          color: var(--text-secondary);
         }
 
         .gov-tab-btn:hover {
@@ -321,7 +317,7 @@ function DashboardModern({
           display: flex;
           justify-content: flex-start;
           align-items: center;
-          gap: 40px;
+          gap: 32px;
           flex-wrap: wrap;
         }
 
@@ -340,27 +336,23 @@ function DashboardModern({
           transform: translateY(-2px);
         }
 
-        .gov-service-item:hover .gov-item-icon-circle {
-          background: #f3e8ff;
+        .gov-service-item:hover .gov-item-icon {
           color: #5c2e91;
-          border-color: #5c2e91;
         }
 
         .gov-service-item:hover .gov-item-label {
           color: #5c2e91;
         }
 
-        .gov-item-icon-circle {
-          width: 56px;
-          height: 56px;
-          border-radius: 50%;
-          border: 1px solid #cbd5e1;
-          background: #f8fafc;
+        .gov-item-icon {
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 20px;
-          color: #64748b;
+          color: var(--text-secondary);
+          background: transparent;
+          border: none;
+          border-radius: 0;
+          padding: 6px;
           transition: all 0.2s ease;
         }
 
@@ -460,13 +452,13 @@ function DashboardModern({
         }
         html[data-theme="dark"] .gov-tab-btn,
         html[data-theme="dark"] .gov-tab-btn svg,
-        html[data-theme="dark"] .gov-item-icon-circle,
+        html[data-theme="dark"] .gov-item-icon,
         html[data-theme="dark"] .md-table th {
           color: var(--text-muted) !important;
         }
-        html[data-theme="dark"] .gov-item-icon-circle {
-          background: var(--bg-panel-alt) !important;
-          border-color: var(--border-color) !important;
+        html[data-theme="dark"] .gov-item-icon {
+          background: transparent !important;
+          border: none !important;
         }
         html[data-theme="dark"] .gov-item-label,
         html[data-theme="dark"] .md-panel-head h3,
@@ -586,21 +578,21 @@ function DashboardModern({
             className={`gov-tab-btn ${activeConsoleTab === 'ops' ? 'active' : ''}`}
             onClick={() => setActiveConsoleTab('ops')}
           >
-            <MdSettings size={16} /> {t.tabOps}
+            <Settings size={16} strokeWidth={1.5} /> {t.tabOps}
           </button>
           <button 
             type="button" 
             className={`gov-tab-btn ${activeConsoleTab === 'ai' ? 'active' : ''}`}
             onClick={() => setActiveConsoleTab('ai')}
           >
-            <MdPsychology size={16} /> {t.tabAi}
+            <Brain size={16} strokeWidth={1.5} /> {t.tabAi}
           </button>
           <button 
             type="button" 
             className={`gov-tab-btn ${activeConsoleTab === 'inv' ? 'active' : ''}`}
             onClick={() => setActiveConsoleTab('inv')}
           >
-            <MdSecurity size={16} /> {t.tabInv}
+            <Shield size={16} strokeWidth={1.5} /> {t.tabInv}
           </button>
         </div>
 
@@ -608,20 +600,20 @@ function DashboardModern({
           {activeConsoleTab === 'ops' && (
             <div className="gov-service-grid">
               <div className="gov-service-item" onClick={() => navigate('/map')}>
-                <div className="gov-item-icon-circle"><MdMap /></div>
+                <div className="gov-item-icon"><Map size={16} strokeWidth={1.5} /></div>
                 <span className="gov-item-label">{t.cardMapTitle}</span>
               </div>
               <div className="gov-service-item" onClick={() => navigate('/statistics')}>
-                <div className="gov-item-icon-circle"><MdBarChart /></div>
+                <div className="gov-item-icon"><BarChart3 size={16} strokeWidth={1.5} /></div>
                 <span className="gov-item-label">{t.cardStatsTitle}</span>
               </div>
               <div className="gov-service-item" onClick={() => navigate('/reports')}>
-                <div className="gov-item-icon-circle"><MdDescription /></div>
+                <div className="gov-item-icon"><FileText size={16} strokeWidth={1.5} /></div>
                 <span className="gov-item-label">{t.cardReportsTitle}</span>
               </div>
               <div className="gov-service-item" onClick={runSchedulerCron}>
-                <div className="gov-item-icon-circle" style={isRunningCron ? { background: '#ea580c', color: '#ffffff' } : {}}>
-                  <MdAccessTime />
+                <div className="gov-item-icon">
+                  <Clock size={16} strokeWidth={1.5} style={isRunningCron ? { color: 'var(--accent-warning)' } : {}} />
                 </div>
                 <span className="gov-item-label">{t.cardCronTitle}</span>
               </div>
@@ -631,15 +623,15 @@ function DashboardModern({
           {activeConsoleTab === 'ai' && (
             <div className="gov-service-grid">
               <div className="gov-service-item" onClick={() => navigate('/copilot')}>
-                <div className="gov-item-icon-circle"><MdSmartToy /></div>
+                <div className="gov-item-icon"><Bot size={16} strokeWidth={1.5} /></div>
                 <span className="gov-item-label">{t.cardCopilotTitle}</span>
               </div>
               <div className="gov-service-item" onClick={() => navigate('/network')}>
-                <div className="gov-item-icon-circle"><MdHub /></div>
+                <div className="gov-item-icon"><Network size={16} strokeWidth={1.5} /></div>
                 <span className="gov-item-label">{t.cardNetworkTitle}</span>
               </div>
               <div className="gov-service-item" onClick={() => navigate('/predictions')}>
-                <div className="gov-item-icon-circle"><MdAutoGraph /></div>
+                <div className="gov-item-icon"><LineChart size={16} strokeWidth={1.5} /></div>
                 <span className="gov-item-label">{t.cardPredTitle}</span>
               </div>
             </div>
@@ -648,16 +640,12 @@ function DashboardModern({
           {activeConsoleTab === 'inv' && (
             <div className="gov-service-grid">
               <div className="gov-service-item" onClick={() => navigate('/cases')}>
-                <div className="gov-item-icon-circle"><MdFolderOpen /></div>
+                <div className="gov-item-icon"><FolderOpen size={16} strokeWidth={1.5} /></div>
                 <span className="gov-item-label">{t.cardCasesTitle}</span>
               </div>
               <div className="gov-service-item" onClick={() => navigate('/suspect-timeline')}>
-                <div className="gov-item-icon-circle"><MdAccessTime /></div>
+                <div className="gov-item-icon"><Clock size={16} strokeWidth={1.5} /></div>
                 <span className="gov-item-label">{t.cardTimelineTitle}</span>
-              </div>
-              <div className="gov-service-item" onClick={() => navigate('/evidence')}>
-                <div className="gov-item-icon-circle"><MdLink /></div>
-                <span className="gov-item-label">{t.cardEvidenceTitle}</span>
               </div>
             </div>
           )}
@@ -673,19 +661,23 @@ function DashboardModern({
             (STAT_TONES[index] || 'blue')
           );
           const Icon = stat.isDistrictRisk
-            ? (stat.status === 'danger' || stat.status === 'warning' ? MdWarningAmber : MdCheckCircle)
-            : (STAT_ICONS[index] || MdOutlineShield);
+            ? (stat.status === 'danger' || stat.status === 'warning' ? AlertTriangle : CheckCircle2)
+            : (STAT_ICONS[index] || Shield);
           const isTextVal = typeof stat.value === 'string' && isNaN(Number(String(stat.value).replace('%', '')));
+          const iconColor = stat.isDistrictRisk
+            ? (stat.status === 'danger' ? 'var(--accent-danger)' : stat.status === 'warning' ? 'var(--accent-warning)' : 'var(--accent-success)')
+            : 'var(--text-secondary)';
 
           return (
             <article className={`md-stat md-stat-${tone}`} key={stat.label}>
-              <div className="md-stat-icon"><Icon /></div>
+              <div className="md-stat-icon">
+                <Icon size={18} strokeWidth={1.5} style={{ color: iconColor }} />
+              </div>
               <div className="md-stat-copy">
                 <span>{renderStatLabel(stat.label)}</span>
                 <strong className={isTextVal ? 'is-text-val' : ''}>{renderStatValue(stat.value)}</strong>
                 <small>{stat.caption}</small>
               </div>
-              <MdTrendingUp className="md-stat-trend" />
             </article>
           );
         })}
@@ -703,14 +695,14 @@ function DashboardModern({
               ? (lang === 'kn' ? 'ಕಡಿಮೆ ನಿಯತಾಂಕಗಳು' : 'Fewer Parameters')
               : (lang === 'kn' ? 'ಹೆಚ್ಚಿನ ನಿಯತಾಂಕಗಳು' : 'More Parameters')}
           </span>
-          {showMoreParams ? <MdExpandLess size={16} /> : <MdExpandMore size={16} />}
+          {showMoreParams ? <ChevronUp size={16} strokeWidth={1.5} /> : <ChevronDown size={16} strokeWidth={1.5} />}
         </button>
       </div>
 
       {showMoreParams && data?.opsStats?.extendedParams && (
         <section className="md-stats md-stats-extended" aria-label="Extended operational parameters">
           {data.opsStats.extendedParams.map((param) => {
-            const Icon = EXTENDED_PARAM_ICONS[param.id] || MdOutlineShield;
+            const Icon = EXTENDED_PARAM_ICONS[param.id] || Shield;
             const isTextVal = typeof param.value === 'string' && isNaN(Number(String(param.value).replace(/[%x]/g, '')));
 
             return (
@@ -718,15 +710,17 @@ function DashboardModern({
                 className={`md-stat md-stat-${param.tone}`}
                 key={param.id}
               >
-                <div className="md-stat-icon"><Icon /></div>
+                <div className="md-stat-icon">
+                  <Icon size={18} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
+                </div>
                 <div className="md-stat-copy" style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px' }}>
                     <span style={{ fontSize: '9px', lineHeight: 1.2 }}>{renderStatLabel(param.label)}</span>
                     <span
                       title={`${param.fullLabel}\n\nFormula: ${param.formula}\n\nWhy it matters: ${param.description}`}
-                      style={{ cursor: 'help', color: 'var(--text-muted, #8491a3)', display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}
+                      style={{ cursor: 'help', color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}
                     >
-                      <MdOutlineInfo size={14} />
+                      <Info size={16} strokeWidth={1.5} />
                     </span>
                   </div>
                   <strong className={isTextVal ? 'is-text-val' : ''}>{param.value}</strong>
@@ -815,7 +809,7 @@ function DashboardModern({
               <span>{t.casesPanelEyebrow}</span>
               <h3>{t.casesPanelTitle}</h3>
             </div>
-            <Link to="/cases" className="md-text-link" style={{ color: '#5c2e91', fontWeight: 'bold' }}>{t.viewAll} <MdArrowForward /></Link>
+            <Link to="/cases" className="md-text-link" style={{ color: '#5c2e91', fontWeight: 'bold' }}>{t.viewAll} <ArrowRight size={16} strokeWidth={1.5} /></Link>
           </div>
           <div className="md-panel-body">
             <div className="md-table-wrap">
@@ -826,7 +820,7 @@ function DashboardModern({
                     <tr key={item.id}>
                       <td><Link to={item.actionUrl} style={{ color: '#5c2e91', fontWeight: 'bold' }}>{item.crimeNoDisplay}</Link></td>
                       <td>{item.station}</td><td>{item.category}</td>
-                      <td><span className={`md-status ${item.status === 'Closed' ? 'closed' : 'active'}`} style={item.status === 'Closed' ? { background: '#f1f5f9', color: '#64748b' } : { background: '#f0fdf4', color: '#16a34a' }}>{item.status}</span></td>
+                      <td><span className={`md-status ${item.status === 'Closed' ? 'closed' : 'active'}`} style={item.status === 'Closed' ? { background: '#f1f5f9', color: 'var(--text-secondary)' } : { background: '#f0fdf4', color: 'var(--accent-success)' }}>{item.status}</span></td>
                     </tr>
                   ))}
                 </tbody>
@@ -841,7 +835,7 @@ function DashboardModern({
               <span>{t.alertsPanelEyebrow}</span>
               <h3>{t.alertsPanelTitle}</h3>
             </div>
-            <span className="md-new-count" style={{ background: '#fee2e2', color: '#ef4444' }}>
+            <span className="md-new-count" style={{ background: '#fee2e2', color: 'var(--accent-danger)' }}>
               {cronAlerts.length > 0 ? cronAlerts.length : data.alerts.length} {t.newAlerts}
             </span>
           </div>
@@ -849,24 +843,25 @@ function DashboardModern({
             <div className="md-alert-list">
               {cronAlerts.length > 0 ? (
                 cronAlerts.slice(0, 5).map(alert => (
-                  <article className="md-alert md-alert-critical" key={alert.alert_id} style={{ borderLeftColor: '#dc2626' }}>
-                    <MdWarningAmber style={{ color: '#dc2626' }} />
+                  <article className="md-alert md-alert-critical" key={alert.alert_id} style={{ borderLeftColor: 'var(--accent-danger)' }}>
+                    <AlertTriangle size={16} strokeWidth={1.5} style={{ color: 'var(--accent-danger)' }} />
                     <div style={{ flex: 1, textAlign: 'left' }}>
                       <p style={{ color: '#1e293b', margin: 0, fontWeight: 'bold' }}>
                         {lang === 'kn' ? 'ತನಿಖೆ ವಿಳಂಬ' : 'INVESTIGATION DELAY'} (FIR: {alert.crimeNo})
                       </p>
-                      <p style={{ color: '#475569', fontSize: '11px', margin: '3px 0' }}>{alert.message}</p>
-                      <time style={{ color: '#dc2626', fontSize: '10px', fontWeight: '600' }}>
-                        ⚠️ {lang === 'kn' ? `${alert.delayDays} ದಿನಗಳ ವಿಳಂಬ` : `${alert.delayDays} Days Delayed`}
+                      <p style={{ color: 'var(--text-secondary)', fontSize: '11px', margin: '3px 0' }}>{alert.message}</p>
+                      <time style={{ color: 'var(--accent-danger)', fontSize: '10px', fontWeight: '600', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        <AlertTriangle size={16} strokeWidth={1.5} style={{ color: 'var(--accent-danger)' }} />
+                        {lang === 'kn' ? `${alert.delayDays} ದಿನಗಳ ವಿಳಂಬ` : `${alert.delayDays} Days Delayed`}
                       </time>
                     </div>
                   </article>
                 ))
               ) : (
                 data.alerts.slice(0, 5).map(alert => (
-                  <article className={`md-alert md-alert-${alert.severity}`} key={alert.id} style={{ borderLeftColor: alert.severity === 'critical' ? '#dc2626' : alert.severity === 'warning' ? '#ea580c' : '#3b82f6' }}>
-                    <MdWarningAmber style={{ color: alert.severity === 'critical' ? '#dc2626' : alert.severity === 'warning' ? '#ea580c' : '#3b82f6' }} />
-                    <div style={{ flex: 1, textAlign: 'left' }}><p style={{ color: '#1e293b', margin: 0 }}>{alert.text}</p><time style={{ color: '#64748b' }}>{alert.age}</time></div>
+                  <article className={`md-alert md-alert-${alert.severity}`} key={alert.id} style={{ borderLeftColor: alert.severity === 'critical' ? 'var(--accent-danger)' : alert.severity === 'warning' ? 'var(--accent-warning)' : 'var(--accent-primary)' }}>
+                    <AlertTriangle size={16} strokeWidth={1.5} style={{ color: alert.severity === 'critical' ? 'var(--accent-danger)' : alert.severity === 'warning' ? 'var(--accent-warning)' : 'var(--accent-primary)' }} />
+                    <div style={{ flex: 1, textAlign: 'left' }}><p style={{ color: '#1e293b', margin: 0 }}>{alert.text}</p><time style={{ color: 'var(--text-muted)' }}>{alert.age}</time></div>
                   </article>
                 ))
               )}

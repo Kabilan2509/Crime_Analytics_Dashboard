@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MdFilterList, MdRefresh, MdExpandMore } from 'react-icons/md';
+import { Filter, RotateCcw, ChevronDown } from 'lucide-react';
 import { districts, units, crimeHeads } from '../../../data/schemaSelectors';
 import { rangeDistricts } from '../briefingApi';
 import { useSecurity } from '../../../context/SecurityContext';
@@ -65,7 +65,7 @@ function BriefingFiltersBar({ filters, setFilters, onReset }) {
       {/* Filters Summary & Mobile Toggle Button */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }} className="mobile-filter-row">
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 700 }}>
-          <MdFilterList size={16} />
+          <Filter size={16} strokeWidth={1.5} />
           <span>BRIEFING FILTERS</span>
         </div>
         <button
@@ -81,7 +81,7 @@ function BriefingFiltersBar({ filters, setFilters, onReset }) {
           className="mobile-toggle-btn"
         >
           <span>Options</span>
-          <MdExpandMore style={{ transform: mobileExpanded ? 'rotate(180deg)' : 'none' }} />
+          <ChevronDown size={16} strokeWidth={1.5} style={{ transform: mobileExpanded ? 'rotate(180deg)' : 'none' }} />
         </button>
       </div>
 
@@ -321,7 +321,7 @@ function BriefingFiltersBar({ filters, setFilters, onReset }) {
             }}
             className="stats-btn"
           >
-            <MdRefresh size={14} />
+            <RotateCcw size={16} strokeWidth={1.5} />
             <span>RESET FILTERS</span>
           </button>
         </div>

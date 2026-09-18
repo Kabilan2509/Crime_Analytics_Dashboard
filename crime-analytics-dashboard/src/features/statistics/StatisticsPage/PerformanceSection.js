@@ -1,5 +1,6 @@
 import React from 'react';
 import { ResponsiveContainer, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import { Check, AlertTriangle } from 'lucide-react';
 
 function PerformanceSection({ performanceData }) {
   const { funnel = [], clearanceByDistrict = [], avgTimeToChargesheet = { value: 52.4, target: 60 } } = performanceData;
@@ -124,11 +125,18 @@ function PerformanceSection({ performanceData }) {
           <span>100 hrs (Backlog limit)</span>
         </div>
 
-        <p style={{ margin: '8px 0 0 0', fontSize: '11px', color: 'var(--text-muted)', lineHeight: '1.4' }}>
-          {isGood 
-            ? '✓ KSP Performance Audit confirms current average timeline is within state mandated 60-hour goal window.' 
-            : '⚠️ Timeline alert: Investigation cycle exceeds target. Review officer caseload distribution.'
-          }
+        <p style={{ margin: '8px 0 0 0', fontSize: '11px', color: 'var(--text-muted)', lineHeight: '1.4', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {isGood ? (
+            <>
+              <Check size={16} strokeWidth={1.5} style={{ color: 'var(--accent-success)', flexShrink: 0 }} />
+              <span>KSP Performance Audit confirms current average timeline is within state mandated 60-hour goal window.</span>
+            </>
+          ) : (
+            <>
+              <AlertTriangle size={16} strokeWidth={1.5} style={{ color: 'var(--accent-warning)', flexShrink: 0 }} />
+              <span>Timeline alert: Investigation cycle exceeds target. Review officer caseload distribution.</span>
+            </>
+          )}
         </p>
       </div>
     );
@@ -152,7 +160,7 @@ function PerformanceSection({ performanceData }) {
         flexDirection: 'column'
       }}>
         <div style={{ marginBottom: '14px' }}>
-          <h3 style={{ margin: 0, fontFamily: "'Source Sans 3', sans-serif", fontSize: '18px', color: 'var(--text-primary)' }}>Case Resolution Funnel</h3>
+          <h3 style={{ margin: 0, fontSize: '18px', color: 'var(--text-primary)' }}>Case Resolution Funnel</h3>
           <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Conversion rates across key prosecution milestones</span>
         </div>
         {renderFunnel()}
@@ -169,7 +177,7 @@ function PerformanceSection({ performanceData }) {
         flexDirection: 'column'
       }}>
         <div style={{ marginBottom: '14px' }}>
-          <h3 style={{ margin: 0, fontFamily: "'Source Sans 3', sans-serif", fontSize: '18px', color: 'var(--text-primary)' }}>District Clearance Rates</h3>
+          <h3 style={{ margin: 0, fontSize: '18px', color: 'var(--text-primary)' }}>District Clearance Rates</h3>
           <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Top active districts compared by clearance percentage</span>
         </div>
 
@@ -208,7 +216,7 @@ function PerformanceSection({ performanceData }) {
         flexDirection: 'column'
       }}>
         <div style={{ marginBottom: '14px' }}>
-          <h3 style={{ margin: 0, fontFamily: "'Source Sans 3', sans-serif", fontSize: '18px', color: 'var(--text-primary)' }}>Avg. Time to Chargesheet</h3>
+          <h3 style={{ margin: 0, fontSize: '18px', color: 'var(--text-primary)' }}>Avg. Time to Chargesheet</h3>
           <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Average duration from FIR registration to chargesheet filing</span>
         </div>
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>

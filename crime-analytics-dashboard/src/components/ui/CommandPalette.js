@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { MdSearch } from 'react-icons/md';
+import { Search } from 'lucide-react';
 import { QUICK_LOOKUP_INDEX } from '../../data/quickLookupIndex';
 
 const FILLER_WORDS = new Set([
@@ -297,7 +297,7 @@ export default function CommandPalette({ isOpen, onClose }) {
       <div className="command-palette-modal" onClick={(e) => e.stopPropagation()}>
         {/* Search Input Container */}
         <div className="command-palette-search-container">
-          <MdSearch size={22} className="command-palette-icon" />
+          <Search size={16} strokeWidth={1.5} className="command-palette-icon" style={{ color: 'var(--text-secondary)' }} />
           <input
             ref={inputRef}
             type="text"
@@ -315,7 +315,7 @@ export default function CommandPalette({ isOpen, onClose }) {
           {showEmptyState ? (
             <div className="command-palette-empty-state">
               <div className="command-palette-prompt">
-                <MdSearch size={40} className="command-palette-prompt-icon" />
+                <Search size={18} strokeWidth={1.5} className="command-palette-prompt-icon" style={{ color: 'var(--text-muted)' }} />
                 <span>Start typing to search features...</span>
               </div>
               <div className="command-palette-popular-section">

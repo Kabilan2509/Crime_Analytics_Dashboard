@@ -101,7 +101,7 @@ function CategoryBreakdownSection({ categoryData }) {
         flexDirection: 'column'
       }}>
         <div style={{ marginBottom: '14px' }}>
-          <h3 style={{ margin: 0, fontFamily: "'Source Sans 3', sans-serif", fontSize: '17px', color: 'var(--text-primary)' }}>Crime Categories</h3>
+          <h3 style={{ margin: 0, fontSize: '17px', color: 'var(--text-primary)' }}>Crime Categories</h3>
           <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Top crime heads ranked by volume</span>
         </div>
 
@@ -145,7 +145,7 @@ function CategoryBreakdownSection({ categoryData }) {
         justifyContent: 'space-between'
       }}>
         <div style={{ marginBottom: '14px' }}>
-          <h3 style={{ margin: 0, fontFamily: "'Source Sans 3', sans-serif", fontSize: '17px', color: 'var(--text-primary)' }}>Victim Gender Distribution</h3>
+          <h3 style={{ margin: 0, fontSize: '17px', color: 'var(--text-primary)' }}>Victim Gender Distribution</h3>
           <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Composition split among affected persons</span>
         </div>
 
@@ -165,7 +165,7 @@ function CategoryBreakdownSection({ categoryData }) {
         flexDirection: 'column'
       }}>
         <div style={{ marginBottom: '14px' }}>
-          <h3 style={{ margin: 0, fontFamily: "'Source Sans 3', sans-serif", fontSize: '17px', color: 'var(--text-primary)' }}>Victim Age Distribution</h3>
+          <h3 style={{ margin: 0, fontSize: '17px', color: 'var(--text-primary)' }}>Victim Age Distribution</h3>
           <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Age buckets of affected persons</span>
         </div>
 

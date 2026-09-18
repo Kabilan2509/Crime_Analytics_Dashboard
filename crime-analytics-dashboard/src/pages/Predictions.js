@@ -9,9 +9,9 @@ import {
 import 'leaflet/dist/leaflet.css';
 import ThemeAwareTileLayer from '../components/ui/ThemeAwareTileLayer';
 import {
-  MdSecurity, MdInfo, MdAssignment, MdLocationOn, MdTrendingUp,
-  MdLock, MdAnalytics, MdNotificationsActive
-} from 'react-icons/md';
+  Shield, Info, ClipboardList, MapPin, TrendingUp,
+  Lock, BarChart3, Bell, Zap, X
+} from 'lucide-react';
 
 import {
   caseViews,
@@ -509,7 +509,7 @@ function Predictions({
   const handleToggleTask = (id) => {
     if (isAnalystMode) {
       playAlertSound(200, 0.22); // low error buzzer
-      alert('🔒 Access Denied: Field Officers and Redacted Analysts do not have permissions to deploy state resources.');
+      alert('Access Denied: Field Officers and Redacted Analysts do not have permissions to deploy state resources.');
       return;
     }
 
@@ -531,7 +531,7 @@ function Predictions({
   const handleDispatchFromMap = (districtName, districtID) => {
     if (isAnalystMode) {
       playAlertSound(200, 0.22);
-      alert('🔒 Access Denied: Field Officers and Redacted Analysts do not have permissions to deploy state resources.');
+      alert('Access Denied: Field Officers and Redacted Analysts do not have permissions to deploy state resources.');
       return;
     }
 
@@ -544,7 +544,7 @@ function Predictions({
       time: 'Immediate'
     };
     setTasks(prev => [newTask, ...prev]);
-    alert(`⚡ Tactical Deployment Dispatched:\nMobile squads directed to hotspots in ${districtName}. Added to operational checklists.`);
+    alert(`Tactical Deployment Dispatched:\nMobile squads directed to hotspots in ${districtName}. Added to operational checklists.`);
   };
 
   // Center coordinates for leaflet
@@ -583,7 +583,7 @@ function Predictions({
           background: 'rgba(255, 77, 77, 0.08)', border: '1px solid var(--accent-danger)',
           padding: '12px 20px', borderRadius: '4px', marginBottom: '20px', fontSize: '13px'
         }}>
-          <MdLock size={18} style={{ color: 'var(--accent-danger)' }} />
+          <Lock size={16} strokeWidth={1.5} style={{ color: 'var(--accent-danger)' }} />
           <span><strong>READ-ONLY ANALYST SESSION ACTIVE:</strong> Sensitive predictive indicators and tactical checklist triggers are restricted. Authenticate with Command permissions to execute.</span>
         </div>
       ) : (
@@ -622,7 +622,7 @@ function Predictions({
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', color: 'var(--text-secondary)' }}>
             <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Horizon Forecast</span>
-            <MdAnalytics size={18} style={{ color: 'var(--accent-primary)' }} />
+            <BarChart3 size={18} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
           </div>
           <div style={{ display: 'flex', alignItems: 'baseline', marginTop: '10px' }}>
             <strong style={{ fontSize: '26px', color: 'var(--text-primary)' }}>{totalHorizonForecast}</strong>
@@ -645,7 +645,7 @@ function Predictions({
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', color: 'var(--text-secondary)' }}>
             <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>7d Trend Projection</span>
-            <MdTrendingUp size={18} style={{ color: 'var(--accent-warning)' }} />
+            <TrendingUp size={18} strokeWidth={1.5} style={{ color: 'var(--accent-warning)' }} />
           </div>
           <div style={{ display: 'flex', alignItems: 'baseline', marginTop: '10px' }}>
             <strong style={{ fontSize: '26px', color: 'var(--text-primary)' }}>
@@ -670,7 +670,7 @@ function Predictions({
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', color: 'var(--text-secondary)' }}>
             <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Highest Risk Zone</span>
-            <MdLocationOn size={18} style={{ color: 'var(--accent-danger)' }} />
+            <MapPin size={18} strokeWidth={1.5} style={{ color: 'var(--accent-danger)' }} />
           </div>
           <div style={{ display: 'flex', alignItems: 'baseline', marginTop: '10px' }}>
             <strong style={{ fontSize: '18px', color: 'var(--text-primary)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '100%' }}>
@@ -692,7 +692,7 @@ function Predictions({
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', color: 'var(--text-secondary)' }}>
             <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Model Validation Accuracy</span>
-            <MdSecurity size={18} style={{ color: 'var(--accent-success)' }} />
+            <Shield size={18} strokeWidth={1.5} style={{ color: 'var(--accent-success)' }} />
           </div>
           <div style={{ display: 'flex', alignItems: 'baseline', marginTop: '10px' }}>
             <strong style={{ fontSize: '26px', color: 'var(--text-primary)' }}>
@@ -754,7 +754,7 @@ function Predictions({
                 position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'var(--bg-panel-alt)',
                 zIndex: 1000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', textAlign: 'center'
               }}>
-                <MdInfo size={40} style={{ color: 'var(--text-muted)', marginBottom: '10px' }} />
+                <Info size={18} strokeWidth={1.5} style={{ color: 'var(--text-secondary)', marginBottom: '10px' }} />
                 <h4 style={{ margin: '0 0 6px 0', color: 'var(--text-primary)' }}>No Cases Under Current Filter Settings</h4>
                 <p style={{ color: 'var(--text-muted)', fontSize: '12px', margin: 0, maxWidth: '280px' }}>Adjust filters (district, crime head, dates) to hydrate prediction maps.</p>
               </div>
@@ -821,9 +821,10 @@ function Predictions({
                   <button
                     type="button"
                     onClick={() => { playAlertSound(400, 0.05); setSelectedMapDistrict(null); }}
-                    style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', fontSize: '13px', cursor: 'pointer', minHeight: 'auto', minWidth: 'auto' }}
+                    style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '2px' }}
+                    aria-label="Close"
                   >
-                    ✕
+                    <X size={16} strokeWidth={1.5} />
                   </button>
                 </div>
                 
@@ -864,7 +865,7 @@ function Predictions({
                     cursor: 'pointer', transition: 'opacity 0.2s', minHeight: '36px'
                   }}
                 >
-                  ⚡ Deploy Resources
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><Zap size={16} strokeWidth={1.5} /> Deploy Resources</span>
                 </button>
               </div>
             )}
@@ -1096,7 +1097,7 @@ function Predictions({
           boxShadow: 'var(--shadow-card)'
         }}>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '14px' }}>
-            <MdNotificationsActive size={20} style={{ color: 'var(--accent-warning)' }} />
+            <Bell size={18} strokeWidth={1.5} style={{ color: 'var(--accent-warning)' }} />
             <h3 style={{ margin: 0, fontSize: '18px', color: 'var(--text-primary)' }}>Top Forecasting Risk Factors</h3>
           </div>
           <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
@@ -1125,7 +1126,7 @@ function Predictions({
           boxShadow: 'var(--shadow-card)'
         }}>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '14px' }}>
-            <MdAnalytics size={20} style={{ color: 'var(--accent-primary)' }} />
+            <BarChart3 size={18} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
             <h3 style={{ margin: 0, fontSize: '18px', color: 'var(--text-primary)' }}>Scenario Planning Projections</h3>
           </div>
           <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
@@ -1199,7 +1200,7 @@ function Predictions({
           boxShadow: 'var(--shadow-card)'
         }}>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '14px' }}>
-            <MdAssignment size={20} style={{ color: 'var(--accent-primary)' }} />
+            <ClipboardList size={18} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
             <h3 style={{ margin: 0, fontSize: '18px', color: 'var(--text-primary)' }}>Tactical Action Recommendations</h3>
           </div>
           <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
@@ -1254,7 +1255,7 @@ function Predictions({
         }}>
           <div>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '14px' }}>
-              <MdSecurity size={20} style={{ color: 'var(--accent-success)' }} />
+              <Shield size={18} strokeWidth={1.5} style={{ color: 'var(--accent-success)' }} />
               <h3 style={{ margin: 0, fontSize: '18px', color: 'var(--text-primary)' }}>System Model &amp; Data Pipeline Status</h3>
             </div>
             
@@ -1294,7 +1295,7 @@ function Predictions({
         background: 'var(--bg-panel-alt)', border: '1px solid var(--border-color)',
         padding: '16px 20px', borderRadius: '8px', marginBottom: '20px', fontSize: '12px', lineHeight: 1.5
       }}>
-        <MdInfo size={20} style={{ color: 'var(--accent-primary)', flexShrink: 0, marginTop: '2px' }} />
+        <Info size={18} strokeWidth={1.5} style={{ color: 'var(--text-secondary)', flexShrink: 0, marginTop: '2px' }} />
         <div>
           <strong style={{ color: 'var(--text-primary)', display: 'block', marginBottom: '4px' }}>MODEL CONFIDENCE &amp; OPERATIONAL LIMITATIONS DISCLAIMER</strong>
           <span style={{ color: 'var(--text-secondary)' }}>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { MdClose, MdTrendingUp } from 'react-icons/md';
+import { X, TrendingUp } from 'lucide-react';
 import { maskText } from '../../security/securityUtils';
 
 /**
@@ -24,7 +24,9 @@ function DistrictDrawer({ data, isCommandMode, onClose, isColorblind }) {
 
   return (
     <div className={`map-drawer${isColorblind ? ' colorblind-drawer' : ''}`}>
-      <button type="button" onClick={onClose} className="map-drawer-close"><MdClose size={20} /></button>
+      <button type="button" onClick={onClose} className="map-drawer-close">
+        <X size={16} strokeWidth={1.5} />
+      </button>
       <h3 className="map-drawer-title">{data.name}</h3>
       <span className="map-drawer-eyebrow">Division GIS Report</span>
       <hr className="map-divider" />
@@ -39,7 +41,9 @@ function DistrictDrawer({ data, isCommandMode, onClose, isColorblind }) {
       </div>
 
       <div className="map-severity-card" style={severityColor ? { borderColor: severityColor, background: `color-mix(in srgb, ${severityColor} 12%, transparent)` } : undefined}>
-        <span className="map-severity-label"><MdTrendingUp /> LIVE SEVERITY RATING</span>
+        <span className="map-severity-label">
+          <TrendingUp size={16} strokeWidth={1.5} /> LIVE SEVERITY RATING
+        </span>
         <strong className="map-severity-value" style={severityColor ? { color: severityColor } : undefined}>{severity}</strong>
       </div>
     </div>

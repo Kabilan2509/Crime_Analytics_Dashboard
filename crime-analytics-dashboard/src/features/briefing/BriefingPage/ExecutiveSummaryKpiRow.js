@@ -1,5 +1,5 @@
 import React from 'react';
-import { MdAssignment, MdWarning, MdNotifications, MdSecurity, MdTrendingUp } from 'react-icons/md';
+import { ClipboardList, AlertTriangle, Bell, Shield, TrendingUp } from 'lucide-react';
 
 function ExecutiveSummaryKpiRow({ summary, onKpiClick }) {
   const {
@@ -41,11 +41,11 @@ function ExecutiveSummaryKpiRow({ summary, onKpiClick }) {
           <span style={{ fontSize: '10px', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase' }}>
             MAJOR CRIMES INTAKE
           </span>
-          <MdAssignment size={18} style={{ color: 'var(--accent-primary)' }} />
+          <ClipboardList size={18} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
         </div>
         <div style={{ fontSize: '24px', fontWeight: 700, margin: '8px 0 2px 0' }}>{totalMajorCrimes}</div>
-        <div style={{ fontSize: '10px', color: 'var(--accent-success)', fontWeight: 600 }}>
-          ▲ +{percentChange}% vs prev period
+        <div style={{ fontSize: '10px', color: 'var(--accent-success)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '3px' }}>
+          <TrendingUp size={16} strokeWidth={1.5} /> +{percentChange}% vs prev period
         </div>
       </div>
 
@@ -62,7 +62,7 @@ function ExecutiveSummaryKpiRow({ summary, onKpiClick }) {
           <span style={{ fontSize: '10px', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase' }}>
             ESCALATED RISK DISTRICTS
           </span>
-          <MdWarning size={18} style={{ color: districtsEscalated > 0 ? 'var(--accent-danger)' : 'var(--text-muted)' }} />
+          <AlertTriangle size={18} strokeWidth={1.5} style={{ color: districtsEscalated > 0 ? 'var(--accent-danger)' : 'var(--text-secondary)' }} />
         </div>
         <div style={{ fontSize: '24px', fontWeight: 700, margin: '8px 0 2px 0', color: districtsEscalated > 0 ? 'var(--accent-danger)' : 'inherit' }}>
           {districtsEscalated}
@@ -86,7 +86,7 @@ function ExecutiveSummaryKpiRow({ summary, onKpiClick }) {
           <span style={{ fontSize: '10px', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase' }}>
             CRITICAL INCIDENTS
           </span>
-          <MdNotifications size={18} style={{ color: activeCriticalIncidents > 0 ? 'var(--accent-danger)' : 'var(--text-muted)' }} />
+          <Bell size={18} strokeWidth={1.5} style={{ color: activeCriticalIncidents > 0 ? 'var(--accent-danger)' : 'var(--text-secondary)' }} />
         </div>
         <div style={{ fontSize: '24px', fontWeight: 700, margin: '8px 0 2px 0', color: activeCriticalIncidents > 0 ? 'var(--accent-danger)' : 'inherit' }}>
           {activeCriticalIncidents}
@@ -109,7 +109,7 @@ function ExecutiveSummaryKpiRow({ summary, onKpiClick }) {
           <span style={{ fontSize: '10px', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase' }}>
             ACTIVE BOLOS / ALERTS
           </span>
-          <MdSecurity size={18} style={{ color: 'var(--accent-warning)' }} />
+          <Shield size={18} strokeWidth={1.5} style={{ color: 'var(--accent-warning)' }} />
         </div>
         <div style={{ fontSize: '24px', fontWeight: 700, margin: '8px 0 2px 0' }}>{activeBolos}</div>
         <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
@@ -130,7 +130,7 @@ function ExecutiveSummaryKpiRow({ summary, onKpiClick }) {
           <span style={{ fontSize: '10px', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase' }}>
             EMERGING TRENDS
           </span>
-          <MdTrendingUp size={18} style={{ color: 'var(--accent-primary)' }} />
+          <TrendingUp size={18} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
         </div>
         <div style={{ fontSize: '24px', fontWeight: 700, margin: '8px 0 2px 0' }}>{emergingTrendsCount}</div>
         <div style={{ fontSize: '10px', color: 'var(--accent-primary)', fontWeight: 600 }}>
@@ -144,12 +144,6 @@ function ExecutiveSummaryKpiRow({ summary, onKpiClick }) {
           border: 1px solid var(--border-color);
           padding: 14px 16px;
           transition: transform 0.15s, border-color 0.15s;
-        }
-        .kpi-card > div:first-child > span {
-          font-size: 19px !important;
-        }
-        .kpi-card > div:nth-child(2) {
-          font-size: 29px !important;
         }
         .kpi-card:hover {
           transform: translateY(-2px);

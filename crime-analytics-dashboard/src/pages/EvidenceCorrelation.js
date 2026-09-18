@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { MdLink, MdSearch, MdDirectionsCar, MdPhone, MdAccountBalance, MdLocationOn } from 'react-icons/md';
+import { Link2, Search, Car, Phone, Landmark, MapPin } from 'lucide-react';
 import { useSecurity } from '../context/SecurityContext';
 import { maskText } from '../security/securityUtils';
 
@@ -39,7 +39,7 @@ function EvidenceCorrelation() {
   return (
     <div className="page-content animate-fade-in text-inverse">
       <div className="section-eyebrow" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <MdLink size={18} /> Evidence Correlation Engine
+        <Link2 size={18} strokeWidth={1.5} /> Evidence Correlation Engine
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -57,7 +57,7 @@ function EvidenceCorrelation() {
                 color: 'var(--text-primary)', outline: 'none', fontSize: '14px'
               }}
             />
-            <MdSearch size={20} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-muted)' }} />
+            <Search size={16} strokeWidth={1.5} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-muted)' }} />
           </div>
         </article>
 
@@ -67,14 +67,13 @@ function EvidenceCorrelation() {
             <div key={r.id} className="card" style={{ padding: '20px', borderLeft: '4px solid var(--accent-primary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
               <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
                 <div style={{
-                  width: '40px', height: '40px', borderRadius: '50%',
-                  background: 'rgba(30, 144, 255, 0.1)', color: 'var(--accent-primary)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0, color: 'var(--text-secondary)'
                 }}>
-                  {r.type === 'phone' && <MdPhone size={20} />}
-                  {r.type === 'vehicle' && <MdDirectionsCar size={20} />}
-                  {r.type === 'bank' && <MdAccountBalance size={20} />}
-                  {r.type === 'location' && <MdLocationOn size={20} />}
+                  {r.type === 'phone' && <Phone size={18} strokeWidth={1.5} />}
+                  {r.type === 'vehicle' && <Car size={18} strokeWidth={1.5} />}
+                  {r.type === 'bank' && <Landmark size={18} strokeWidth={1.5} />}
+                  {r.type === 'location' && <MapPin size={18} strokeWidth={1.5} />}
                 </div>
                 <div>
                   <strong style={{ fontSize: '15px', color: 'var(--text-primary)' }}>{r.value}</strong>

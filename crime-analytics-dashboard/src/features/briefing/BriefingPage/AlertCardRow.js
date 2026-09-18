@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MdClose, MdPushPin, MdNotifications, MdWarning, MdSmartToy, MdLocalPolice } from 'react-icons/md';
+import { X, Pin, Bell, AlertTriangle, Bot, Shield, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useSecurity } from '../../../context/SecurityContext';
 
@@ -107,20 +107,20 @@ function AlertCardRow({ incidents, viewMode }) {
         
         {cards.map(card => {
           let leftColor = 'var(--accent-primary)';
-          let icon = <MdNotifications />;
+          let icon = <Bell size={16} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />;
           
           if (card.cardType === 'critical') {
             leftColor = 'var(--accent-danger)';
-            icon = <MdNotifications style={{ color: 'var(--accent-danger)' }} />;
+            icon = <Bell size={16} strokeWidth={1.5} style={{ color: 'var(--accent-danger)' }} />;
           } else if (card.cardType === 'bolo') {
             leftColor = 'var(--accent-warning)';
-            icon = <MdWarning style={{ color: 'var(--accent-warning)' }} />;
+            icon = <AlertTriangle size={16} strokeWidth={1.5} style={{ color: 'var(--accent-warning)' }} />;
           } else if (card.cardType === 'ai') {
             leftColor = 'var(--accent-primary)';
-            icon = <MdSmartToy style={{ color: 'var(--accent-primary)' }} />;
+            icon = <Bot size={16} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />;
           } else if (card.cardType === 'recommendation') {
-            leftColor = '#009688';
-            icon = <MdLocalPolice style={{ color: '#009688' }} />;
+            leftColor = 'var(--accent-primary)';
+            icon = <Shield size={16} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />;
           }
 
           return (
@@ -163,7 +163,7 @@ function AlertCardRow({ incidents, viewMode }) {
                     }}
                     title="Pin card to top"
                   >
-                    <MdPushPin size={14} />
+                    <Pin size={16} strokeWidth={1.5} />
                   </button>
 
                   <button
@@ -178,7 +178,7 @@ function AlertCardRow({ incidents, viewMode }) {
                     }}
                     title="Dismiss alert"
                   >
-                    <MdClose size={15} />
+                    <X size={16} strokeWidth={1.5} />
                   </button>
                 </div>
               </div>
@@ -204,9 +204,10 @@ function AlertCardRow({ incidents, viewMode }) {
                   <button
                     type="button"
                     onClick={() => handleLinkRedirect(card.id ? `/cases/${card.id}` : '/cases')}
-                    style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontSize: '10px', fontWeight: 700, cursor: 'pointer', padding: 0 }}
+                    style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontSize: '10px', fontWeight: 700, cursor: 'pointer', padding: 0, display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                   >
-                    VIEW DETAILS →
+                    <span>VIEW DETAILS</span>
+                    <ArrowRight size={16} strokeWidth={1.5} />
                   </button>
                 )}
 
@@ -214,9 +215,10 @@ function AlertCardRow({ incidents, viewMode }) {
                   <button
                     type="button"
                     onClick={() => handleLinkRedirect(`/suspect-timeline/${card.id || ''}?suspectId=${card.suspectId}`)}
-                    style={{ background: 'none', border: 'none', color: 'var(--accent-warning)', fontSize: '10px', fontWeight: 700, cursor: 'pointer', padding: 0 }}
+                    style={{ background: 'none', border: 'none', color: 'var(--accent-warning)', fontSize: '10px', fontWeight: 700, cursor: 'pointer', padding: 0, display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                   >
-                    SUSPECT TIMELINE →
+                    <span>SUSPECT TIMELINE</span>
+                    <ArrowRight size={16} strokeWidth={1.5} />
                   </button>
                 )}
 
@@ -224,9 +226,10 @@ function AlertCardRow({ incidents, viewMode }) {
                   <button
                     type="button"
                     onClick={() => handleLinkRedirect('/copilot')}
-                    style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontSize: '10px', fontWeight: 700, cursor: 'pointer', padding: 0 }}
+                    style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontSize: '10px', fontWeight: 700, cursor: 'pointer', padding: 0, display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                   >
-                    ASK COPILOT →
+                    <span>ASK COPILOT</span>
+                    <ArrowRight size={16} strokeWidth={1.5} />
                   </button>
                 )}
 

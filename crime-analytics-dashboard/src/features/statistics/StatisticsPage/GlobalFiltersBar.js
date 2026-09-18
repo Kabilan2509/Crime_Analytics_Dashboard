@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MdFilterList, MdClose, MdSearch, MdExpandMore, MdExpandLess, MdSettingsBackupRestore } from 'react-icons/md';
+import { Filter, X, Search, ChevronDown, ChevronUp, RotateCcw } from 'lucide-react';
 import { districts, units, crimeHeads } from '../../../data/schemaSelectors';
 import { rangeDistricts } from '../statisticsApi';
 
@@ -198,7 +198,7 @@ function GlobalFiltersBar({ filters, setFilters, onReset }) {
             minHeight: '38px'
           }}
         >
-          <MdFilterList size={18} />
+          <Filter size={16} strokeWidth={1.5} />
           {mobileOpen ? 'Hide Filters' : 'Show Filters'}
         </button>
         <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
@@ -214,7 +214,7 @@ function GlobalFiltersBar({ filters, setFilters, onReset }) {
         gap: '12px'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--accent-primary)', fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-          <MdFilterList size={16} />
+          <Filter size={16} strokeWidth={1.5} />
           <span>Filters</span>
         </div>
 
@@ -343,7 +343,7 @@ function GlobalFiltersBar({ filters, setFilters, onReset }) {
             }}>
               {activeCategoryLabels()}
             </span>
-            <MdExpandMore size={16} />
+            <ChevronDown size={16} strokeWidth={1.5} />
           </button>
           {catDropdownOpen && (
             <div style={{
@@ -369,7 +369,7 @@ function GlobalFiltersBar({ filters, setFilters, onReset }) {
                 marginBottom: '8px',
                 background: 'var(--bg-panel-alt)'
               }}>
-                <MdSearch size={16} style={{ color: 'var(--text-secondary)' }} />
+                <Search size={16} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
                 <input
                   type="text"
                   placeholder="Search categories..."
@@ -461,12 +461,12 @@ function GlobalFiltersBar({ filters, setFilters, onReset }) {
           {showMore ? (
             <>
               <span>Fewer Filters</span>
-              <MdExpandLess size={16} />
+              <ChevronUp size={16} strokeWidth={1.5} />
             </>
           ) : (
             <>
               <span>More Filters</span>
-              <MdExpandMore size={16} />
+              <ChevronDown size={16} strokeWidth={1.5} />
             </>
           )}
         </button>
@@ -490,7 +490,7 @@ function GlobalFiltersBar({ filters, setFilters, onReset }) {
             minWidth: 'auto'
           }}
         >
-          <MdSettingsBackupRestore size={16} />
+          <RotateCcw size={16} strokeWidth={1.5} />
           <span>Reset Filters</span>
         </button>
       </div>
@@ -574,7 +574,7 @@ function GlobalFiltersBar({ filters, setFilters, onReset }) {
                   minHeight: 'auto'
                 }}
               >
-                <MdClose size={12} />
+                <X size={16} strokeWidth={1.5} />
               </button>
             </div>
           ))}

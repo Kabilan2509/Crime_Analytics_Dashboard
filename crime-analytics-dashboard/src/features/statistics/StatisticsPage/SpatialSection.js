@@ -65,7 +65,7 @@ function SpatialSection({ spatialData, theme, onDistrictClick }) {
           gap: '8px'
         }}>
           <div>
-            <h3 style={{ margin: 0, fontFamily: "'Source Sans 3', sans-serif", fontSize: '18px', color: 'var(--text-primary)' }}>Crime Intensity Map</h3>
+            <h3 style={{ margin: 0, fontSize: '18px', color: 'var(--text-primary)' }}>Crime Intensity Map</h3>
             <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Click a district to drill down into localized reports</span>
           </div>
 
@@ -224,7 +224,7 @@ function SpatialSection({ spatialData, theme, onDistrictClick }) {
         flexDirection: 'column'
       }}>
         <div style={{ marginBottom: '14px' }}>
-          <h3 style={{ margin: 0, fontFamily: "'Source Sans 3', sans-serif", fontSize: '18px', color: 'var(--text-primary)' }}>Top 5 Hotspot Districts</h3>
+          <h3 style={{ margin: 0, fontSize: '18px', color: 'var(--text-primary)' }}>Top 5 Hotspot Districts</h3>
           <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
             Districts ranked by rate. State average: <strong style={{ color: 'var(--accent-primary)' }}>{stateAvgRate}</strong> per 100k.
           </span>

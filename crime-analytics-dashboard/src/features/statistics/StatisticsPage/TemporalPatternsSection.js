@@ -45,7 +45,7 @@ function TemporalPatternsSection({ temporalData, onTimeFilter }) {
         flexDirection: 'column'
       }}>
         <div style={{ marginBottom: '16px' }}>
-          <h3 style={{ margin: 0, fontFamily: "'Source Sans 3', sans-serif", fontSize: '18px', color: 'var(--text-primary)' }}>24×7 Temporal Heatmap</h3>
+          <h3 style={{ margin: 0, fontSize: '18px', color: 'var(--text-primary)' }}>24×7 Temporal Heatmap</h3>
           <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
             Hourly concentration of incidents across the week. Click cell to filter by hour.
           </span>
@@ -151,7 +151,7 @@ function TemporalPatternsSection({ temporalData, onTimeFilter }) {
         flexDirection: 'column'
       }}>
         <div style={{ marginBottom: '16px' }}>
-          <h3 style={{ margin: 0, fontFamily: "'Source Sans 3', sans-serif", fontSize: '18px', color: 'var(--text-primary)' }}>Day of Week Distribution</h3>
+          <h3 style={{ margin: 0, fontSize: '18px', color: 'var(--text-primary)' }}>Day of Week Distribution</h3>
           <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Aggregate cases registered per weekday</span>
         </div>
 

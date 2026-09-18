@@ -61,7 +61,7 @@ function ComparisonsRankingsSection({ rankingsData }) {
           gap: '8px'
         }}>
           <div>
-            <h3 style={{ margin: 0, fontFamily: "'Source Sans 3', sans-serif", fontSize: '18px', color: 'var(--text-primary)' }}>District Comparison</h3>
+            <h3 style={{ margin: 0, fontSize: '18px', color: 'var(--text-primary)' }}>District Comparison</h3>
             <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Compare metrics side-by-side</span>
           </div>
 
@@ -171,7 +171,7 @@ function ComparisonsRankingsSection({ rankingsData }) {
           gap: '8px'
         }}>
           <div>
-            <h3 style={{ margin: 0, fontFamily: "'Source Sans 3', sans-serif", fontSize: '18px', color: 'var(--text-primary)' }}>Performance Rankings</h3>
+            <h3 style={{ margin: 0, fontSize: '18px', color: 'var(--text-primary)' }}>Performance Rankings</h3>
             <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Top audit and volume listings</span>
           </div>
 

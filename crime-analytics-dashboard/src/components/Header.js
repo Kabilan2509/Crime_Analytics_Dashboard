@@ -1,13 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import {
-  MdMenu, MdOutlineLightMode, MdOutlineDarkMode,
-  MdNotificationsNone, MdSearch, MdShield, MdOutlineShield,
-  MdAccountCircle, MdLock, MdVerifiedUser,
-  MdHome, MdMap, MdBarChart, MdHub,
-  MdTrendingUp, MdDescription, MdSmartToy, MdVpnKey, MdLogout,
-  MdKeyboardArrowDown, MdArrowBack,
-} from 'react-icons/md';
+  Menu, Sun, Moon,
+  Search, Shield,
+  User, Lock, CheckCircle2,
+  Home, Map, BarChart3, Network,
+  TrendingUp, FileText, Bot, Key, LogOut,
+  ChevronDown, ArrowLeft, X
+} from 'lucide-react';
 import { useSecurity } from '../context/SecurityContext';
 import CommandPalette from './ui/CommandPalette';
 import PIIUnlockModal from './ui/PIIUnlockModal';
@@ -32,7 +32,7 @@ const PAGE_TITLES = {
 
 const NAVIGATION_GROUPS = [
   {
-    id: 'intelligence', label: 'Intelligence', icon: <MdBarChart size={15} />,
+    id: 'intelligence', label: 'Intelligence', icon: <BarChart3 size={16} strokeWidth={1.5} />,
     paths: ['/map', '/statistics', '/predictions', '/network', '/copilot'],
     items: [
       { path: '/map', label: 'GIS Intelligence Map', detail: 'Hotspots, heatmaps and district drill-down' },
@@ -43,7 +43,7 @@ const NAVIGATION_GROUPS = [
     ],
   },
   {
-    id: 'investigations', label: 'Investigations', icon: <MdOutlineShield size={15} />,
+    id: 'investigations', label: 'Investigations', icon: <Shield size={16} strokeWidth={1.5} />,
     paths: ['/cases', '/case-overview', '/evidence', '/evidence-workspace', '/suspect-timeline'],
     items: [
       { path: '/cases', label: 'Case Registry', detail: 'Find and review FIR and case records' },
@@ -52,7 +52,7 @@ const NAVIGATION_GROUPS = [
     ],
   },
   {
-    id: 'briefings', label: 'Briefings & Reports', icon: <MdDescription size={15} />,
+    id: 'briefings', label: 'Briefings & Reports', icon: <FileText size={16} strokeWidth={1.5} />,
     paths: ['/briefing', '/reports'],
     items: [
       { path: '/briefing', label: 'Operational Briefing', detail: 'Situation summary and recommendations' },
@@ -60,7 +60,7 @@ const NAVIGATION_GROUPS = [
     ],
   },
   {
-    id: 'administration', label: 'Administration', icon: <MdVpnKey size={15} />,
+    id: 'administration', label: 'Administration', icon: <Key size={16} strokeWidth={1.5} />,
     paths: ['/admin/users', '/settings'],
     items: [
       { path: '/admin/users', label: 'User Management', detail: 'Roles, users and access controls' },
@@ -853,7 +853,7 @@ function Header({ theme, onToggleTheme, onToggleSidebar, sidebarCollapsed, sideb
             style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
             title={t.profileTitle}
           >
-            <MdAccountCircle size={20} style={{ color: '#ffffff' }} />
+            <User size={16} strokeWidth={1.5} style={{ color: '#ffffff' }} />
             <div style={{ display: 'flex', flexDirection: 'column', fontSize: '10px', textAlign: 'left' }}>
               <strong style={{ color: '#ffffff' }}>{session.officerName || 'DGP Kishore, IPS'}</strong>
               <span style={{ color: '#cbd5e1', fontSize: '9px' }}>{session.unitName || 'State DGP Command'}</span>
@@ -868,7 +868,7 @@ function Header({ theme, onToggleTheme, onToggleSidebar, sidebarCollapsed, sideb
           {showBackButton && (
             <li className="portal-menu-item">
               <button type="button" className="portal-back-button" onClick={goBack} aria-label={`Go back from ${routeContext.label}`} title="Return to the previous page">
-                <MdArrowBack size={16} /> <span>Back</span>
+                <ArrowLeft size={16} strokeWidth={1.5} /> <span>Back</span>
               </button>
             </li>
           )}
@@ -878,7 +878,7 @@ function Header({ theme, onToggleTheme, onToggleSidebar, sidebarCollapsed, sideb
           </li>
           <li className="portal-menu-item">
             <Link to="/" className={`portal-nav-link ${location.pathname === '/' ? 'active-link' : ''}`}>
-              <MdHome size={15} /> Command Center
+              <Home size={16} strokeWidth={1.5} /> Command Center
             </Link>
           </li>
           {NAVIGATION_GROUPS.map(group => {
@@ -892,7 +892,7 @@ function Header({ theme, onToggleTheme, onToggleSidebar, sidebarCollapsed, sideb
                   aria-expanded={isOpen}
                   aria-haspopup="menu"
                 >
-                  {group.icon} {group.label} <MdKeyboardArrowDown className="portal-nav-arrow" size={15} />
+                  {group.icon} {group.label} <ChevronDown className="portal-nav-arrow" size={16} strokeWidth={1.5} />
                 </button>
                 {isOpen && (
                   <ul className="portal-investigation-menu" role="menu" aria-label={`${group.label} navigation`}>
@@ -911,32 +911,32 @@ function Header({ theme, onToggleTheme, onToggleSidebar, sidebarCollapsed, sideb
           })}
           <li className="portal-menu-item">
             <Link to="/map" className={`portal-nav-link portal-legacy-direct-link ${location.pathname === '/map' ? 'active-link' : ''}`}>
-              <MdMap size={15} /> {t.map} <span className="portal-nav-arrow">▼</span>
+              <Map size={16} strokeWidth={1.5} /> {t.map} <ChevronDown className="portal-nav-arrow" size={16} strokeWidth={1.5} />
             </Link>
           </li>
           <li className="portal-menu-item">
             <Link to="/statistics" className={`portal-nav-link portal-legacy-direct-link ${location.pathname === '/statistics' ? 'active-link' : ''}`}>
-              <MdBarChart size={15} /> {t.stats} <span className="portal-nav-arrow">▼</span>
+              <BarChart3 size={16} strokeWidth={1.5} /> {t.stats} <ChevronDown className="portal-nav-arrow" size={16} strokeWidth={1.5} />
             </Link>
           </li>
           <li className="portal-menu-item">
             <Link to="/network" className={`portal-nav-link portal-legacy-direct-link ${location.pathname === '/network' ? 'active-link' : ''}`}>
-              <MdHub size={15} /> {t.network} <span className="portal-nav-arrow">▼</span>
+              <Network size={16} strokeWidth={1.5} /> {t.network} <ChevronDown className="portal-nav-arrow" size={16} strokeWidth={1.5} />
             </Link>
           </li>
           <li className="portal-menu-item">
             <Link to="/predictions" className={`portal-nav-link portal-legacy-direct-link ${location.pathname === '/predictions' ? 'active-link' : ''}`}>
-              <MdTrendingUp size={15} /> {t.predictions} <span className="portal-nav-arrow">▼</span>
+              <TrendingUp size={16} strokeWidth={1.5} /> {t.predictions} <ChevronDown className="portal-nav-arrow" size={16} strokeWidth={1.5} />
             </Link>
           </li>
           <li className="portal-menu-item">
             <Link to="/reports" className={`portal-nav-link portal-legacy-direct-link ${location.pathname === '/reports' ? 'active-link' : ''}`}>
-              <MdDescription size={15} /> {t.reports} <span className="portal-nav-arrow">▼</span>
+              <FileText size={16} strokeWidth={1.5} /> {t.reports} <ChevronDown className="portal-nav-arrow" size={16} strokeWidth={1.5} />
             </Link>
           </li>
           <li className="portal-menu-item">
             <Link to="/copilot" className={`portal-nav-link portal-legacy-direct-link ${location.pathname === '/copilot' ? 'active-link' : ''}`}>
-              <MdSmartToy size={15} /> {t.copilot} <span className="portal-nav-arrow">▼</span>
+              <Bot size={16} strokeWidth={1.5} /> {t.copilot} <ChevronDown className="portal-nav-arrow" size={16} strokeWidth={1.5} />
             </Link>
           </li>
           <li className="portal-menu-item portal-legacy-direct-link" ref={navigationMenuRef}>
@@ -947,7 +947,7 @@ function Header({ theme, onToggleTheme, onToggleSidebar, sidebarCollapsed, sideb
               aria-expanded={openNavigationGroup === 'legacy-investigation'}
               aria-haspopup="menu"
             >
-              <MdOutlineShield size={15} /> Investigation Hub <span className="portal-nav-arrow">▼</span>
+              <Shield size={16} strokeWidth={1.5} /> Investigation Hub <ChevronDown className="portal-nav-arrow" size={16} strokeWidth={1.5} />
             </button>
             {openNavigationGroup === 'legacy-investigation' && (
               <ul className="portal-investigation-menu" role="menu" aria-label="Investigation Hub">
@@ -962,7 +962,7 @@ function Header({ theme, onToggleTheme, onToggleSidebar, sidebarCollapsed, sideb
         <div className="portal-nav-controls">
           {/* Quick Search */}
           <div className="portal-search-bar" onClick={openQuickLookup}>
-            <MdSearch size={14} style={{ color: '#64748b' }} />
+            <Search size={16} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
             <input type="text" placeholder={t.searchPlaceholder} readOnly />
           </div>
 
@@ -972,9 +972,9 @@ function Header({ theme, onToggleTheme, onToggleSidebar, sidebarCollapsed, sideb
               className={`portal-sec-pill ${isCommandMode ? 'active' : ''}`}
               onClick={handlePillClick}
             >
-              {isCommandMode ? <MdVerifiedUser size={13} style={{ color: '#16a34a' }} /> : <MdLock size={13} />}
+              {isCommandMode ? <CheckCircle2 size={16} strokeWidth={1.5} style={{ color: 'var(--accent-success)' }} /> : <Lock size={16} strokeWidth={1.5} />}
               <span>{isCommandMode ? t.commandMode : t.restricted}</span>
-              <span style={{ fontSize: '9px', marginLeft: '2px', opacity: 0.6 }}><MdVpnKey size={9} /></span>
+              <span style={{ fontSize: '9px', marginLeft: '2px', opacity: 0.6 }}><Key size={16} strokeWidth={1.5} /></span>
             </div>
 
             {showLockDropdown && (
@@ -1016,10 +1016,12 @@ function Header({ theme, onToggleTheme, onToggleSidebar, sidebarCollapsed, sideb
                       color: 'var(--text-primary)',
                       fontSize: '11px',
                       cursor: 'pointer',
-                      display: 'block'
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
                     }}
                   >
-                    🔒 {t.lockPii}
+                    <Lock size={16} strokeWidth={1.5} /> {t.lockPii}
                   </button>
                 </div>
               </>
@@ -1028,7 +1030,7 @@ function Header({ theme, onToggleTheme, onToggleSidebar, sidebarCollapsed, sideb
 
           {/* Theme Toggle */}
           <button type="button" className="header-icon-btn" onClick={onToggleTheme} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-primary)' }}>
-            {theme === 'light' ? <MdOutlineDarkMode size={18} /> : <MdOutlineLightMode size={18} />}
+            {theme === 'light' ? <Moon size={16} strokeWidth={1.5} /> : <Sun size={16} strokeWidth={1.5} />}
           </button>
         </div>
       </div>
@@ -1076,14 +1078,15 @@ function Header({ theme, onToggleTheme, onToggleSidebar, sidebarCollapsed, sideb
                 style={{
                   background: 'transparent',
                   border: 'none',
-                  fontSize: '18px',
-                  color: '#64748b',
+                  color: 'var(--text-muted)',
                   cursor: 'pointer',
                   padding: 0,
-                  outline: 'none'
+                  outline: 'none',
+                  display: 'flex',
+                  alignItems: 'center'
                 }}
               >
-                ×
+                <X size={16} strokeWidth={1.5} />
               </button>
             </div>
 
@@ -1099,10 +1102,9 @@ function Header({ theme, onToggleTheme, onToggleSidebar, sidebarCollapsed, sideb
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#5c2e91',
-                fontSize: '20px'
+                color: 'var(--text-secondary)'
               }}>
-                👤
+                <User size={18} strokeWidth={1.5} />
               </div>
             </div>
 
@@ -1175,7 +1177,7 @@ function Header({ theme, onToggleTheme, onToggleSidebar, sidebarCollapsed, sideb
                   flex: 1
                 }}
               >
-                <MdLogout size={15} /> Logout
+                <LogOut size={16} strokeWidth={1.5} /> Logout
               </button>
             </div>
           </div>

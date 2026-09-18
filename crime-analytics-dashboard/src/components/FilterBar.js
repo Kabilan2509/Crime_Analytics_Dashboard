@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MdFilterList } from 'react-icons/md';
+import { Filter } from 'lucide-react';
 import { districts, crimeHeads } from '../data/schemaSelectors';
 
 /**
@@ -74,7 +74,7 @@ function FilterBar({
     <div className="filter-bar" style={{ borderRadius: '0px', boxShadow: 'none' }}>
       <div className="filter-bar-left">
         <div className="filter-bar-label">
-          <MdFilterList size={16} />
+          <Filter size={16} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
           <span>{t.filters}</span>
         </div>
 

@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import {
-  MdLock, MdWarning, MdLocationOn, MdInsertDriveFile,
-  MdPhoneInTalk, MdAccountBalance, MdDirectionsCar, MdAdd, MdHistory,
-  MdChevronRight, MdPeople
-} from 'react-icons/md';
+  Lock, AlertTriangle, MapPin, FileText,
+  PhoneCall, Landmark, Car, Plus, History,
+  Users
+} from 'lucide-react';
 import { MapContainer, CircleMarker, Tooltip, Polyline } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import ThemeAwareTileLayer from '../components/ui/ThemeAwareTileLayer';
@@ -38,19 +38,19 @@ const CATEGORY_COLORS = {
   'Communications': 'var(--accent-primary)',  // Blue
   'Location': 'var(--accent-success)',      // Green
   'Financial': 'var(--accent-warning)',      // Amber
-  'Travel': '#9b5de5',                       // Purple
-  'Forensic': '#00f5d4',                     // Teal
-  'Manual': '#70829a'                        // Muted grey
+  'Travel': '#64748b',                       // Muted slate
+  'Forensic': 'var(--accent-primary)',       // Primary blue
+  'Manual': '#94a3b8'                        // Muted grey
 };
 
 const CATEGORY_ICONS = {
-  'Criminal Justice': <MdWarning />,
-  'Communications': <MdPhoneInTalk />,
-  'Location': <MdLocationOn />,
-  'Financial': <MdAccountBalance />,
-  'Travel': <MdDirectionsCar />,
-  'Forensic': <MdInsertDriveFile />,
-  'Manual': <MdHistory />
+  'Criminal Justice': <AlertTriangle size={16} strokeWidth={1.5} />,
+  'Communications': <PhoneCall size={16} strokeWidth={1.5} />,
+  'Location': <MapPin size={16} strokeWidth={1.5} />,
+  'Financial': <Landmark size={16} strokeWidth={1.5} />,
+  'Travel': <Car size={16} strokeWidth={1.5} />,
+  'Forensic': <FileText size={16} strokeWidth={1.5} />,
+  'Manual': <History size={16} strokeWidth={1.5} />
 };
 
 // Dynamic chronological event generator
@@ -527,8 +527,9 @@ function SuspectTimeline() {
           z-index: 10;
         }
         .lollipop-item.selected .lollipop-dot {
-          border-color: #fff !important;
-          box-shadow: 0 0 8px rgba(255,255,255,0.8);
+          border-color: var(--accent-primary) !important;
+          outline: 2px solid var(--accent-primary);
+          outline-offset: 1px;
         }
         
         /* Filter chips */
@@ -553,8 +554,8 @@ function SuspectTimeline() {
         /* Network Graph visuals */
         .network-graph-container {
           height: 200px;
-          border: 1px solid color-mix(in srgb, var(--accent-primary) 38%, var(--border-color));
-          background: radial-gradient(circle at 50% 20%, color-mix(in srgb, var(--accent-primary) 20%, #090e17), #090e17 70%);
+          border: 1px solid var(--border-color);
+          background: var(--bg-panel-alt, #0b111e);
           position: relative;
           overflow: hidden;
         }
@@ -580,9 +581,9 @@ function SuspectTimeline() {
 
         /* Slide-in drawer container layout */
         .detail-drawer {
-          border: 1px solid color-mix(in srgb, var(--accent-primary) 32%, var(--border-color));
-          background: linear-gradient(135deg, var(--bg-panel-alt), var(--bg-panel));
-          border-radius: 10px !important;
+          border: 1px solid var(--border-color);
+          background: var(--bg-panel-alt);
+          border-radius: 8px !important;
           padding: 16px;
           margin-top: 14px;
         }
@@ -661,7 +662,7 @@ function SuspectTimeline() {
               minHeight: '40px'
             }}
           >
-            <MdAdd size={16} /> Add Manual Event
+            <Plus size={16} strokeWidth={1.5} /> Add Manual Event
           </button>
 
           <button
@@ -678,7 +679,7 @@ function SuspectTimeline() {
               minHeight: '40px'
             }}
           >
-            <MdPeople size={16} style={{ marginRight: '6px' }} /> Compare Swimlanes
+            <Users size={16} strokeWidth={1.5} style={{ marginRight: '6px' }} /> Compare Swimlanes
           </button>
 
           <button
@@ -741,10 +742,10 @@ function SuspectTimeline() {
 
       {/* COMPARATIVE OVERLAY swimlanes legend */}
       {compareMode && (
-        <div style={{ padding: '8px 12px', background: 'rgba(155, 93, 229, 0.08)', border: '1px solid var(--border-color)', margin: '14px 0', fontSize: '12px', display: 'flex', gap: '20px' }}>
-          <span>📊 COMPARE SWIMLANES ACTIVE:</span>
+        <div style={{ padding: '8px 12px', background: 'var(--bg-panel-alt)', border: '1px solid var(--border-color)', margin: '14px 0', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '20px' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}><Users size={16} strokeWidth={1.5} style={{ color: 'var(--accent-primary)' }} /> COMPARE SWIMLANES ACTIVE:</span>
           <span style={{ color: 'var(--accent-primary)' }}>● Suspect: {activeSuspect?.name}</span>
-          <span style={{ color: '#9b5de5' }}>▲ Co-Dossier Swimlane: Victim Deposition logs</span>
+          <span style={{ color: 'var(--text-secondary)' }}>▲ Co-Dossier Swimlane: Victim Deposition logs</span>
         </div>
       )}
 
@@ -801,7 +802,7 @@ function SuspectTimeline() {
                           <span className="badge" style={{ background: 'rgba(255,255,255,0.1)', color: 'var(--text-secondary)', fontSize: '9px', padding: '1px 6px', borderRadius: '99px' }}>Manual</span>
                         )}
                         {isRestricted && (
-                          <MdLock size={12} style={{ color: 'var(--accent-danger)' }} />
+                          <Lock size={16} strokeWidth={1.5} style={{ color: 'var(--accent-danger)' }} />
                         )}
                       </div>
                       <strong style={{ fontSize: '13px', color: isSelected ? 'var(--accent-primary)' : 'var(--text-primary)', display: 'block', marginTop: '4px' }}>
@@ -820,11 +821,11 @@ function SuspectTimeline() {
                 <div
                   key={ev.id}
                   className="lollipop-item"
-                  style={{ borderLeft: '3px solid #9b5de5', background: 'rgba(155, 93, 229, 0.04)', paddingLeft: '10px', marginTop: '8px' }}
+                  style={{ borderLeft: '3px solid #64748b', background: 'var(--bg-panel-alt)', paddingLeft: '10px', marginTop: '8px' }}
                 >
                   <div style={{ display: 'flex', gap: '10px', fontSize: '11px', alignItems: 'center' }}>
                     <span style={{ color: 'var(--text-muted)' }}>{ev.timestamp}</span>
-                    <span style={{ color: '#9b5de5', fontWeight: 'bold' }}>▲ {ev.owner}</span>
+                    <span style={{ color: '#64748b', fontWeight: 'bold' }}>▲ {ev.owner}</span>
                   </div>
                   <strong style={{ fontSize: '12px', color: 'var(--text-primary)', display: 'block', marginTop: '2px' }}>{ev.title}</strong>
                   <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{ev.desc}</span>
@@ -837,7 +838,7 @@ function SuspectTimeline() {
           {/* AI ASSISTED GAP ANNOTATION WARNING */}
           {filteredEvents.length > 0 && (
             <div style={{ border: '1px dashed var(--accent-warning)', background: 'rgba(255,167,38,0.05)', padding: '10px 14px', marginTop: '20px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <MdWarning style={{ color: 'var(--accent-warning)', flexShrink: 0 }} />
+              <AlertTriangle size={16} strokeWidth={1.5} style={{ color: 'var(--accent-warning)', flexShrink: 0 }} />
               <div>
                 <strong>AI SUGGESTED ANOMALY SIGHTING GAP:</strong>
                 <p style={{ margin: '2px 0 0', color: 'var(--text-secondary)' }}>
@@ -930,8 +931,8 @@ function SuspectTimeline() {
                   )}
                 </MapContainer>
               ) : (
-                <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '13px', padding: '20px', textAlign: 'center' }}>
-                  ⚠️ Mapped travel logs unavailable for this subject.
+                <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '13px', padding: '20px', textAlign: 'center', gap: '6px' }}>
+                  <AlertTriangle size={16} strokeWidth={1.5} style={{ color: 'var(--accent-warning)', flexShrink: 0 }} /> Mapped travel logs unavailable for this subject.
                 </div>
               )}
             </div>
@@ -972,31 +973,6 @@ function SuspectTimeline() {
                   <span style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Case Notes Context</span>
                   <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>{selectedEvent.desc}</p>
                 </div>
-
-                {/* Direct Jump to evidence in Workspace */}
-                {selectedEvent.evidenceId && (
-                  <button
-                    onClick={() => {
-                      playAlertSound(600, 0.05);
-                      navigate(isCaseOverviewRoute ? `/evidence-workspace/${caseId}` : `/evidence/${caseId}`);
-                    }}
-                    style={{
-                      marginTop: '10px',
-                      padding: '8px 12px',
-                      background: 'var(--bg-panel)',
-                      border: '1px solid var(--border-color)',
-                      color: 'var(--accent-primary)',
-                      fontWeight: '700',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between'
-                    }}
-                  >
-                    <span>Jump to Evidence Vault</span>
-                    <MdChevronRight size={16} />
-                  </button>
-                )}
 
               </div>
             </div>

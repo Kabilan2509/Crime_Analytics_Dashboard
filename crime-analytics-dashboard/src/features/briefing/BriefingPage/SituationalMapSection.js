@@ -1,6 +1,6 @@
 import React from 'react';
 import { MapContainer, CircleMarker, Tooltip as MapTooltip } from 'react-leaflet';
-import { MdMap, MdWarning, MdRefresh } from 'react-icons/md';
+import { Map, AlertTriangle, RotateCcw } from 'lucide-react';
 import { districtCenters } from '../../../data/schemaSelectors';
 import { useNavigate } from 'react-router-dom';
 import ThemeAwareTileLayer from '../../../components/ui/ThemeAwareTileLayer';
@@ -105,7 +105,7 @@ function SituationalMapSection({ mapData, theme, onDistrictClick, activeKpiFilte
                 }}
                 title="Click to clear filter and show all districts"
               >
-                <MdRefresh size={14} />
+                <RotateCcw size={16} strokeWidth={1.5} />
                 <span>RESET MAP FILTER ({activeKpiFilter.toUpperCase().replace('_', ' ')})</span>
               </button>
             )}
@@ -124,7 +124,7 @@ function SituationalMapSection({ mapData, theme, onDistrictClick, activeKpiFilte
               }}
               className="stats-btn"
             >
-              <MdMap size={14} />
+              <Map size={16} strokeWidth={1.5} />
               <span>OPEN FULL GIS MAP</span>
             </button>
           </div>
@@ -149,7 +149,7 @@ function SituationalMapSection({ mapData, theme, onDistrictClick, activeKpiFilte
               alignItems: 'center',
               gap: '12px',
               boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
-              fontFamily: 'monospace',
+              fontFamily: 'inherit',
               border: '1px solid rgba(255,255,255,0.2)'
             }}>
               <span>Filtering Map: <strong>{activeKpiFilter.toUpperCase().replace('_', ' ')}</strong></span>
@@ -170,7 +170,7 @@ function SituationalMapSection({ mapData, theme, onDistrictClick, activeKpiFilte
                   gap: '2px'
                 }}
               >
-                <MdRefresh size={12} />
+                <RotateCcw size={16} strokeWidth={1.5} />
                 <span>SHOW ALL</span>
               </button>
             </div>
@@ -205,7 +205,7 @@ function SituationalMapSection({ mapData, theme, onDistrictClick, activeKpiFilte
                   }}
                 >
                   <MapTooltip direction="top" offset={[0, -5]}>
-                    <div style={{ fontSize: '11px', fontFamily: 'monospace' }}>
+                    <div style={{ fontSize: '11px', fontFamily: 'inherit' }}>
                       <strong>{d.name}</strong><br />
                       Risk Index: {d.riskScore}%<br />
                       Period Cases: {d.count}
@@ -232,8 +232,8 @@ function SituationalMapSection({ mapData, theme, onDistrictClick, activeKpiFilte
                 }}
               >
                 <MapTooltip direction="top" offset={[0, -2]}>
-                  <div style={{ fontSize: '11px', fontFamily: 'monospace', color: 'var(--accent-danger)' }}>
-                    🚨 <strong>CRITICAL INCIDENT</strong><br />
+                  <div style={{ fontSize: '11px', fontFamily: 'inherit', color: 'var(--accent-danger)' }}>
+                    <strong>CRITICAL INCIDENT</strong><br />
                     {pin.title} ({pin.districtName})
                   </div>
                 </MapTooltip>
@@ -252,7 +252,7 @@ function SituationalMapSection({ mapData, theme, onDistrictClick, activeKpiFilte
             padding: '8px 12px',
             zIndex: 1000,
             fontSize: '10px',
-            fontFamily: 'monospace',
+            fontFamily: 'inherit',
             boxShadow: '0 2px 8px rgba(0,0,0,0.35)',
             display: 'flex',
             flexDirection: 'column',
@@ -276,7 +276,10 @@ function SituationalMapSection({ mapData, theme, onDistrictClick, activeKpiFilte
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-primary)', borderTop: '1px solid var(--border-color)', paddingTop: '6px', marginTop: '2px' }}>
               <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent-danger, #ff4d4d)', border: '1px solid #fff', display: 'inline-block' }} />
-              <span>🚨 Critical Incident</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                <AlertTriangle size={16} strokeWidth={1.5} style={{ color: 'var(--accent-danger)' }} />
+                Critical Incident
+              </span>
             </div>
           </div>
         </div>
@@ -347,7 +350,7 @@ function SituationalMapSection({ mapData, theme, onDistrictClick, activeKpiFilte
           alignItems: 'center',
           gap: '6px'
         }}>
-          <MdWarning size={14} style={{ color: 'var(--accent-warning)' }} />
+          <AlertTriangle size={16} strokeWidth={1.5} style={{ color: 'var(--accent-warning)' }} />
           <span>Click a district row or map bubble to filter entire dashboard.</span>
         </div>
       </article>

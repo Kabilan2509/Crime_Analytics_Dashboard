@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MdAssignment, MdAssignmentTurnedIn, MdCheckCircle, MdLaunch } from 'react-icons/md';
+import { ClipboardList, CheckCircle2, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 function RecommendationsPane({ recommendations }) {
@@ -142,7 +142,7 @@ function RecommendationsPane({ recommendations }) {
                       }}
                       className="stats-btn"
                     >
-                      <MdAssignment size={12} />
+                      <ClipboardList size={16} strokeWidth={1.5} />
                       <span>DEPLOY MISSION</span>
                     </button>
                   </div>
@@ -178,7 +178,7 @@ function RecommendationsPane({ recommendations }) {
                     }}>
                       DEPLOYED
                     </span>
-                    <MdCheckCircle size={16} style={{ color: 'var(--accent-success)' }} />
+                    <CheckCircle2 size={16} strokeWidth={1.5} style={{ color: 'var(--accent-success)' }} />
                   </div>
 
                   <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.4, textDecoration: 'line-through' }}>
@@ -209,7 +209,7 @@ function RecommendationsPane({ recommendations }) {
           style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px', padding: 0 }}
         >
           <span>Ask Copilot about recommendations</span>
-          <MdLaunch size={12} />
+          <ExternalLink size={16} strokeWidth={1.5} />
         </button>
       </div>
 

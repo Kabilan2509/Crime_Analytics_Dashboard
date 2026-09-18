@@ -79,7 +79,7 @@ function normalizeGender(value) {
 // Helper: parse date filter
 function parseDateRange(range, customStart, customEnd) {
   const latestCaseTime = Math.max(0, ...caseViews.map(item => item.registeredDateObj?.getTime() || 0));
-  const now = new Date(Math.max(Date.now(), latestCaseTime));
+  const now = new Date(latestCaseTime > 0 ? latestCaseTime : Date.now());
   let start = null;
   let end = now;
 
@@ -106,7 +106,7 @@ function parseDateRange(range, customStart, customEnd) {
 }
 
 // Master filter function applied to caseViews
-function getFilteredDataset(filters) {
+export function getFilteredDataset(filters) {
   const {
     dateRange = 'all',
     startDate,

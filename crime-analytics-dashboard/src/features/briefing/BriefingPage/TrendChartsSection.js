@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { ResponsiveContainer, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, LineChart, Line } from 'recharts';
-import { MdTrendingUp, MdBarChart, MdTimeline } from 'react-icons/md';
-import GrafanaPanel from '../../../components/ui/GrafanaPanel';
+import { BarChart3 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 function TrendChartsSection({ trends }) {
@@ -57,7 +56,7 @@ function TrendChartsSection({ trends }) {
           }}
           className="stats-btn"
         >
-          <MdBarChart size={14} />
+          <BarChart3 size={16} strokeWidth={1.5} />
           <span>VIEW FULL STATISTICS</span>
         </button>
       </div>
@@ -129,7 +128,7 @@ function TrendChartsSection({ trends }) {
                 <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={10} tickLine={false} />
                 <YAxis stroke="var(--text-muted)" fontSize={10} tickLine={false} axisLine={false} />
                 <Tooltip
-                  contentStyle={{ background: 'var(--bg-panel)', borderColor: 'var(--border-color)', borderRadius: '0px', color: 'var(--text-primary)', fontFamily: 'monospace', fontSize: '11px' }}
+                  contentStyle={{ background: 'var(--bg-panel)', borderColor: 'var(--border-color)', borderRadius: '0px', color: 'var(--text-primary)', fontFamily: 'inherit', fontSize: '11px' }}
                 />
                 {visibleSeries.Violent && (
                   <Area type="monotone" dataKey="Violent" stroke="#ff4d4d" strokeWidth={1.5} fill="url(#violentGlow)" name="Violent Crimes" />
@@ -196,10 +195,10 @@ function TrendChartsSection({ trends }) {
                   <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={9} tickLine={false} />
                   <YAxis stroke="var(--text-muted)" fontSize={9} tickLine={false} axisLine={false} />
                   <Tooltip
-                    contentStyle={{ background: 'var(--bg-panel)', borderColor: 'var(--border-color)', borderRadius: '0px', color: 'var(--text-primary)', fontFamily: 'monospace', fontSize: '10px' }}
+                    contentStyle={{ background: 'var(--bg-panel)', borderColor: 'var(--border-color)', borderRadius: '0px', color: 'var(--text-primary)', fontFamily: 'inherit', fontSize: '10px' }}
                     formatter={(value) => [`${value} cases`, 'Caseload']}
                   />
-                  <Bar dataKey="count" fill="var(--chart-indigo)" radius={[2, 2, 0, 0]} />
+                  <Bar dataKey="count" fill="var(--chart-blue)" radius={[2, 2, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

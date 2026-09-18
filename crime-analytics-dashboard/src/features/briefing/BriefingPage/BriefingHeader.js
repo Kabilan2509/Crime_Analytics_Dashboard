@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { MdSecurity, MdFileDownload } from 'react-icons/md';
+import { Shield, Download } from 'lucide-react';
 import { useSecurity } from '../../../context/SecurityContext';
 
 function BriefingHeader({ activeFilterSummary, onExport }) {
@@ -54,7 +54,7 @@ function BriefingHeader({ activeFilterSummary, onExport }) {
             alignItems: 'center',
             gap: '4px'
           }}>
-            <MdSecurity size={12} />
+            <Shield size={16} strokeWidth={1.5} />
             <span>CONFIDENTIAL</span>
           </span>
         </div>
@@ -83,7 +83,7 @@ function BriefingHeader({ activeFilterSummary, onExport }) {
           }}
           className="stats-btn"
         >
-          <MdFileDownload size={14} />
+          <Download size={16} strokeWidth={1.5} />
           <span>Export Briefing (PDF)</span>
         </button>
       </div>

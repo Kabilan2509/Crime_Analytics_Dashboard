@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { MdSend, MdSmartToy, MdAutoAwesome, MdRefresh } from 'react-icons/md';
+import { Send, Bot, Sparkles, RotateCcw } from 'lucide-react';
 import CopilotMessage from '../features/copilot/CopilotMessage';
 import { useSecurity } from '../context/SecurityContext';
 
@@ -151,7 +151,7 @@ function Copilot() {
         <div className="copilot-chat">
           {/* Banner — fixed height */}
           <div className="copilot-banner">
-            <MdSmartToy size={24} style={{ color: '#9b5de5' }} />
+            <Bot size={18} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
             <div style={{ flex: 1 }}>
               <strong style={{ fontSize: '15px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 MADHUKAR AI COPILOT
@@ -172,7 +172,7 @@ function Copilot() {
                 fontSize: '11px',
               }}
             >
-              <MdRefresh size={14} /> Clear
+              <RotateCcw size={16} strokeWidth={1.5} /> Clear
             </button>
           </div>
 
@@ -191,7 +191,7 @@ function Copilot() {
                     display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff',
                     boxShadow: '0 0 10px rgba(155, 93, 229, 0.4)', flexShrink: 0,
                   }}>
-                    <MdSmartToy size={20} />
+                    <Bot size={16} strokeWidth={1.5} />
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', justifyContent: 'center' }}>
                     <div className="typing-indicator">
@@ -223,7 +223,7 @@ function Copilot() {
               onClick={() => handleSend()}
               disabled={isThinking || !input.trim()}
             >
-              <MdSend size={20} />
+              <Send size={16} strokeWidth={1.5} />
             </button>
           </div>
         </div>
@@ -232,7 +232,7 @@ function Copilot() {
         <div className="copilot-sidebar">
           <article className="card" style={{ padding: '16px', background: 'var(--bg-panel)' }}>
             <h4 style={{ margin: '0 0 12px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-primary)' }}>
-              <MdAutoAwesome style={{ color: 'var(--accent-gold)' }} />
+              <Sparkles size={16} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
               INTELLIGENCE QUERIES
             </h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>

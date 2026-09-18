@@ -15,7 +15,7 @@ export function executeQuery(intent, params) {
 
   switch (intent) {
     case 'OUT_OF_SCOPE': {
-      summary = `🛡️ I am MADHUKAR, an AI Command Intelligence assistant dedicated exclusively to Karnataka State Police operations. I cannot answer general programming, coding, or non-police queries. Please submit an investigative FIR or crime query.`;
+      summary = `I am MADHUKAR, an AI Command Intelligence assistant dedicated exclusively to Karnataka State Police operations. I cannot answer general programming, coding, or non-police queries. Please submit an investigative FIR or crime query.`;
       results = [];
       chartData = [];
       suggestions = [

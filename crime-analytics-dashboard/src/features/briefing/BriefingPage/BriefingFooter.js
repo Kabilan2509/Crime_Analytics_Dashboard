@@ -1,5 +1,5 @@
 import React from 'react';
-import { MdFileDownload, MdSecurity } from 'react-icons/md';
+import { Download, Shield } from 'lucide-react';
 import { useSecurity } from '../../../context/SecurityContext';
 
 function BriefingFooter({ summary, onExport }) {
@@ -25,7 +25,7 @@ function BriefingFooter({ summary, onExport }) {
       {/* 13c. Attribution and Disclaimer */}
       <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-          <MdSecurity size={12} style={{ color: 'var(--accent-danger)' }} />
+          <Shield size={16} strokeWidth={1.5} style={{ color: 'var(--accent-danger)' }} />
           <strong style={{ color: 'var(--text-secondary)' }}>
             DISCLAIMER: CLASSIFIED TRANSIT LOGS
           </strong>
@@ -56,7 +56,7 @@ function BriefingFooter({ summary, onExport }) {
           }}
           className="stats-btn"
         >
-          <MdFileDownload size={14} />
+          <Download size={16} strokeWidth={1.5} />
           <span>EXPORT PDF</span>
         </button>
       </div>

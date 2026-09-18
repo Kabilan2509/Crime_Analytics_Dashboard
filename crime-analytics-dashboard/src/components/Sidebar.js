@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
-  MdDashboard, MdMap, MdBarChart, MdDescription, MdSettings,
-  MdShield, MdClose, MdSmartToy, MdHub,
-  MdAutoGraph, MdAssignment, MdPeople, MdLink, MdLogout
-} from 'react-icons/md';
+  LayoutDashboard, Map, BarChart3, FileText, Settings,
+  Shield, X, Bot, Network,
+  LineChart, Users, Clock, LogOut
+} from 'lucide-react';
 import { useSecurity } from '../context/SecurityContext';
 import { caseViews } from '../data/schemaSelectors';
 
@@ -18,7 +18,7 @@ const BROWSER_SESSION_KEY = 'ksp-catalyst-browser-session';
  * Organized into operational sections:
  *   Operations → Command Center, Dispatch, War Room, Briefing, Map, Statistics, Reports
  *   AI Intelligence → Copilot, Network Graph, Case Priorities, Predictions
- *   Investigation → Case Overview, Evidence, Officer Analytics, Suspect Timeline
+ *   Investigation → Case Overview, Suspect Timeline
  *   Deployment → Patrol, Resources, EOC, Admin, Settings
  */
 function Sidebar({ isOpen, isCollapsed, onClose }) {
@@ -84,34 +84,33 @@ function Sidebar({ isOpen, isCollapsed, onClose }) {
     {
       title: 'OPERATIONS',
       items: [
-        { path: '/', icon: <MdDashboard />, label: 'Command Center' },
-        { path: '/briefing', icon: <MdAssignment />, label: 'Operational Intelligence Briefing', badge: 'AI' },
-        { path: '/map', icon: <MdMap />, label: 'GIS Intelligence Map' },
-        { path: '/statistics', icon: <MdBarChart />, label: 'Crime Statistics' },
-        { path: '/reports', icon: <MdDescription />, label: 'Reports' },
+        { path: '/', icon: <LayoutDashboard size={16} strokeWidth={1.5} />, label: 'Command Center' },
+        { path: '/briefing', icon: <FileText size={16} strokeWidth={1.5} />, label: 'Operational Intelligence Briefing', badge: 'AI' },
+        { path: '/map', icon: <Map size={16} strokeWidth={1.5} />, label: 'GIS Intelligence Map' },
+        { path: '/statistics', icon: <BarChart3 size={16} strokeWidth={1.5} />, label: 'Crime Statistics' },
+        { path: '/reports', icon: <FileText size={16} strokeWidth={1.5} />, label: 'Reports' },
       ],
     },
     {
       title: 'AI INTELLIGENCE',
       items: [
-        { path: '/copilot', icon: <MdSmartToy />, label: 'AI Copilot', badge: 'NEW' },
-        { path: '/network', icon: <MdHub />, label: 'Criminal Network', badge: 'NEW' },
-        { path: '/predictions', icon: <MdAutoGraph />, label: 'Predictions' },
+        { path: '/copilot', icon: <Bot size={16} strokeWidth={1.5} />, label: 'AI Copilot', badge: 'NEW' },
+        { path: '/network', icon: <Network size={16} strokeWidth={1.5} />, label: 'Criminal Network', badge: 'NEW' },
+        { path: '/predictions', icon: <LineChart size={16} strokeWidth={1.5} />, label: 'Predictions' },
       ],
     },
     {
       title: 'INVESTIGATION',
       items: [
-        { path: '/cases', icon: <MdPeople />, label: 'Case Overview' },
-        { path: '/evidence', icon: <MdLink />, label: 'Evidence Workspace', badge: 'AI' },
-        { path: '/suspect-timeline', icon: <MdAutoGraph />, label: 'Suspect Timeline', badge: 'NEW' },
+        { path: '/cases', icon: <Users size={16} strokeWidth={1.5} />, label: 'Case Overview' },
+        { path: '/suspect-timeline', icon: <Clock size={16} strokeWidth={1.5} />, label: 'Suspect Timeline', badge: 'NEW' },
       ],
     },
     {
       title: 'DEPLOYMENT',
       items: [
-        { path: '/admin/users', icon: <MdPeople />, label: 'User Management' },
-        { path: '/settings', icon: <MdSettings />, label: 'Settings' },
+        { path: '/admin/users', icon: <Users size={16} strokeWidth={1.5} />, label: 'User Management' },
+        { path: '/settings', icon: <Settings size={16} strokeWidth={1.5} />, label: 'Settings' },
       ],
     },
   ];
@@ -122,7 +121,7 @@ function Sidebar({ isOpen, isCollapsed, onClose }) {
         {/* Brand Header */}
         <div className="sidebar-brand">
           <div className="brand-mark">
-            <MdShield size={24} />
+            <Shield size={18} strokeWidth={1.5} />
           </div>
           <div className="brand-copy">
             <div className="brand-eyebrow">Karnataka State Police</div>
@@ -130,7 +129,7 @@ function Sidebar({ isOpen, isCollapsed, onClose }) {
             <div className="brand-subtitle" title="Modern Analytics and Data Hub for User Friendly Karnataka Anti Crime Response Dashboard">Modern Analytics &amp; Data Hub</div>
           </div>
           <button type="button" className="sidebar-close-btn" onClick={onClose} aria-label="Close menu">
-            <MdClose size={20} />
+            <X size={16} strokeWidth={1.5} />
           </button>
         </div>
 
@@ -194,7 +193,7 @@ function Sidebar({ isOpen, isCollapsed, onClose }) {
               onClick={endAuthenticatedSession}
               title="Log out of the KSP dashboard"
             >
-              <MdLogout size={17} />
+              <LogOut size={16} strokeWidth={1.5} />
               <span>Logout</span>
             </button>
           </div>

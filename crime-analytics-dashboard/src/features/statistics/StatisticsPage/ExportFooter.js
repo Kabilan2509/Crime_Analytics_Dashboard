@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MdFileDownload, MdPrint, MdWarningAmber, MdClose, MdRestartAlt } from 'react-icons/md';
+import { Download, Printer, AlertTriangle, X, RotateCcw, Lightbulb } from 'lucide-react';
 import { useSecurity } from '../../../context/SecurityContext';
 import { downloadCsv, downloadExcel, downloadPdf } from '../../../utils/fileExports';
 import { getSecureCaseViews } from '../../../security/securityUtils';
@@ -314,7 +314,7 @@ function ExportFooter({
             title="Click to view details and recommendations"
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <MdWarningAmber size={20} style={{ color: '#ef4444', flexShrink: 0 }} />
+              <AlertTriangle size={16} strokeWidth={1.5} style={{ color: 'var(--accent-danger)', flexShrink: 0 }} />
               <span style={{ color: '#ef4444', fontWeight: 600 }}>
                 <strong>No records found:</strong> No case records match your current filter parameters. Broaden your search or reset filters to generate an export.
               </span>
@@ -348,7 +348,7 @@ function ExportFooter({
             className="stats-btn"
             title={hasNoData ? "Click to view reason why export is unavailable" : "Download complete case records intelligence report as CSV"}
           >
-            <MdFileDownload size={16} />
+            <Download size={16} strokeWidth={1.5} />
             <span>Download Report (CSV)</span>
           </button>
 
@@ -373,7 +373,7 @@ function ExportFooter({
             className="stats-btn"
             title={hasNoData ? "Click to view reason why export is unavailable" : "Download crime statistics summary with visual data bars as Excel"}
           >
-            <MdFileDownload size={16} />
+            <Download size={16} strokeWidth={1.5} />
             <span>Download Statistics & Bars (Excel)</span>
           </button>
 
@@ -398,7 +398,7 @@ function ExportFooter({
             className="stats-btn"
             title={hasNoData ? "Click to view reason why export is unavailable" : "Download official executive crime statistics briefing dossier as PDF"}
           >
-            <MdPrint size={16} />
+            <Printer size={16} strokeWidth={1.5} />
             <span>Export Statistics (PDF)</span>
           </button>
         </div>
@@ -461,19 +461,7 @@ function ExportFooter({
             {/* Modal Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{
-                  width: '40px',
-                  height: '40px',
-                  borderRadius: '8px',
-                  background: 'rgba(239, 68, 68, 0.12)',
-                  color: '#ef4444',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0
-                }}>
-                  <MdWarningAmber size={24} />
-                </div>
+                <AlertTriangle size={18} strokeWidth={1.5} style={{ color: 'var(--accent-danger)', flexShrink: 0 }} />
                 <div>
                   <h3 id="no-data-export-title" style={{ margin: 0, fontSize: '17px', fontWeight: 800, color: '#ef4444' }}>
                     No Data Available to Export
@@ -494,7 +482,7 @@ function ExportFooter({
                 }}
                 aria-label="Close modal"
               >
-                <MdClose size={20} />
+                <X size={16} strokeWidth={1.5} />
               </button>
             </div>
 
@@ -518,7 +506,6 @@ function ExportFooter({
                   padding: '8px 10px',
                   background: 'var(--bg-panel)',
                   borderRadius: '5px',
-                  fontFamily: 'Consolas, monospace',
                   fontWeight: 600,
                   fontSize: '11px',
                   color: '#ef4444',
@@ -538,7 +525,10 @@ function ExportFooter({
               lineHeight: '1.5',
               padding: '0 2px'
             }}>
-              💡 <strong>How to resolve:</strong>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                <Lightbulb size={16} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
+                <strong>How to resolve:</strong>
+              </span>
               <ul style={{ margin: '6px 0 0 16px', padding: 0 }}>
                 <li>Expand or change your date range (e.g., select <em>This Year</em> or <em>All Records</em>).</li>
                 <li>Switch the jurisdiction filter back to <em>All Districts</em>.</li>
@@ -569,7 +559,7 @@ function ExportFooter({
                     gap: '6px'
                   }}
                 >
-                  <MdRestartAlt size={16} />
+                  <RotateCcw size={16} strokeWidth={1.5} />
                   <span>Reset All Filters</span>
                 </button>
               )}

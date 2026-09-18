@@ -1,5 +1,5 @@
 import React from 'react';
-import { MdEventNote, MdRssFeed } from 'react-icons/md';
+import { Calendar, Rss } from 'lucide-react';
 
 function UpcomingEventsInterAgencySection({ eventsData, viewMode }) {
   const { events = [], bulletins = [] } = eventsData;
@@ -15,7 +15,7 @@ function UpcomingEventsInterAgencySection({ eventsData, viewMode }) {
       {/* Upcoming Deployment Events & Alerts */}
       <article className="card" style={{ display: 'flex', flexDirection: 'column', margin: 0 }}>
         <div className="card-header" style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '12px 16px' }}>
-          <MdEventNote size={18} style={{ color: 'var(--accent-primary)' }} />
+          <Calendar size={18} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
           <h3 className="card-title" style={{ fontSize: '15px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', margin: 0 }}>
             Upcoming Deployment Events
           </h3>
@@ -34,7 +34,7 @@ function UpcomingEventsInterAgencySection({ eventsData, viewMode }) {
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', flexWrap: 'wrap', gap: '4px' }}>
                   <strong style={{ color: 'var(--text-primary)', fontSize: '14px' }}>{ev.title}</strong>
-                  <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'monospace' }}>{ev.date}</span>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{ev.date}</span>
                 </div>
                 <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
                   {ev.note}
@@ -49,7 +49,7 @@ function UpcomingEventsInterAgencySection({ eventsData, viewMode }) {
       {isAnalyst && (
         <article className="card" style={{ display: 'flex', flexDirection: 'column', margin: 0 }}>
           <div className="card-header" style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '12px 16px' }}>
-            <MdRssFeed size={18} style={{ color: 'var(--accent-primary)' }} />
+            <Rss size={18} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
             <h3 className="card-title" style={{ fontSize: '15px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', margin: 0 }}>
               Inter-Agency Intelligence Ticker
             </h3>
@@ -71,7 +71,6 @@ function UpcomingEventsInterAgencySection({ eventsData, viewMode }) {
                     background: 'rgba(56, 151, 216, 0.12)',
                     color: 'var(--accent-primary)',
                     padding: '2px 6px',
-                    fontFamily: 'monospace',
                     borderRadius: '0px'
                   }}>
                     {b.source}

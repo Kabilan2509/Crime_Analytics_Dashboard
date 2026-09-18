@@ -1,11 +1,11 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import {
-  MdFolder, MdInsertDriveFile, MdLaunch, MdSearch, MdLock,
-  MdLocationOn, MdArrowBack, MdPerson, MdPeople, MdHistory,
-  MdDescription, MdRefresh, MdShare, MdCloudUpload, MdAssignment,
-  MdCheckCircle, MdChevronRight, MdSupervisorAccount
-} from 'react-icons/md';
+  Folder, FileText, ExternalLink, Search, Lock,
+  MapPin, ArrowLeft, User, Users, History,
+  RotateCcw, Share2, ClipboardList, CheckCircle2, ChevronRight,
+  Calendar, Gavel, AlertTriangle, Check
+} from 'lucide-react';
 import { MapContainer, CircleMarker, Tooltip } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import ThemeAwareTileLayer from '../components/ui/ThemeAwareTileLayer';
@@ -328,27 +328,15 @@ function CaseOverview() {
     return getLocality(activeCase) || activeCase.policeStationName;
   }, [activeCase]);
 
-  // Mock Evidence snapshot categories
-  const evidenceSnapshot = useMemo(() => {
-    if (!activeCase) return null;
-    return {
-      photos: activeCase.isHeinous ? 5 : 2,
-      videos: activeCase.isHeinous ? 2 : 1,
-      audio: activeCase.isHeinous ? 1 : 0,
-      documents: activeCase.isHeinous ? 4 : 2,
-      forensics: activeCase.isHeinous ? 3 : 1
-    };
-  }, [activeCase]);
-
   // Mock Timeline events
   const timelinePreview = useMemo(() => {
     if (!activeCase) return [];
     const dateStr = activeCase.registeredDateObj ? activeCase.registeredDateObj.toISOString().split('T')[0] : '2026-07-10';
     return [
-      { date: dateStr, desc: 'FIR registered at police station', icon: <MdCheckCircle style={{ color: 'var(--accent-success)' }} /> },
-      { date: dateStr, desc: 'Investigating Officer assigned', icon: <MdPerson style={{ color: 'var(--accent-primary)' }} /> },
-      { date: dateStr, desc: 'Crime scene mapped & inspected', icon: <MdLocationOn style={{ color: 'var(--accent-warning)' }} /> },
-      { date: dateStr, desc: 'Evidence cataloged in digital locker', icon: <MdInsertDriveFile style={{ color: 'var(--accent-secondary)' }} /> }
+      { date: dateStr, desc: 'FIR registered at police station', icon: <CheckCircle2 size={16} strokeWidth={1.5} style={{ color: 'var(--accent-success)' }} /> },
+      { date: dateStr, desc: 'Investigating Officer assigned', icon: <User size={16} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} /> },
+      { date: dateStr, desc: 'Crime scene mapped & inspected', icon: <MapPin size={16} strokeWidth={1.5} style={{ color: 'var(--accent-warning)' }} /> },
+      { date: dateStr, desc: 'Evidence cataloged in digital locker', icon: <FileText size={16} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} /> }
     ];
   }, [activeCase]);
 
@@ -393,12 +381,6 @@ function CaseOverview() {
 
   // Action bars permissions checks
   const canUpdateStatus = useMemo(() => {
-    if (session.accessLevel !== 'command') return false;
-    if (session.role === 'State DGP Command' || session.unitName === 'State Control Room') return true;
-    return activeCase && String(session.unitName).toLowerCase() === String(activeCase.policeStationName).toLowerCase();
-  }, [session, activeCase]);
-
-  const canAddEvidence = useMemo(() => {
     if (session.accessLevel !== 'command') return false;
     if (session.role === 'State DGP Command' || session.unitName === 'State Control Room') return true;
     return activeCase && String(session.unitName).toLowerCase() === String(activeCase.policeStationName).toLowerCase();
@@ -653,42 +635,36 @@ function CaseOverview() {
           align-items: center;
           justify-content: space-between;
           padding: 12px 16px;
-          background: #002147;
-          color: #ffffff !important;
-          border: 1px solid rgba(218, 165, 32, 0.4);
-          border-left: 4px solid #DAA520;
+          background: var(--bg-panel-alt, #0f172a);
+          color: var(--text-primary) !important;
+          border: 1px solid var(--border-color);
+          border-left: 3px solid var(--accent-primary);
           border-radius: 6px;
           cursor: pointer;
-          box-shadow: 0 4px 14px rgba(0, 33, 71, 0.25);
-          transition: all 0.2s ease;
+          transition: all 0.15s ease;
           margin-top: 10px;
         }
         .case-action-card-highlight:hover {
-          background: #001733;
-          transform: translateY(-1px);
-          box-shadow: 0 6px 18px rgba(0, 33, 71, 0.35);
-          border-left-color: #ffd700;
+          background: var(--bg-panel);
+          border-color: var(--accent-primary);
         }
         .case-action-card-highlight-timeline {
           display: flex;
           align-items: center;
           justify-content: space-between;
           padding: 12px 16px;
-          background: #002147;
-          color: #ffffff !important;
-          border: 1px solid rgba(56, 189, 248, 0.4);
-          border-left: 4px solid #38bdf8;
+          background: var(--bg-panel-alt, #0f172a);
+          color: var(--text-primary) !important;
+          border: 1px solid var(--border-color);
+          border-left: 3px solid var(--accent-primary);
           border-radius: 6px;
           cursor: pointer;
-          box-shadow: 0 4px 14px rgba(0, 33, 71, 0.25);
-          transition: all 0.2s ease;
+          transition: all 0.15s ease;
           margin-top: 10px;
         }
         .case-action-card-highlight-timeline:hover {
-          background: #001733;
-          transform: translateY(-1px);
-          box-shadow: 0 6px 18px rgba(0, 33, 71, 0.35);
-          border-left-color: #7dd3fc;
+          background: var(--bg-panel);
+          border-color: var(--accent-primary);
         }
 
         .case-content-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 40px; margin-bottom: 20px; }
@@ -762,7 +738,7 @@ function CaseOverview() {
                   boxShadow: 'none'
                 }}
               />
-              <MdSearch size={20} style={{ position: 'absolute', left: '14px', top: '14px', color: 'var(--text-muted)' }} />
+              <Search size={16} strokeWidth={1.5} style={{ position: 'absolute', left: '14px', top: '14px', color: 'var(--text-muted)' }} />
             </div>
 
             {/* SUGGESTIONS DROPDOWN */}
@@ -776,7 +752,7 @@ function CaseOverview() {
                   </div>
                 ) : apiError ? (
                   <div style={{ padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--accent-danger)', fontSize: '13px' }}>
-                    <span>⚠️ {apiError}.</span>
+                    <span><AlertTriangle size={16} strokeWidth={1.5} style={{ color: 'var(--accent-warning)', verticalAlign: 'middle', marginRight: '4px' }} />{apiError}.</span>
                     <button
                       onClick={triggerRetry}
                       style={{
@@ -795,7 +771,7 @@ function CaseOverview() {
                         minWidth: 'auto'
                       }}
                     >
-                      <MdRefresh size={14} /> Retry
+                      <RotateCcw size={16} strokeWidth={1.5} /> Retry
                     </button>
                   </div>
                 ) : searchResults.length === 0 ? (
@@ -819,14 +795,17 @@ function CaseOverview() {
                               {isRestricted ? "Access restricted — contact SP/SCRB" : `${c.displayCrimeNo || `FIR-${c.CaseMasterID}`} : ${c.minorHeadName || c.majorHeadName}`}
                             </strong>
                             <div className="suggestion-meta">
-                              <span>📍 {c.policeStationName}</span>
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                <MapPin size={16} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
+                                {c.policeStationName}
+                              </span>
                               <span>•</span>
                               <span>Filed: {c.registeredDateObj ? c.registeredDateObj.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}</span>
                             </div>
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             {isRestricted ? (
-                              <MdLock size={16} style={{ color: 'var(--accent-danger)' }} />
+                              <Lock size={16} strokeWidth={1.5} style={{ color: 'var(--accent-danger)' }} />
                             ) : (
                               <>
                                 <span className={`status-badge ${String(caseStatuses[c.CaseMasterID] || c.statusName).toLowerCase().replace(/ /g, '-')}`}>
@@ -883,7 +862,7 @@ function CaseOverview() {
                 minWidth: 'auto'
               }}
             >
-              <MdArrowBack size={16} /> Change Case
+              <ArrowLeft size={16} strokeWidth={1.5} /> Change Case
             </button>
           )}
 
@@ -894,20 +873,7 @@ function CaseOverview() {
       {!activeCase && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '30px', alignItems: 'center', justifyContent: 'center', minHeight: '400px', textAlign: 'center', padding: '40px 20px' }}>
           
-          <div style={{
-            width: '80px',
-            height: '80px',
-            borderRadius: '0px',
-            background: 'var(--bg-panel-alt)',
-            border: '1px solid var(--border-color)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'var(--accent-primary)',
-            boxShadow: 'none'
-          }}>
-            <MdFolder size={40} />
-          </div>
+          <Folder size={18} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
 
           <div>
             <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)' }}>Operational Investigation Directories</h3>
@@ -925,7 +891,7 @@ function CaseOverview() {
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', justifyContent: 'center' }}>
                 {recentCasesList.map(rc => (
                   <div key={rc.CaseMasterID} className="recent-chip" onClick={() => handleSelectCase(rc)}>
-                    <MdHistory size={14} style={{ color: 'var(--accent-primary)' }} />
+                    <History size={16} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
                     <strong>{rc.displayCrimeNo}</strong>
                     <span style={{ opacity: 0.7 }}>({rc.minorHeadName})</span>
                   </div>
@@ -943,9 +909,7 @@ function CaseOverview() {
           {isRestrictedDirect ? (
             /* ACCESS RESTRICTED SCREEN (IF LOADED FROM SHAREABLE ROUTE DIRECTLY) */
             <div className="flat-section" style={{ padding: '40px 0px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', gap: '20px', minHeight: '360px' }}>
-              <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(200,0,0,0.1)', display: 'flex', alignItems: 'center', justifyItems: 'center', color: 'var(--accent-danger)', justifyContent: 'center' }}>
-                <MdLock size={32} />
-              </div>
+              <Lock size={18} strokeWidth={1.5} style={{ color: 'var(--accent-danger)' }} />
               <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)' }}>Access Restricted — contact SP/SCRB</h3>
               <p style={{ margin: 0, maxWidth: '460px', fontSize: '14px', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
                 You do not hold permissions to view details of Case Master ID: <strong>{activeCase.CaseMasterID}</strong>. Secure sessions are gated based on operational district and precinct rules.
@@ -996,9 +960,9 @@ function CaseOverview() {
                     </h2>
                     
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', fontSize: '13px', color: 'var(--text-secondary)', marginTop: '8px' }}>
-                      <span>🗓️ Registered: <strong>{activeCase.CrimeRegisteredDate}</strong></span>
-                      <span>📍 Station: <strong>{activeCase.policeStationName} ({activeCase.districtName})</strong></span>
-                      <span>⚖️ Section: <strong>{activeCase.actSections && activeCase.actSections.length > 0 ? activeCase.actSections.map(as => `${as.ActID} Sec ${as.SectionID}`).join(', ') : 'N/A'}</strong></span>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><Calendar size={16} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} /> Registered: <strong>{activeCase.CrimeRegisteredDate}</strong></span>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><MapPin size={16} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} /> Station: <strong>{activeCase.policeStationName} ({activeCase.districtName})</strong></span>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><Gavel size={16} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} /> Section: <strong>{activeCase.actSections && activeCase.actSections.length > 0 ? activeCase.actSections.map(as => `${as.ActID} Sec ${as.SectionID}`).join(', ') : 'N/A'}</strong></span>
                     </div>
                   </div>
 
@@ -1017,7 +981,7 @@ function CaseOverview() {
                 {milestones.map((ms, idx) => (
                   <div key={idx} className={`milestone-item ${ms.completed ? 'completed' : ''}`}>
                     <div className="milestone-dot">
-                      {ms.completed ? '✓' : idx + 1}
+                      {ms.completed ? <Check size={16} strokeWidth={1.5} /> : idx + 1}
                     </div>
                     <span className="milestone-label">{ms.label}</span>
                     <span className="milestone-date">{ms.date}</span>
@@ -1100,7 +1064,7 @@ function CaseOverview() {
                                 <strong style={{ fontSize: '12px', display: 'block', color: 'var(--text-primary)' }}>{s.name}</strong>
                                 <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>{s.gender === 'F' ? 'Female' : 'Male'} · Age {s.age}</span>
                               </div>
-                              <MdChevronRight size={16} style={{ color: 'var(--accent-primary)' }} />
+                              <ChevronRight size={16} strokeWidth={1.5} style={{ color: 'var(--accent-primary)' }} />
                             </div>
                           ))}
                         </div>
@@ -1158,7 +1122,7 @@ function CaseOverview() {
                             </div>
                             <span style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginTop: '2px' }}>{assoc.reason}</span>
                           </div>
-                          <MdChevronRight size={18} style={{ color: 'var(--accent-primary)' }} />
+                          <ChevronRight size={16} strokeWidth={1.5} style={{ color: 'var(--accent-primary)' }} />
                         </div>
                       ))}
                       {hiddenAssociations.length === 0 && (
@@ -1244,78 +1208,9 @@ function CaseOverview() {
                         </MapContainer>
                       ) : (
                         <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '13px', padding: '20px', textAlign: 'center' }}>
-                          ⚠️ Geographic coordinates unavailable for this case.
+                          <AlertTriangle size={16} strokeWidth={1.5} style={{ color: 'var(--accent-warning)', verticalAlign: 'middle', marginRight: '4px' }} /> Geographic coordinates unavailable for this case.
                         </div>
                       )}
-                    </div>
-                  </div>
-
-                  {/* EVIDENCE SNAPSHOT */}
-                  <div className="flat-section">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                      <span className="section-label" style={{ margin: 0 }}>Evidence Assets</span>
-                      <span className="badge badge-ai" style={{ fontSize: '10px', borderRadius: '99px', padding: '2px 8px' }}>Secure Locker</span>
-                    </div>
-
-                    {/* Stat tiles in a flat grid with hairline separators */}
-                    <div className="evidence-grid">
-                      <div className="evidence-tile">
-                        <span className="evidence-tile-label">Photos</span>
-                        <strong className="evidence-tile-val">{evidenceSnapshot?.photos}</strong>
-                      </div>
-                      <div className="evidence-tile">
-                        <span className="evidence-tile-label">Videos</span>
-                        <strong className="evidence-tile-val">{evidenceSnapshot?.videos}</strong>
-                      </div>
-                      <div className="evidence-tile">
-                        <span className="evidence-tile-label">Docs</span>
-                        <strong className="evidence-tile-val">{evidenceSnapshot?.documents}</strong>
-                      </div>
-                    </div>
-
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => {
-                        playAlertSound(600, 0.05);
-                        navigate(isCaseOverviewRoute ? `/evidence-workspace/${activeCase.CaseMasterID}` : `/evidence/${activeCase.CaseMasterID}`);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          playAlertSound(600, 0.05);
-                          navigate(isCaseOverviewRoute ? `/evidence-workspace/${activeCase.CaseMasterID}` : `/evidence/${activeCase.CaseMasterID}`);
-                        }
-                      }}
-                      className="case-action-card-highlight"
-                      title="Open full Evidence Locker and forensic repository"
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <div style={{
-                          width: '34px',
-                          height: '34px',
-                          borderRadius: '4px',
-                          background: 'rgba(218, 165, 32, 0.2)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: '#DAA520',
-                          flexShrink: 0
-                        }}>
-                          <MdInsertDriveFile size={20} />
-                        </div>
-                        <div>
-                          <div style={{ color: '#ffffff', fontSize: '13px', fontWeight: 800, letterSpacing: '0.04em' }}>
-                            OPEN EVIDENCE WORKSPACE
-                          </div>
-                          <div style={{ color: '#cbd5e1', fontSize: '10.5px', marginTop: '1px' }}>
-                            Digital custody, CCTV footage, CDRs & forensic reports
-                          </div>
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#DAA520', fontWeight: 700, fontSize: '12px' }}>
-                        <span>LAUNCH</span>
-                        <MdLaunch size={16} />
-                      </div>
                     </div>
                   </div>
 
@@ -1359,27 +1254,27 @@ function CaseOverview() {
                           width: '34px',
                           height: '34px',
                           borderRadius: '4px',
-                          background: 'rgba(56, 189, 248, 0.2)',
+                          background: 'rgba(56, 189, 248, 0.12)',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          color: '#38bdf8',
+                          color: 'var(--accent-primary)',
                           flexShrink: 0
                         }}>
-                          <MdHistory size={20} />
+                          <History size={16} strokeWidth={1.5} />
                         </div>
                         <div>
-                          <div style={{ color: '#ffffff', fontSize: '13px', fontWeight: 800, letterSpacing: '0.04em' }}>
+                          <div style={{ color: 'var(--text-primary)', fontSize: '13px', fontWeight: 700, letterSpacing: '0.02em' }}>
                             OPEN SUSPECT TIMELINE
                           </div>
-                          <div style={{ color: '#cbd5e1', fontSize: '10.5px', marginTop: '1px' }}>
+                          <div style={{ color: 'var(--text-secondary)', fontSize: '11px', marginTop: '2px' }}>
                             Spatiotemporal movement trail, geofence pings & alibis
                           </div>
                         </div>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#38bdf8', fontWeight: 700, fontSize: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--accent-primary)', fontWeight: 600, fontSize: '12px' }}>
                         <span>LAUNCH</span>
-                        <MdLaunch size={16} />
+                        <ExternalLink size={16} strokeWidth={1.5} />
                       </div>
                     </div>
                   </div>
@@ -1415,35 +1310,7 @@ function CaseOverview() {
                   }}
                   title={canUpdateStatus ? "Update case status" : "Unauthorized to update case status"}
                 >
-                  <MdHistory size={16} /> Update Status
-                </button>
-
-                <button
-                  disabled={!canAddEvidence}
-                  onClick={() => {
-                    playAlertSound(600, 0.05);
-                    navigate(isCaseOverviewRoute ? `/evidence-workspace/${activeCase.CaseMasterID}` : `/evidence/${activeCase.CaseMasterID}`);
-                  }}
-                  className="session-btn"
-                  style={{
-                    padding: '0 16px',
-                    fontSize: '13px',
-                    fontWeight: '600',
-                    background: 'var(--bg-panel)',
-                    border: '1px solid var(--border-strong)',
-                    color: canAddEvidence ? 'var(--text-primary)' : 'var(--text-muted)',
-                    cursor: canAddEvidence ? 'pointer' : 'not-allowed',
-                    opacity: canAddEvidence ? 1 : 0.5,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    minHeight: '40px',
-                    minWidth: 'auto',
-                    borderRadius: '0px'
-                  }}
-                  title={canAddEvidence ? "Add evidence to workspace" : "Unauthorized to add evidence"}
-                >
-                  <MdCloudUpload size={16} /> Add Evidence
+                  <History size={16} strokeWidth={1.5} /> Update Status
                 </button>
 
                 <button
@@ -1465,7 +1332,7 @@ function CaseOverview() {
                     borderRadius: '0px'
                   }}
                 >
-                  <MdShare size={16} /> Share Case
+                  <Share2 size={16} strokeWidth={1.5} /> Share Case
                 </button>
 
                 <button
@@ -1490,7 +1357,7 @@ function CaseOverview() {
                     borderRadius: '0px'
                   }}
                 >
-                  <MdAssignment size={16} /> Generate Briefing
+                  <ClipboardList size={16} strokeWidth={1.5} /> Generate Briefing
                 </button>
               </div>
 

@@ -58,7 +58,6 @@ function Dashboard({
         .dashboard-page {
           background-color: #faf8f5 !important;
           color: #1e293b !important;
-          font-family: 'Consolas', 'Courier New', Courier, monospace !important;
         }
         .dashboard-page .card {
           background-color: #ffffff !important;
@@ -76,11 +75,10 @@ function Dashboard({
         }
         .dashboard-page .card-title {
           color: #1e293b !important;
-          font-family: 'Consolas', 'Courier New', Courier, monospace !important;
           text-transform: uppercase !important;
-          font-size: 18px !important;
+          font-size: 16px !important;
           font-weight: 700 !important;
-          letter-spacing: 1.2px !important;
+          letter-spacing: 0.05em !important;
           margin: 0 !important;
         }
         .dashboard-page .section-eyebrow {
@@ -154,10 +152,8 @@ function Dashboard({
         .dashboard-page .data-table {
           width: 100% !important;
           border-collapse: collapse !important;
-          font-family: 'Consolas', 'Courier New', Courier, monospace !important;
         }
         .dashboard-page .data-table th {
-          font-family: 'Consolas', 'Courier New', Courier, monospace !important;
           text-transform: uppercase !important;
           font-size: 11px !important;
           color: #64748b !important;
@@ -198,23 +194,21 @@ function Dashboard({
           border-right: 1px solid #cbd5e1 !important;
         }
         .ops-stat-label {
-          font-family: 'Consolas', 'Courier New', Courier, monospace !important;
-          font-size: 19px !important;
+          font-size: 12px !important;
           font-weight: 600 !important;
           text-transform: uppercase !important;
           color: #334155 !important;
-          letter-spacing: 0.5px !important;
+          letter-spacing: 0.05em !important;
           margin-bottom: 2px !important;
         }
         .ops-stat-value {
-          font-family: 'Consolas', 'Courier New', Courier, monospace !important;
-          font-size: 29px !important;
+          font-size: 26px !important;
           font-weight: 800 !important;
           color: #0f172a !important;
           margin-bottom: 2px !important;
         }
         .ops-stat-value.is-text-val {
-          font-size: 19px !important;
+          font-size: 18px !important;
         }
         .ops-stat-value.status-success {
           color: #16a34a !important;
@@ -226,10 +220,8 @@ function Dashboard({
           color: #dc2626 !important;
         }
         .ops-stat-caption {
-          font-family: 'Consolas', 'Courier New', Courier, monospace !important;
-          font-size: 9.5px !important;
+          font-size: 11px !important;
           color: #64748b !important;
-          font-style: italic !important;
           font-weight: normal !important;
           display: flex !important;
           align-items: center !important;
@@ -242,7 +234,6 @@ function Dashboard({
           border: 1px solid #cbd5e1 !important;
           border-radius: 0px !important;
           padding: 8px 12px !important;
-          font-family: 'Consolas', 'Courier New', Courier, monospace !important;
         }
         .chart-tooltip-label {
           margin: 0 0 4px 0 !important;

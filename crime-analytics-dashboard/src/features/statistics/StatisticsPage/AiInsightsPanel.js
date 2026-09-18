@@ -1,6 +1,6 @@
 import React from 'react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
-import { MdSmartToy } from 'react-icons/md';
+import { Bot } from 'lucide-react';
 
 function AiInsightsPanel({ insightsData }) {
   const { bullets = [], forecast = [] } = insightsData;
@@ -32,7 +32,7 @@ function AiInsightsPanel({ insightsData }) {
           gap: '6px',
           boxShadow: '0 4px 8px rgba(0,0,0,0.2)'
         }}>
-          <MdSmartToy size={14} />
+          <Bot size={16} strokeWidth={1.5} />
           <span>AI Insight & Predictive Model</span>
         </div>
 

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MdContrast, MdRestartAlt, MdAccessibility, MdVisibility, MdClose } from 'react-icons/md';
+import { Contrast, RotateCcw, Eye, X, Accessibility } from 'lucide-react';
 
 /**
  * Accessibility Toolbar — government compliance feature
@@ -87,7 +87,7 @@ function AccessibilityToolbar() {
         aria-controls="accessibility-options"
         aria-label={`Accessibility options${highContrast ? ', high contrast enabled' : ''}`}
       >
-        <MdAccessibility size={18} />
+        <Accessibility size={18} strokeWidth={1.5} />
       </button>
 
       {expanded && (
@@ -109,7 +109,7 @@ function AccessibilityToolbar() {
               }}
               title="Close Panel"
             >
-              <MdClose size={14} />
+              <X size={16} strokeWidth={1.5} />
             </button>
           </div>
 
@@ -124,7 +124,7 @@ function AccessibilityToolbar() {
                 aria-label="Toggle high contrast"
                 aria-pressed={highContrast}
               >
-                <MdContrast size={16} />
+                <Contrast size={16} strokeWidth={1.5} />
               </button>
             </div>
           </div>
@@ -152,13 +152,13 @@ function AccessibilityToolbar() {
                 aria-label="Toggle colorblind-safe colors"
                 aria-pressed={colorblindSafe}
               >
-                <MdVisibility size={16} />
+                <Eye size={16} strokeWidth={1.5} />
               </button>
             </div>
           </div>
 
           <button type="button" className="a11y-reset" onClick={resetAll}>
-            <MdRestartAlt size={14} /> Reset All
+            <RotateCcw size={16} strokeWidth={1.5} /> Reset All
           </button>
         </div>
       )}

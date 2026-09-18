@@ -29,7 +29,6 @@ const EvidenceCorrelation = lazy(() => import('./pages/EvidenceCorrelation'));
 
 /* New Command Center Pages */
 const CaseOverview = lazy(() => import('./pages/CaseOverview'));
-const EvidenceWorkspace = lazy(() => import('./pages/EvidenceWorkspace'));
 const SuspectTimeline = lazy(() => import('./pages/SuspectTimeline'));
 const UserManagement = lazy(() => import('./pages/UserManagement'));
 
@@ -163,10 +162,6 @@ function App() {
                     <Route path="/cases/:caseId" element={<CaseOverview />} />
                     <Route path="/case-overview" element={<CaseOverview />} />
                     <Route path="/case-overview/:caseId" element={<CaseOverview />} />
-                    <Route path="/evidence" element={<EvidenceWorkspace />} />
-                    <Route path="/evidence/:caseId" element={<EvidenceWorkspace />} />
-                    <Route path="/evidence-workspace" element={<EvidenceWorkspace />} />
-                    <Route path="/evidence-workspace/:caseId" element={<EvidenceWorkspace />} />
                     <Route path="/suspect-timeline" element={<SuspectTimeline />} />
                     <Route path="/suspect-timeline/:caseId" element={<SuspectTimeline />} />
                     <Route path="/network" element={<NetworkGraph />} />

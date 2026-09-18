@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { MdHub, MdSearch, MdZoomIn, MdZoomOut, MdCenterFocusStrong, MdPushPin, MdClose, MdSecurity } from 'react-icons/md';
+import { Shield, X } from 'lucide-react';
 import { buildNetworkData, ENTITY } from '../features/network/graphUtils';
 import { caseViews, districts, units, accused, victims } from '../data/schemaSelectors';
 import { useSecurity } from '../context/SecurityContext';
@@ -689,8 +689,8 @@ export default function NetworkGraph() {
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '4px', background: 'linear-gradient(90deg, #ff4d6d, #7b2ff7, #4fc3f7)' }} />
 
           <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-            <div style={{ width: '60px', height: '60px', borderRadius: '16px', background: 'rgba(123,47,247,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px auto', border: '1px solid rgba(123,47,247,0.3)' }}>
-              <MdSecurity size={30} color="#7b2ff7" />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px auto' }}>
+              <Shield size={18} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
             </div>
             <h1 style={{ fontSize: '22px', margin: '0 0 6px 0', color: '#fff' }}>Criminal Network Intelligence</h1>
             <p style={{ color: 'var(--text-muted)', fontSize: '13px', lineHeight: 1.5, margin: 0 }}>
@@ -1000,7 +1000,7 @@ export default function NetworkGraph() {
                 <h3 style={{ margin: 0, fontSize: '18px', color: '#fff' }}>{selectedNode.label}</h3>
               </div>
               <button onClick={() => setSelectedNode(null)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', opacity: 0.6 }}>
-                <MdClose size={20} />
+                <X size={16} strokeWidth={1.5} />
               </button>
             </div>
             

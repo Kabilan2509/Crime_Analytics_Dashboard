@@ -1,13 +1,13 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  MdPeople, MdVerifiedUser, MdLock, MdHistory, MdRefresh,
-  MdSearch, MdClose, MdShield, MdDashboard, MdFormatLineSpacing,
-  MdPlaylistAddCheck, MdExitToApp, MdBlock, MdArrowBack, MdFilterList,
-  MdChevronRight, MdAdd, MdDelete, MdVpnKey, MdInfo, MdSecurity,
-  MdWarning, MdCheck, MdLayers, MdOutlineFileDownload, MdAutorenew,
-  MdExpandMore
-} from 'react-icons/md';
+  Users, ShieldCheck, Lock, History, RotateCcw,
+  Search, X, Shield, LayoutDashboard, GitBranch,
+  CheckSquare, LogOut, Ban, ArrowLeft, Filter,
+  ChevronRight, Plus, Trash2, Key, Info,
+  AlertTriangle, Check, Layers, Download,
+  ChevronDown
+} from 'lucide-react';
 import { downloadCsv } from '../utils/fileExports';
 import {
   ResponsiveContainer, AreaChart, Area, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend
@@ -631,7 +631,7 @@ function UserManagement() {
                 toggleNode(node.id);
               }}
             >
-              <MdExpandMore 
+              <ChevronDown size={16} strokeWidth={1.5} 
                 size={16} 
                 style={{ 
                   transform: isExpanded ? 'rotate(0deg)' : 'rotate(-90deg)', 
@@ -644,11 +644,11 @@ function UserManagement() {
           )}
           
           <span className="tree-icon">
-            {node.type === 'state' && <MdShield style={{ color: 'var(--accent-gold)' }} />}
-            {node.type === 'range' && <MdLayers style={{ color: 'var(--accent-secondary)' }} />}
-            {node.type === 'district' && <MdFormatLineSpacing style={{ color: 'var(--accent-primary)' }} />}
-            {node.type === 'station' && <MdPeople style={{ color: 'var(--accent-success)' }} />}
-            {node.type === 'unit' && <MdLayers style={{ color: 'var(--text-muted)' }} />}
+            {node.type === 'state' && <Shield size={16} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />}
+            {node.type === 'range' && <Layers size={16} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />}
+            {node.type === 'district' && <GitBranch size={16} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />}
+            {node.type === 'station' && <Users size={16} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />}
+            {node.type === 'unit' && <Layers size={16} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />}
           </span>
 
           <span className="tree-label">{node.name}</span>
@@ -964,7 +964,7 @@ function UserManagement() {
           padding-left: 4px;
         }
 
-        /* Shared Flat Table Styles (aligned with Evidence Workspace) */
+        /* Shared flat-table styles */
         .flat-table {
           width: 100%;
           border-collapse: collapse;
@@ -1228,20 +1228,15 @@ function UserManagement() {
         }
 
         .coloc-anomaly {
-          animation: colocationGlow 2.5s infinite alternate;
           border: 1px solid var(--accent-danger) !important;
-        }
-
-        @keyframes colocationGlow {
-          from { box-shadow: 0 0 4px rgba(255, 77, 77, 0.2); background: rgba(255, 77, 77, 0.02); }
-          to { box-shadow: 0 0 12px rgba(255, 77, 77, 0.45); background: rgba(255, 77, 77, 0.06); }
+          background: rgba(255, 77, 77, 0.06) !important;
         }
       `}</style>
 
       {/* TOAST SYSTEM */}
       {toastMessage && (
         <div className="toast-notify">
-          <MdSecurity size={18} style={{ color: 'var(--accent-primary)' }} />
+          <Shield size={18} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
           <span>{toastMessage}</span>
         </div>
       )}
@@ -1249,7 +1244,7 @@ function UserManagement() {
       {/* HEADER SECTION */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <MdSecurity size={30} style={{ color: 'var(--accent-primary)' }} />
+          <Shield size={18} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
           <div>
             <div className="header-breadcrumb">DEPLOYMENT & OPERATIONS</div>
             <h2 style={{ margin: 0, fontSize: '24px', fontWeight: 800 }}>User Management & Security Console</h2>
@@ -1265,7 +1260,7 @@ function UserManagement() {
           className="admin-btn admin-btn-secondary"
           style={{ height: '36px' }}
         >
-          <MdAutorenew size={14} /> Sync Telemetry
+          <RotateCcw size={16} strokeWidth={1.5} /> Sync Telemetry
         </button>
       </div>
 
@@ -1280,7 +1275,7 @@ function UserManagement() {
             className={`admin-sub-nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
           >
             <span className="sub-nav-icon-label">
-              <MdDashboard size={16} />
+              <LayoutDashboard size={16} strokeWidth={1.5} />
               <span>Security Overview</span>
             </span>
           </button>
@@ -1291,7 +1286,7 @@ function UserManagement() {
             className={`admin-sub-nav-item ${activeTab === 'directory' ? 'active' : ''}`}
           >
             <span className="sub-nav-icon-label">
-              <MdPeople size={16} />
+              <Users size={16} strokeWidth={1.5} />
               <span>Officer Directory</span>
             </span>
             <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 700 }}>{filteredOfficers.length}</span>
@@ -1303,7 +1298,7 @@ function UserManagement() {
             className={`admin-sub-nav-item ${activeTab === 'hierarchy' ? 'active' : ''}`}
           >
             <span className="sub-nav-icon-label">
-              <MdLayers size={16} />
+              <Layers size={16} strokeWidth={1.5} />
               <span>Hierarchy Explorer</span>
             </span>
           </button>
@@ -1314,7 +1309,7 @@ function UserManagement() {
             className={`admin-sub-nav-item ${activeTab === 'roles' ? 'active' : ''}`}
           >
             <span className="sub-nav-icon-label">
-              <MdPlaylistAddCheck size={16} />
+              <CheckSquare size={16} strokeWidth={1.5} />
               <span>Roles & Permissions</span>
             </span>
           </button>
@@ -1325,7 +1320,7 @@ function UserManagement() {
             className={`admin-sub-nav-item ${activeTab === 'clearance' ? 'active' : ''}`}
           >
             <span className="sub-nav-icon-label">
-              <MdVerifiedUser size={16} />
+              <ShieldCheck size={16} strokeWidth={1.5} />
               <span>Clearance Management</span>
             </span>
           </button>
@@ -1336,7 +1331,7 @@ function UserManagement() {
             className={`admin-sub-nav-item ${activeTab === 'sessions' ? 'active' : ''}`}
           >
             <span className="sub-nav-icon-label">
-              <MdExitToApp size={16} />
+              <LogOut size={16} strokeWidth={1.5} />
               <span>Session Monitor</span>
             </span>
             {coLocationAnomalies.length > 0 && (
@@ -1350,7 +1345,7 @@ function UserManagement() {
             className={`admin-sub-nav-item ${activeTab === 'audit' ? 'active' : ''}`}
           >
             <span className="sub-nav-icon-label">
-              <MdHistory size={16} />
+              <History size={16} strokeWidth={1.5} />
               <span>Audit Trail</span>
             </span>
           </button>
@@ -1361,7 +1356,7 @@ function UserManagement() {
             className={`admin-sub-nav-item ${activeTab === 'approvals' ? 'active' : ''}`}
           >
             <span className="sub-nav-icon-label">
-              <MdVerifiedUser size={16} />
+              <ShieldCheck size={16} strokeWidth={1.5} />
               <span>Approval Center</span>
             </span>
             {pendingApprovalsCount > 0 && (
@@ -1382,7 +1377,7 @@ function UserManagement() {
                 <article className="metric-card" onClick={() => setActiveTab('directory')} style={{ borderRadius: '12px', padding: '16px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', color: 'var(--text-secondary)' }}>
                     <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Total Officers</span>
-                    <MdPeople size={18} style={{ color: 'var(--accent-primary)' }} />
+                    <Users size={18} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
                   </div>
                   <div style={{ display: 'flex', alignItems: 'baseline', marginTop: '10px' }}>
                     <span style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-primary)' }}>{totalOfficersCount}</span>
@@ -1396,7 +1391,7 @@ function UserManagement() {
                 <article className="metric-card" onClick={() => setActiveTab('sessions')} style={{ borderRadius: '12px', padding: '16px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', color: 'var(--text-secondary)' }}>
                     <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Active Sessions</span>
-                    <MdExitToApp size={18} style={{ color: coLocationAnomalies.length > 0 ? 'var(--accent-danger)' : 'var(--accent-success)' }} />
+                    <LogOut size={18} strokeWidth={1.5} style={{ color: coLocationAnomalies.length > 0 ? 'var(--accent-danger)' : 'var(--text-secondary)' }} />
                   </div>
                   <div style={{ display: 'flex', alignItems: 'baseline', marginTop: '10px' }}>
                     <span style={{ fontSize: '28px', fontWeight: 700, color: coLocationAnomalies.length > 0 ? 'var(--accent-danger)' : 'var(--text-primary)' }}>{activeSessionsCount}</span>
@@ -1423,7 +1418,7 @@ function UserManagement() {
                 <article className="metric-card" onClick={() => setActiveTab('approvals')} style={{ borderRadius: '12px', padding: '16px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', color: 'var(--text-secondary)' }}>
                     <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Pending Approvals</span>
-                    <MdPlaylistAddCheck size={18} style={{ color: pendingApprovalsCount > 0 ? 'var(--accent-warning)' : 'var(--text-secondary)' }} />
+                    <CheckSquare size={18} strokeWidth={1.5} style={{ color: pendingApprovalsCount > 0 ? 'var(--accent-warning)' : 'var(--text-secondary)' }} />
                   </div>
                   <div style={{ display: 'flex', alignItems: 'baseline', marginTop: '10px' }}>
                     <span style={{ fontSize: '28px', fontWeight: 700, color: pendingApprovalsCount > 0 ? 'var(--accent-warning)' : 'var(--text-primary)' }}>{pendingApprovalsCount}</span>
@@ -1450,7 +1445,7 @@ function UserManagement() {
                 <article className="metric-card" onClick={() => setActiveTab('audit')} style={{ borderRadius: '12px', padding: '16px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', color: 'var(--text-secondary)' }}>
                     <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Failed Logins (24h)</span>
-                    <MdBlock size={18} style={{ color: 'var(--accent-danger)' }} />
+                    <Ban size={18} strokeWidth={1.5} style={{ color: 'var(--accent-danger)' }} />
                   </div>
                   <div style={{ display: 'flex', alignItems: 'baseline', marginTop: '10px' }}>
                     <span style={{ fontSize: '28px', fontWeight: 700, color: 'var(--accent-danger)' }}>{failedLoginsCount}</span>
@@ -1477,7 +1472,7 @@ function UserManagement() {
                 <article className="metric-card" onClick={() => setActiveTab('clearance')} style={{ borderRadius: '12px', padding: '16px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', color: 'var(--text-secondary)' }}>
                     <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>High Clearance</span>
-                    <MdShield size={18} style={{ color: 'var(--accent-gold)' }} />
+                    <Shield size={18} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
                   </div>
                   <div style={{ display: 'flex', alignItems: 'baseline', marginTop: '10px' }}>
                     <span style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-primary)' }}>{highClearanceCount}</span>
@@ -1491,7 +1486,7 @@ function UserManagement() {
                 <article className="metric-card" onClick={() => { setActiveTab('directory'); setDirStatus('Disabled'); }} style={{ borderRadius: '12px', padding: '16px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', color: 'var(--text-secondary)' }}>
                     <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Dormant Accounts</span>
-                    <MdLock size={18} style={{ color: dormantAccountsCount > 0 ? 'var(--accent-warning)' : 'var(--text-secondary)' }} />
+                    <Lock size={18} strokeWidth={1.5} style={{ color: dormantAccountsCount > 0 ? 'var(--accent-warning)' : 'var(--text-secondary)' }} />
                   </div>
                   <div style={{ display: 'flex', alignItems: 'baseline', marginTop: '10px' }}>
                     <span style={{ fontSize: '28px', fontWeight: 700, color: dormantAccountsCount > 0 ? 'var(--accent-warning)' : 'var(--text-primary)' }}>{dormantAccountsCount}</span>
@@ -1610,7 +1605,7 @@ function UserManagement() {
               {/* Filter Toolbar */}
               <div className="card" style={{ padding: '16px', display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center' }}>
                 <div className="search-input-wrapper">
-                  <MdSearch size={18} style={{ color: 'var(--text-muted)' }} />
+                  <Search size={16} strokeWidth={1.5} style={{ color: 'var(--text-muted)' }} />
                   <input 
                     type="text" 
                     placeholder="Search by Name, Badge No, Email..."
@@ -1620,7 +1615,7 @@ function UserManagement() {
                   />
                   {dirSearch && (
                     <button type="button" onClick={() => setDirSearch('')} className="tree-toggle">
-                      <MdClose size={16} />
+                      <X size={16} strokeWidth={1.5} />
                     </button>
                   )}
                 </div>
@@ -1656,7 +1651,7 @@ function UserManagement() {
                       onClick={() => setSelectedHierarchyFilter(null)}
                       style={{ border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', color: 'var(--accent-primary)' }}
                     >
-                      <MdClose size={14} />
+                      <X size={16} strokeWidth={1.5} />
                     </button>
                   </div>
                 )}
@@ -1668,10 +1663,10 @@ function UserManagement() {
                   <span style={{ fontSize: '13px', fontWeight: 600 }}>{selectedOfficerIds.length} officers selected:</span>
                   <div style={{ display: 'flex', gap: '10px' }}>
                     <button type="button" onClick={handleBulkDisable} className="admin-btn admin-btn-danger" style={{ minHeight: '32px !important' }}>
-                      <MdBlock size={14} /> Disable Accounts
+                      <Ban size={16} strokeWidth={1.5} /> Disable Accounts
                     </button>
                     <button type="button" onClick={handleBulkExport} className="admin-btn admin-btn-secondary" style={{ minHeight: '32px !important' }}>
-                      <MdOutlineFileDownload size={14} /> Export CSV
+                      <Download size={16} strokeWidth={1.5} /> Export CSV
                     </button>
                     <button type="button" onClick={() => setSelectedOfficerIds([])} className="admin-btn admin-btn-secondary" style={{ minHeight: '32px !important', border: 'none', background: 'transparent' }}>
                       Cancel
@@ -1680,7 +1675,7 @@ function UserManagement() {
                 </div>
               )}
 
-              {/* Grid Table aligned with Evidence Workspace */}
+              {/* Officer grid table */}
               <div className="card" style={{ padding: '0', overflowX: 'auto' }}>
                 <table className="flat-table">
                   <thead>
@@ -1787,7 +1782,7 @@ function UserManagement() {
                 </div>
 
                 <div style={{ border: '1px dashed var(--border-color)', padding: '12px', borderRadius: '4px', fontSize: '12px', background: 'rgba(30,144,255,0.04)' }}>
-                  <h5 style={{ margin: '0 0 6px 0', display: 'flex', alignItems: 'center', gap: '6px' }}><MdInfo size={16} /> Interactive Filtering</h5>
+                  <h5 style={{ margin: '0 0 6px 0', display: 'flex', alignItems: 'center', gap: '6px' }}><Info size={16} strokeWidth={1.5} /> Interactive Filtering</h5>
                   <span style={{ color: 'var(--text-secondary)' }}>Clicking any tree node will automatically apply filters to the officer list and route you directly to the Directory sub-tab.</span>
                 </div>
               </div>
@@ -1807,7 +1802,7 @@ function UserManagement() {
                     className="admin-btn admin-btn-primary" 
                     style={{ minHeight: '28px !important', padding: '4px 8px', fontSize: '10px' }}
                   >
-                    <MdAdd /> Create Role
+                    <Plus size={16} strokeWidth={1.5} /> Create Role
                   </button>
                 </div>
 
@@ -1913,7 +1908,7 @@ function UserManagement() {
                                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
                                         {isAllowed ? (
                                           <span style={{ color: 'var(--accent-success)', fontWeight: 700, fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                            <MdCheck /> ALLOWED
+                                            <Check size={16} strokeWidth={1.5} /> ALLOWED
                                           </span>
                                         ) : (
                                           <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>DENIED</span>
@@ -2078,7 +2073,7 @@ function UserManagement() {
 
               {coLocationAnomalies.length > 0 && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 18px', background: 'rgba(255,77,77,0.08)', border: '1px solid var(--accent-danger)', borderRadius: '4px' }}>
-                  <MdWarning size={22} style={{ color: 'var(--accent-danger)' }} />
+                  <AlertTriangle size={18} strokeWidth={1.5} style={{ color: 'var(--accent-danger)' }} />
                   <div style={{ fontSize: '13px' }}>
                     <strong style={{ color: 'var(--accent-danger)' }}>CRITICAL TELEMETRY ALERT:</strong> Simultaneous active sessions detected from multiple geographical coordinates.
                   </div>
@@ -2156,7 +2151,7 @@ function UserManagement() {
               {/* Filters */}
               <div className="card" style={{ padding: '16px', display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center' }}>
                 <div className="search-input-wrapper">
-                  <MdSearch size={18} style={{ color: 'var(--text-muted)' }} />
+                  <Search size={16} strokeWidth={1.5} style={{ color: 'var(--text-muted)' }} />
                   <input 
                     type="text" 
                     placeholder="Search by Officer Name / ID..."
@@ -2166,7 +2161,7 @@ function UserManagement() {
                   />
                   {auditSearch && (
                     <button type="button" onClick={() => setAuditSearch('')} className="tree-toggle">
-                      <MdClose size={16} />
+                      <X size={16} strokeWidth={1.5} />
                     </button>
                   )}
                 </div>
@@ -2280,8 +2275,9 @@ function UserManagement() {
                                   <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)', display: 'block', lineHeight: 1.4 }}>
                                     {log.details}
                                   </span>
-                                  <span style={{ fontSize: '10px', color: 'var(--accent-success)', display: 'block', marginTop: '6px', fontFamily: 'monospace' }}>
-                                    🔐 Cryptographic Signature: {log.signature}
+                                  <span style={{ fontSize: '10px', color: 'var(--accent-success)', display: 'inline-flex', alignItems: 'center', gap: '4px', marginTop: '6px', fontFamily: 'monospace' }}>
+                                    <Lock size={16} strokeWidth={1.5} />
+                                    <span>Cryptographic Signature: {log.signature}</span>
                                   </span>
                                 </div>
                               </div>
@@ -2379,7 +2375,7 @@ function UserManagement() {
                         {/* Dual Control Authorization Indicators */}
                         {req.dual_control_required && (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: 'var(--accent-gold)' }}>
-                            <MdSecurity size={16} />
+                            <Shield size={16} strokeWidth={1.5} />
                             <span>
                               <strong>Dual Sign-off Required:</strong> 2 IPS Level Officers must approve. Signatures collected: <strong>{req.approvers?.length || 0} / 2</strong>
                             </span>
@@ -2471,7 +2467,7 @@ function UserManagement() {
                 title="Close Profile (Esc)"
               >
                 <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)' }}>ESC</span>
-                <MdClose size={18} />
+                <X size={16} strokeWidth={1.5} />
               </button>
             </header>
 
@@ -2624,7 +2620,7 @@ function UserManagement() {
                 className="admin-btn admin-btn-secondary"
                 title="View Full Audit History"
               >
-                <MdHistory size={16} /> Audit Trail
+                <History size={16} strokeWidth={1.5} /> Audit Trail
               </button>
 
               <button 
@@ -2632,7 +2628,7 @@ function UserManagement() {
                 onClick={() => handleResetCredentials(activeOfficerDetail.officer_id)}
                 className="admin-btn admin-btn-secondary"
               >
-                <MdVpnKey size={16} /> Reset Pass
+                <Key size={16} strokeWidth={1.5} /> Reset Pass
               </button>
 
               <button 
@@ -2640,7 +2636,7 @@ function UserManagement() {
                 onClick={() => handleToggleOfficerStatus(activeOfficerDetail.officer_id)}
                 className={`admin-btn ${activeOfficerDetail.status === 'Active' ? 'admin-btn-danger' : 'admin-btn-primary'}`}
               >
-                <MdBlock size={16} /> {activeOfficerDetail.status === 'Active' ? 'Disable Account' : 'Enable Account'}
+                <Ban size={16} strokeWidth={1.5} /> {activeOfficerDetail.status === 'Active' ? 'Disable Account' : 'Enable Account'}
               </button>
             </footer>
           </aside>
@@ -2654,7 +2650,7 @@ function UserManagement() {
             <header className="admin-modal-header">
               <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 800 }}>Request Clearance Level Change</h3>
               <button type="button" onClick={() => setClearanceModalData(null)} className="tree-toggle">
-                <MdClose size={18} />
+                <X size={16} strokeWidth={1.5} />
               </button>
             </header>
 
@@ -2719,8 +2715,9 @@ function UserManagement() {
                   />
                 </div>
 
-                <div style={{ background: 'rgba(255,167,38,0.06)', border: '1px solid rgba(255,167,38,0.2)', padding: '10px', borderRadius: '4px', fontSize: '11px', color: 'var(--text-secondary)' }}>
-                  ⚠️ Changes to Secret (L4) or Top Secret (L5) clearance require dual IPS signature authorization before they will take effect.
+                <div style={{ background: 'rgba(255,167,38,0.06)', border: '1px solid rgba(255,167,38,0.2)', padding: '10px', borderRadius: '4px', fontSize: '11px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <AlertTriangle size={16} strokeWidth={1.5} style={{ color: 'var(--accent-warning)', flexShrink: 0 }} />
+                  <span>Changes to Secret (L4) or Top Secret (L5) clearance require dual IPS signature authorization before they will take effect.</span>
                 </div>
               </div>
 
@@ -2744,7 +2741,7 @@ function UserManagement() {
             <header className="admin-modal-header">
               <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 800 }}>Create Custom Policy Role</h3>
               <button type="button" onClick={() => setNewRoleFormOpen(false)} className="tree-toggle">
-                <MdClose size={18} />
+                <X size={16} strokeWidth={1.5} />
               </button>
             </header>
 

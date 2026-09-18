@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MdEdit, MdRefresh, MdSmartToy, MdSave, MdCancel } from 'react-icons/md';
+import { Pencil, RotateCcw, Bot, Save, X, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 function NarrativeSummaryPanel({ narrative }) {
@@ -120,7 +120,7 @@ function NarrativeSummaryPanel({ narrative }) {
         marginBottom: '14px'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <MdSmartToy size={18} style={{ color: 'var(--accent-primary)' }} />
+          <Bot size={18} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
           <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             Key Findings Since Last Briefing
           </h3>
@@ -135,7 +135,7 @@ function NarrativeSummaryPanel({ narrative }) {
               className="stats-btn"
               title="Edit narrative summary"
             >
-              <MdEdit size={12} />
+              <Pencil size={16} strokeWidth={1.5} />
               <span>EDIT</span>
             </button>
             
@@ -150,7 +150,7 @@ function NarrativeSummaryPanel({ narrative }) {
               {regenerating ? (
                 <span className="spinner" style={{ width: '10px', height: '10px', border: '2px solid var(--border-color)', borderTop: '2px solid var(--accent-primary)', borderRadius: '50%', display: 'inline-block', animation: 'spin 1s linear infinite' }} />
               ) : (
-                <MdRefresh size={12} />
+                <RotateCcw size={16} strokeWidth={1.5} />
               )}
               <span>{regenerating ? 'REGENERATING...' : 'REGENERATE'}</span>
             </button>
@@ -171,7 +171,7 @@ function NarrativeSummaryPanel({ narrative }) {
               border: '1px solid var(--border-color)',
               borderRadius: '4px',
               padding: '10px',
-              fontFamily: 'monospace',
+              fontFamily: 'inherit',
               fontSize: '13px',
               resize: 'vertical'
             }}
@@ -183,7 +183,7 @@ function NarrativeSummaryPanel({ narrative }) {
               style={{ padding: '6px 12px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}
               className="stats-btn"
             >
-              <MdCancel size={12} />
+              <X size={16} strokeWidth={1.5} />
               <span>CANCEL</span>
             </button>
             <button
@@ -192,7 +192,7 @@ function NarrativeSummaryPanel({ narrative }) {
               style={{ padding: '6px 12px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', background: 'var(--accent-primary)', color: '#fff', border: 'none' }}
               className="stats-btn"
             >
-              <MdSave size={12} />
+              <Save size={16} strokeWidth={1.5} />
               <span>SAVE CHANGES</span>
             </button>
           </div>
@@ -266,7 +266,7 @@ function NarrativeSummaryPanel({ narrative }) {
             navigate('/copilot');
           }}
         >
-          Ask Copilot about this briefing →
+          Ask Copilot about this briefing <ArrowRight size={16} strokeWidth={1.5} style={{ verticalAlign: 'middle', marginLeft: '4px' }} />
         </a>
       </div>
     </article>

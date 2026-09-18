@@ -88,7 +88,7 @@ function TrendsSection({ trendsData }) {
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
           <div>
-            <h3 style={{ margin: 0, fontFamily: "'Source Sans 3', sans-serif", fontSize: '18px', color: 'var(--text-primary)' }}>Crime Trend</h3>
+            <h3 style={{ margin: 0, fontSize: '18px', color: 'var(--text-primary)' }}>Crime Trend</h3>
             <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
               Temporal resolution: <span style={{ textTransform: 'uppercase', fontWeight: 700, color: 'var(--accent-primary)' }}>{granularity}</span>
             </span>
@@ -129,7 +129,7 @@ function TrendsSection({ trendsData }) {
                 <Line type="monotone" dataKey="Cybercrime" name="Cybercrime" stroke="#3897d8" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
               )}
               {visibleSeries.Narcotics && (
-                <Line type="monotone" dataKey="Narcotics" name="Narcotics" stroke="#9b5de5" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+                <Line type="monotone" dataKey="Narcotics" name="Narcotics" stroke="#607d8b" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
               )}
               {visibleSeries.Other && (
                 <Line type="monotone" dataKey="Other" name="Other" stroke="#8fa3ba" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
@@ -149,7 +149,7 @@ function TrendsSection({ trendsData }) {
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
           <div>
-            <h3 style={{ margin: 0, fontFamily: "'Source Sans 3', sans-serif", fontSize: '18px', color: 'var(--text-primary)' }}>Yearly Comparison</h3>
+            <h3 style={{ margin: 0, fontSize: '18px', color: 'var(--text-primary)' }}>Yearly Comparison</h3>
             <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Multi-year cohort volume comparison</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>

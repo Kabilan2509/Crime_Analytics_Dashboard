@@ -6,6 +6,7 @@ import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import 'leaflet.markercluster';
 import * as turf from '@turf/turf';
+import { MapPin } from 'lucide-react';
 
 import { caseViews as cases, districts, districtCenters } from '../data/schemaSelectors';
 import { useSecurity } from '../context/SecurityContext';
@@ -1053,9 +1054,10 @@ function CrimeMap({ selectedDistrict: globalDistrict, selectedCrimeType: globalC
               <span
                 key={idx}
                 onClick={() => handleInspect(trend.districtName, trend.districtId)}
-                style={{ background: 'var(--bg-panel-alt)', padding: '2px 4px', borderRadius: '4px', border: '1px solid var(--border-color)', cursor: 'pointer' }}
+                style={{ background: 'var(--bg-panel-alt)', padding: '2px 4px', borderRadius: '4px', border: '1px solid var(--border-color)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
               >
-                📍 <strong>{trend.districtName}</strong>: <strong style={{ color: isColorblind ? '#d81b60' : 'var(--accent-danger)' }}>+{trend.pctChange}%</strong> spike
+                <MapPin size={16} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
+                <span><strong>{trend.districtName}</strong>: <strong style={{ color: isColorblind ? '#d81b60' : 'var(--accent-danger)' }}>+{trend.pctChange}%</strong> spike</span>
               </span>
             ))}
           </div>

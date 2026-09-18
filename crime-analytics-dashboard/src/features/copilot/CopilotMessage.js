@@ -1,29 +1,35 @@
 import React from 'react';
-import { MdSmartToy, MdPerson, MdSearch, MdStorage, MdWarning, MdTrendingUp } from 'react-icons/md';
+import {
+  Bot, User, Search, Database, AlertTriangle, TrendingUp,
+  BarChart3, Flame, Clock, Link2, Network, Building, ShieldAlert,
+  FileText, Target, Shield, AlertCircle, Hand
+} from 'lucide-react';
 import { BarChart, Bar, ResponsiveContainer, XAxis, Tooltip, Cell } from 'recharts';
 
-const INTENT_LABELS = {
-  CRIME_COUNT:         '📊 Crime Volume',
-  HOTSPOT:             '🔥 Hotspot Analysis',
-  CRIME_TYPE:          '🔍 Offence Category',
-  REPEAT_OFFENDER:     '⚠️ Habitual Offenders',
-  TEMPORAL_PATTERN:    '⏱️ Peak Incident Hours',
-  SIMILAR_CASE:        '🔗 Linked MO Cases',
-  CROSS_REFERENCE:     '🕸️ Case Cross-Reference',
-  STATION_WORKLOAD:    '🏢 Station Workload',
-  OFFICER_QUERY:       '👮 Investigating Officer',
-  DAILY_BRIEFING:      '📋 Operational Briefing',
-  RISK_PREDICTION:     '🎯 Threat Assessment',
-  POLICE_INTELLIGENCE: '🛡️ Police Intelligence',
-  OUT_OF_SCOPE:        '🚫 Operational Scope Notice',
-  WELCOME:             '👋 Welcome',
+const INTENT_CONFIG = {
+  CRIME_COUNT:         { label: 'Crime Volume', icon: BarChart3 },
+  HOTSPOT:             { label: 'Hotspot Analysis', icon: Flame },
+  CRIME_TYPE:          { label: 'Offence Category', icon: Search },
+  REPEAT_OFFENDER:     { label: 'Habitual Offenders', icon: AlertTriangle },
+  TEMPORAL_PATTERN:    { label: 'Peak Incident Hours', icon: Clock },
+  SIMILAR_CASE:        { label: 'Linked MO Cases', icon: Link2 },
+  CROSS_REFERENCE:     { label: 'Case Cross-Reference', icon: Network },
+  STATION_WORKLOAD:    { label: 'Station Workload', icon: Building },
+  OFFICER_QUERY:       { label: 'Investigating Officer', icon: ShieldAlert },
+  DAILY_BRIEFING:      { label: 'Operational Briefing', icon: FileText },
+  RISK_PREDICTION:     { label: 'Threat Assessment', icon: Target },
+  POLICE_INTELLIGENCE: { label: 'Police Intelligence', icon: Shield },
+  OUT_OF_SCOPE:        { label: 'Operational Scope Notice', icon: AlertCircle },
+  WELCOME:             { label: 'Welcome', icon: Hand },
 };
 
 const CHART_COLORS = ['#3b82f6','#8b5cf6','#06b6d4','#10b981','#f59e0b','#ef4444'];
 
 function IntentBadge({ intent }) {
   if (!intent || intent === 'WELCOME') return null;
-  const label = INTENT_LABELS[intent] || intent;
+  const cfg = INTENT_CONFIG[intent];
+  const label = cfg ? cfg.label : intent;
+  const IconComponent = cfg?.icon || Shield;
   return (
     <div style={{
       display: 'inline-flex', alignItems: 'center', gap: '4px',
@@ -31,7 +37,8 @@ function IntentBadge({ intent }) {
       borderRadius: '4px', padding: '2px 8px', fontSize: '10px', fontWeight: 700,
       color: '#818cf8', marginBottom: '8px', letterSpacing: '0.3px'
     }}>
-      {label}
+      <IconComponent size={16} strokeWidth={1.5} />
+      <span>{label}</span>
     </div>
   );
 }
@@ -45,7 +52,7 @@ function SourcesBadge({ sources }) {
       display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap',
       marginTop: '10px', paddingTop: '8px', borderTop: '1px solid var(--border-color)',
     }}>
-      <MdStorage size={11} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+      <Database size={16} strokeWidth={1.5} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
       {filtered.map((s, i) => (
         <span key={i} style={{
           fontSize: '10px', color: 'var(--text-muted)',
@@ -64,9 +71,9 @@ function PredictionCard({ predictions }) {
       background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)',
       borderRadius: '6px',
     }}>
-      <div style={{ fontSize: '10px', color: '#ef4444', fontWeight: 700, marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-        <MdWarning size={11} style={{ verticalAlign: 'middle', marginRight: '4px' }} />
-        Jurisdictional Threat Assessment
+      <div style={{ fontSize: '10px', color: '#ef4444', fontWeight: 700, marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <AlertTriangle size={16} strokeWidth={1.5} style={{ color: 'var(--accent-danger)' }} />
+        <span>Jurisdictional Threat Assessment</span>
       </div>
       {predictions.map((p, i) => {
         const score = Number(p.score) || 0;
@@ -168,7 +175,7 @@ function CopilotMessage({ msg, onSuggestionClick }) {
           boxShadow: isAi ? '0 0 10px rgba(155, 93, 229, 0.4)' : 'none', flexShrink: 0,
           alignSelf: 'flex-start', marginTop: '2px',
         }}>
-          {isAi ? <MdSmartToy size={20} /> : <MdPerson size={20} />}
+          {isAi ? <Bot size={16} strokeWidth={1.5} /> : <User size={16} strokeWidth={1.5} />}
         </div>
 
         {/* Message body */}
@@ -181,7 +188,7 @@ function CopilotMessage({ msg, onSuggestionClick }) {
             {/* Offline warning */}
             {isOffline && (
               <div style={{ fontSize: '10px', color: '#f59e0b', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <MdWarning size={11} /> Offline mode — API unavailable, showing local data
+                <AlertTriangle size={16} strokeWidth={1.5} style={{ color: 'var(--accent-warning)' }} /> Offline mode — API unavailable, showing local data
               </div>
             )}
 
@@ -210,9 +217,10 @@ function CopilotMessage({ msg, onSuggestionClick }) {
                 marginTop: '10px', padding: '8px 12px',
                 background: 'var(--bg-panel)', borderLeft: '3px solid var(--accent-primary)',
                 borderRadius: '3px', fontSize: '12px', color: 'var(--text-secondary)',
+                display: 'flex', alignItems: 'center', gap: '6px'
               }}>
-                <MdTrendingUp size={11} style={{ verticalAlign: 'middle', marginRight: '4px', color: 'var(--accent-primary)' }} />
-                {msg.summary}
+                <TrendingUp size={16} strokeWidth={1.5} style={{ color: 'var(--accent-primary)', flexShrink: 0 }} />
+                <span>{msg.summary}</span>
               </div>
             )}
 
@@ -323,7 +331,7 @@ function CopilotMessage({ msg, onSuggestionClick }) {
                     e.currentTarget.style.background = 'var(--bg-panel)';
                   }}
                 >
-                  <MdSearch size={11} />
+                  <Search size={16} strokeWidth={1.5} />
                   {sug}
                 </button>
               ))}

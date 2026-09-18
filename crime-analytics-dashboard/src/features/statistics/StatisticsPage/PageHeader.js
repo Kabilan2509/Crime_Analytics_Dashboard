@@ -1,5 +1,5 @@
 import React from 'react';
-import { MdInfoOutline } from 'react-icons/md';
+import { Info } from 'lucide-react';
 
 function PageHeader({ activeFilterSummary }) {
   return (
@@ -17,7 +17,6 @@ function PageHeader({ activeFilterSummary }) {
       <div>
         <h2 style={{
           margin: 0,
-          fontFamily: "'Source Sans 3', sans-serif",
           fontSize: '22px',
           color: 'var(--text-primary)'
         }}>Crime Statistics Console</h2>
@@ -45,7 +44,7 @@ function PageHeader({ activeFilterSummary }) {
           style={{ position: 'relative', cursor: 'help', display: 'flex', alignItems: 'center' }}
           title="KSP Crime Statistics Console provides comprehensive pattern analysis, spatiotemporal distributions, predictive metrics, and performance audit tracking."
         >
-          <MdInfoOutline size={20} style={{ color: 'var(--text-secondary)' }} />
+          <Info size={18} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
         </div>
       </div>
     </div>

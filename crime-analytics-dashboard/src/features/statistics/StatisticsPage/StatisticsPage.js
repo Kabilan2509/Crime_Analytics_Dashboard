@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { caseViews } from '../../../data/schemaSelectors';
 import PageHeader from './PageHeader';
 import GlobalFiltersBar from './GlobalFiltersBar';
 import KpiRow from './KpiRow';
@@ -11,7 +10,8 @@ import PerformanceSection from './PerformanceSection';
 import AiInsightsPanel from './AiInsightsPanel';
 import ComparisonsRankingsSection from './ComparisonsRankingsSection';
 import ExportFooter from './ExportFooter';
-import { statisticsApi } from '../statisticsApi';
+import { AlertTriangle } from 'lucide-react';
+import { statisticsApi, getFilteredDataset } from '../statisticsApi';
 
 const initialFilters = {
   dateRange: 'all',
@@ -64,55 +64,30 @@ function StatisticsPage({ defaultDistrict = 'all', defaultCrimeType = 'all', def
   });
 
   const filteredCasesForKPIs = useMemo(() => {
-    let result = [...caseViews];
-    
-    // Apply district filter
-    if (filters.selectedDistrict !== 'all') {
-      result = result.filter(c => String(c.districtID) === String(filters.selectedDistrict));
-    }
-    
-    // Apply crime head/category filter
-    if (filters.crimeCategory && !filters.crimeCategory.includes('all')) {
-      const cats = filters.crimeCategory.map(String);
-      result = result.filter(c => cats.includes(String(c.CrimeMajorHeadID)));
-    }
-    
-    // Apply dateRange filter
-    if (filters.dateRange && filters.dateRange !== 'all') {
-      const now = new Date("2026-07-18T23:59:59");
-      let start = null;
-      let end = now;
-      
-      if (filters.dateRange === 'last_7_days' || filters.dateRange === '7d') {
-        start = new Date(now.getTime() - 7 * 24 * 3600 * 1000);
-      } else if (filters.dateRange === 'last_30_days' || filters.dateRange === '30d') {
-        start = new Date(now.getTime() - 30 * 24 * 3600 * 1000);
-      } else if (filters.dateRange === 'this_month') {
-        start = new Date(now.getFullYear(), now.getMonth(), 1);
-      } else if (filters.dateRange === 'this_year') {
-        start = new Date(now.getFullYear(), 0, 1);
-      } else if (filters.dateRange === 'last_year') {
-        start = new Date(now.getFullYear() - 1, 0, 1);
-        end = new Date(now.getFullYear() - 1, 11, 31, 23, 59, 59);
-      } else if (filters.dateRange === 'custom' && filters.startDate && filters.endDate) {
-        start = new Date(filters.startDate);
-        end = new Date(filters.endDate);
-        end.setHours(23, 59, 59, 999);
-      } else {
-        start = new Date('2024-01-01T00:00:00');
-      }
-      
-      result = result.filter(c => {
-        if (!c.registeredDateObj) return false;
-        return c.registeredDateObj >= start && c.registeredDateObj <= end;
-      });
-    }
-    
-    return result;
+    return getFilteredDataset(filters);
   }, [filters]);
 
   const calculatedKPIs = useMemo(() => {
     const totalCases = filteredCasesForKPIs.length;
+
+    // When 0 records match the query, all funnel and performance metrics must be zero with neutral styling
+    if (totalCases === 0) {
+      return {
+        funnelStats: [
+          { label: 'FIR Registered', value: '0', caption: 'Total Caseload', status: 'neutral' },
+          { label: 'Under Investigation', value: '0', caption: 'Active Inquiries', status: 'neutral' },
+          { label: 'Chargesheets Filed', value: '0', caption: 'Sent to Court', status: 'neutral' },
+          { label: 'Chargesheet Rate', value: '0%', caption: 'Resolution Rate', status: 'neutral' }
+        ],
+        performanceStats: [
+          { label: 'Arrest Rate', value: '0%', caption: 'Apprehension Efficiency', status: 'neutral' },
+          { label: 'Detection Rate', value: '0%', caption: 'Offence Identification', status: 'neutral' },
+          { label: 'Case Clearance Rate', value: '0%', caption: 'Disposal Velocity', status: 'neutral' },
+          { label: 'Conviction Rate', value: '0%', caption: 'Judicial Closures', status: 'neutral' }
+        ]
+      };
+    }
+
     const solvedStatuses = new Set(['Charge Sheeted', 'Closed', 'Convicted']);
     const solvedCases = filteredCasesForKPIs.filter(c => solvedStatuses.has(c.statusName));
     const underInvestigationCount = filteredCasesForKPIs.filter(c => c.statusName === 'Under Investigation').length;
@@ -123,16 +98,16 @@ function StatisticsPage({ defaultDistrict = 'all', defaultCrimeType = 'all', def
       { label: 'FIR Registered', value: totalCases.toLocaleString(), caption: 'Total Caseload', status: 'neutral' },
       { label: 'Under Investigation', value: underInvestigationCount.toLocaleString(), caption: 'Active Inquiries', status: 'neutral' },
       { label: 'Chargesheets Filed', value: chargeSheetedCount.toLocaleString(), caption: 'Sent to Court', status: 'neutral' },
-      { label: 'Chargesheet Rate', value: `${totalCases ? Math.round((chargeSheetedCount / totalCases) * 100) : 0}%`, caption: 'Resolution Rate', status: 'neutral' }
+      { label: 'Chargesheet Rate', value: `${Math.round((chargeSheetedCount / totalCases) * 100)}%`, caption: 'Resolution Rate', status: 'neutral' }
     ];
 
     // Performance stats
-    const arrestRate = totalCases ? Math.round((filteredCasesForKPIs.filter(c => c.arrests && c.arrests.length > 0).length / totalCases) * 100) : 0;
-    const detectionRate = totalCases ? Math.round((solvedCases.length / totalCases) * 100) : 0;
-    const clearanceRate = totalCases ? Math.round((filteredCasesForKPIs.filter(c => ['Charge Sheeted', 'Closed', 'Convicted'].includes(c.statusName)).length / totalCases) * 100) : 0;
+    const arrestRate = Math.round((filteredCasesForKPIs.filter(c => c.arrests && c.arrests.length > 0).length / totalCases) * 100);
+    const detectionRate = Math.round((solvedCases.length / totalCases) * 100);
+    const clearanceRate = Math.round((filteredCasesForKPIs.filter(c => ['Charge Sheeted', 'Closed', 'Convicted'].includes(c.statusName)).length / totalCases) * 100);
     
     const casesWithTrialFinished = filteredCasesForKPIs.filter(c => ['Convicted', 'Acquitted'].includes(c.statusName)).length;
-    const convictionRate = casesWithTrialFinished ? Math.round((filteredCasesForKPIs.filter(c => c.statusName === 'Convicted').length / casesWithTrialFinished) * 100) : 62;
+    const convictionRate = casesWithTrialFinished ? Math.round((filteredCasesForKPIs.filter(c => c.statusName === 'Convicted').length / casesWithTrialFinished) * 100) : 0;
 
     const performanceStats = [
       { label: 'Arrest Rate', value: `${arrestRate}%`, caption: 'Apprehension Efficiency', status: arrestRate >= 45 ? 'success' : arrestRate >= 30 ? 'warning' : 'danger' },
@@ -173,26 +148,22 @@ function StatisticsPage({ defaultDistrict = 'all', defaultCrimeType = 'all', def
             borderRight: idx < stats.length - 1 ? '1px solid var(--border-color)' : 'none'
           }}>
             <div className="ops-stat-label" style={{
-              fontFamily: 'Consolas, monospace',
               fontSize: '11px',
               fontWeight: 600,
               textTransform: 'uppercase',
               color: 'var(--text-muted)',
-              letterSpacing: '0.5px',
+              letterSpacing: '0.05em',
               marginBottom: '2px'
             }}>{stat.label}</div>
             <div className="ops-stat-value" style={{
-              fontFamily: 'Consolas, monospace',
               fontSize: '24px',
               fontWeight: 800,
               color: stat.status === 'success' ? 'var(--accent-success)' : stat.status === 'warning' ? 'var(--accent-warning)' : stat.status === 'danger' ? 'var(--accent-danger)' : 'var(--text-primary)',
               marginBottom: '2px'
             }}>{stat.value}</div>
             <div className="ops-stat-caption" style={{
-              fontFamily: 'Consolas, monospace',
-              fontSize: '9.5px',
+              fontSize: '11px',
               color: 'var(--text-muted)',
-              fontStyle: 'italic',
               fontWeight: 'normal'
             }}>{stat.caption}</div>
           </div>
@@ -336,11 +307,10 @@ function StatisticsPage({ defaultDistrict = 'all', defaultCrimeType = 'all', def
           borderRadius: '0px',
           marginBottom: '20px',
           color: '#ef4444',
-          fontFamily: 'Consolas, monospace',
           fontSize: '12px'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontSize: '18px', fontWeight: 'bold' }}>⚠️</span>
+            <AlertTriangle size={16} strokeWidth={1.5} style={{ color: 'var(--accent-danger)', flexShrink: 0 }} />
             <span>
               <strong>NO DATA FOUND:</strong> 0 crime records match your current filter parameters ({getActiveFilterSummary()}).
             </span>

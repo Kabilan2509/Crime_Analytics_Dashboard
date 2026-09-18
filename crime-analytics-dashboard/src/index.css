@@ -1256,20 +1256,14 @@ button {
 }
 
 .stat-icon {
-  width: 50px;
-  height: 50px;
-  border-radius: 16px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #ffffff;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  color: var(--text-secondary);
 }
-
-.stat-card-blue .stat-icon { background: linear-gradient(135deg, #2f6fb0, #4e90cf); }
-.stat-card-green .stat-icon { background: linear-gradient(135deg, #257353, #3ea77a); }
-.stat-card-red .stat-icon { background: linear-gradient(135deg, #b64d3f, #db7966); }
-.stat-card-gold .stat-icon { background: linear-gradient(135deg, #a97822, #d2a24d); }
-.stat-card-indigo .stat-icon { background: linear-gradient(135deg, #4654a8, #7380d0); }
 
 .stat-value {
   margin-top: 18px;
@@ -1791,14 +1785,7 @@ button {
   box-shadow: 4px 0 12px rgba(0, 0, 0, 0.4);
 }
 
-.ticker-icon-pulse {
-  animation: tickerPulse 1.5s ease infinite;
-}
-
-@keyframes tickerPulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
-}
+/* ticker pulse removed per icon guidelines */
 
 .ticker-track {
   flex: 1;
@@ -4353,7 +4340,7 @@ html[data-theme='dark'] {
 }
 
 :where(.dashboard-page, .statistics-page, .reports-page, .briefing-page, .case-overview-page,
-  .evidence-workspace-page, .suspect-timeline-page, .predictions-page, .settings-page,
+  .suspect-timeline-page, .predictions-page, .settings-page,
   .user-management-page, .copilot-page) {
   min-width: 0;
 }

@@ -2,10 +2,10 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { caseViews } from '../data/schemaSelectors';
 import {
-  MdSettings, MdSecurity, MdNotifications, MdPlaylistAddCheck,
-  MdHistory, MdPalette, MdDns, MdSave, MdOpenInNew, MdInfo,
-  MdCheck, MdVolumeUp, MdRefresh, MdVerifiedUser, MdLayers
-} from 'react-icons/md';
+  Settings as SettingsIcon, Shield, Bell, CheckSquare,
+  History, Palette, Server, Save, ExternalLink, Info,
+  Check, Volume2, RotateCcw, ShieldCheck, Layers
+} from 'lucide-react';
 import { playAlertSound } from '../utils/audioAlert';
 
 function Settings() {
@@ -415,14 +415,14 @@ function Settings() {
       {/* TOAST NOTIFICATION */}
       {toastMessage && (
         <div className="toast-notify">
-          <MdInfo size={18} style={{ color: 'var(--accent-primary)' }} />
+          <Info size={18} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
           <span>{toastMessage}</span>
         </div>
       )}
 
       {/* HEADER SECTION */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
-        <MdSettings size={30} style={{ color: 'var(--accent-primary)' }} />
+        <SettingsIcon size={18} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
         <div>
           <div className="header-breadcrumb">DEPLOYMENT & ENVIRONMENT</div>
           <h2 style={{ margin: 0, fontSize: '24px', fontWeight: 800 }}>Command Suite Settings</h2>
@@ -440,7 +440,7 @@ function Settings() {
             onClick={() => { setActiveSection('general'); playAlertSound(600, 0.02); }}
             className={`settings-nav-item ${activeSection === 'general' ? 'active' : ''}`}
           >
-            <MdSettings size={16} />
+            <SettingsIcon size={16} strokeWidth={1.5} />
             <span>General / Org</span>
           </button>
           
@@ -449,7 +449,7 @@ function Settings() {
             onClick={() => { setActiveSection('security'); playAlertSound(600, 0.02); }}
             className={`settings-nav-item ${activeSection === 'security' ? 'active' : ''}`}
           >
-            <MdSecurity size={16} />
+            <Shield size={16} strokeWidth={1.5} />
             <span>Security Policies</span>
           </button>
           
@@ -458,7 +458,7 @@ function Settings() {
             onClick={() => { setActiveSection('notifications'); playAlertSound(600, 0.02); }}
             className={`settings-nav-item ${activeSection === 'notifications' ? 'active' : ''}`}
           >
-            <MdNotifications size={16} />
+            <Bell size={16} strokeWidth={1.5} />
             <span>Notifications</span>
           </button>
           
@@ -467,7 +467,7 @@ function Settings() {
             onClick={() => { setActiveSection('roles'); playAlertSound(600, 0.02); }}
             className={`settings-nav-item ${activeSection === 'roles' ? 'active' : ''}`}
           >
-            <MdPlaylistAddCheck size={16} />
+            <CheckSquare size={16} strokeWidth={1.5} />
             <span>Roles Defaults</span>
           </button>
           
@@ -476,7 +476,7 @@ function Settings() {
             onClick={() => { setActiveSection('compliance'); playAlertSound(600, 0.02); }}
             className={`settings-nav-item ${activeSection === 'compliance' ? 'active' : ''}`}
           >
-            <MdHistory size={16} />
+            <History size={16} strokeWidth={1.5} />
             <span>Compliance & Data</span>
           </button>
           
@@ -485,7 +485,7 @@ function Settings() {
             onClick={() => { setActiveSection('appearance'); playAlertSound(600, 0.02); }}
             className={`settings-nav-item ${activeSection === 'appearance' ? 'active' : ''}`}
           >
-            <MdPalette size={16} />
+            <Palette size={16} strokeWidth={1.5} />
             <span>Appearance</span>
           </button>
           
@@ -494,7 +494,7 @@ function Settings() {
             onClick={() => { setActiveSection('integrations'); playAlertSound(600, 0.02); }}
             className={`settings-nav-item ${activeSection === 'integrations' ? 'active' : ''}`}
           >
-            <MdDns size={16} />
+            <Server size={16} strokeWidth={1.5} />
             <span>System Integrations</span>
           </button>
         </nav>
@@ -579,7 +579,7 @@ function Settings() {
                     onClick={() => handleSave('general')}
                     className="settings-btn settings-btn-primary"
                   >
-                    <MdSave size={16} /> Save General Settings
+                    <Save size={16} strokeWidth={1.5} /> Save General Settings
                   </button>
                 </div>
               </div>
@@ -704,7 +704,7 @@ function Settings() {
                     onClick={() => handleSave('security')}
                     className="settings-btn settings-btn-primary"
                   >
-                    <MdSave size={16} /> Save Security Policies
+                    <Save size={16} strokeWidth={1.5} /> Save Security Policies
                   </button>
                 </div>
               </div>
@@ -849,7 +849,7 @@ function Settings() {
                     onClick={() => handleSave('notifications')}
                     className="settings-btn settings-btn-primary"
                   >
-                    <MdSave size={16} /> Save Notifications
+                    <Save size={16} strokeWidth={1.5} /> Save Notifications
                   </button>
                 </div>
               </div>
@@ -870,7 +870,7 @@ function Settings() {
                   className="settings-btn settings-btn-primary"
                   style={{ minHeight: '34px !important', padding: '4px 12px' }}
                 >
-                  <MdOpenInNew /> Manage Matrix
+                  <ExternalLink size={16} strokeWidth={1.5} /> Manage Matrix
                 </button>
               </div>
 
@@ -1000,7 +1000,7 @@ function Settings() {
                       onClick={() => handleSave('compliance')}
                       className="settings-btn settings-btn-primary"
                     >
-                      <MdSave size={16} /> Save Compliance Settings
+                      <Save size={16} strokeWidth={1.5} /> Save Compliance Settings
                     </button>
                   </div>
                 </div>
@@ -1081,7 +1081,7 @@ function Settings() {
                 </div>
 
                 <div style={{ background: 'rgba(30,144,255,0.05)', padding: '12px', borderLeft: '3px solid var(--accent-primary)', fontSize: '12px', color: 'var(--text-secondary)', display: 'flex', gap: '10px', alignItems: 'center' }}>
-                  <MdPalette size={20} style={{ color: 'var(--accent-primary)', flexShrink: 0 }} />
+                  <Palette size={18} strokeWidth={1.5} style={{ color: 'var(--text-secondary)', flexShrink: 0 }} />
                   <span>
                     Changing the theme triggers a global custom event synchronizer. The app shell adapts header ribbons, background gradients, and leaflet map tiles instantly.
                   </span>
@@ -1093,7 +1093,7 @@ function Settings() {
                     onClick={() => handleSave('appearance')}
                     className="settings-btn settings-btn-primary"
                   >
-                    <MdSave size={16} /> Save Appearance Settings
+                    <Save size={16} strokeWidth={1.5} /> Save Appearance Settings
                   </button>
                 </div>
               </div>
@@ -1161,7 +1161,7 @@ function Settings() {
 
               {/* Diagnostic Log card */}
               <article className="card" style={{ padding: '16px', display: 'flex', gap: '12px', alignItems: 'center' }}>
-                <MdRefresh size={22} className="text-success" />
+                <RotateCcw size={16} strokeWidth={1.5} style={{ color: 'var(--accent-success)' }} />
                 <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
                   State Command tunnel health check parsed at: <strong>{diagnosticTime}</strong>. SHA-256 validation ping test passed. Connectivity standard normal.
                 </div>

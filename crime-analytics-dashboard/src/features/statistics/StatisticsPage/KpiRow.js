@@ -1,5 +1,5 @@
 import React from 'react';
-import { MdTrendingDown, MdTrendingUp, MdShield, MdPeople, MdFolderOpen, MdReportProblem, MdOutlineInfo } from 'react-icons/md';
+import { TrendingDown, TrendingUp, Shield, Users, Folder, AlertTriangle, Info } from 'lucide-react';
 
 function KpiRow({ summaryData }) {
   const {
@@ -40,7 +40,6 @@ function KpiRow({ summaryData }) {
         ? 'var(--accent-success)'
         : 'var(--accent-danger)';
 
-    const icon = isDown ? '▼' : '▲';
     const cleanVal = Math.abs(val);
 
     return (
@@ -56,7 +55,12 @@ function KpiRow({ summaryData }) {
         alignItems: 'center',
         gap: '2px'
       }}>
-        {icon} {cleanVal}%
+        {isDown ? (
+          <TrendingDown size={16} strokeWidth={1.5} />
+        ) : (
+          <TrendingUp size={16} strokeWidth={1.5} />
+        )}
+        {cleanVal}%
       </span>
     );
   };
@@ -97,10 +101,10 @@ function KpiRow({ summaryData }) {
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', color: 'var(--text-secondary)' }}>
           <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Total Crimes</span>
-          <MdFolderOpen size={18} style={{ color: 'var(--accent-primary)' }} />
+          <Folder size={18} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
         </div>
         <div style={{ display: 'flex', alignItems: 'baseline', marginTop: '10px' }}>
-          <span style={{ fontSize: '28px', fontWeight: 700, fontFamily: "'Source Sans 3', sans-serif" }}>{totalCrimes}</span>
+          <span style={{ fontSize: '28px', fontWeight: 700 }}>{totalCrimes}</span>
           {renderDelta(crimeDelta, false)}
         </div>
         <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px' }}>
@@ -125,9 +129,9 @@ function KpiRow({ summaryData }) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', color: 'var(--text-secondary)' }}>
           <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Crime Rate (per 100k)</span>
           {rateTrend === 'down' ? (
-            <MdTrendingDown size={18} style={{ color: 'var(--accent-success)' }} />
+            <TrendingDown size={18} strokeWidth={1.5} style={{ color: 'var(--accent-success)' }} />
           ) : (
-            <MdTrendingUp size={18} style={{ color: 'var(--accent-danger)' }} />
+            <TrendingUp size={18} strokeWidth={1.5} style={{ color: 'var(--accent-danger)' }} />
           )}
         </div>
         <div style={{ display: 'flex', alignItems: 'baseline', marginTop: '10px' }}>
@@ -136,9 +140,16 @@ function KpiRow({ summaryData }) {
             fontSize: '11px',
             color: rateTrend === 'down' ? 'var(--accent-success)' : 'var(--accent-danger)',
             marginLeft: '6px',
-            fontWeight: 700
+            fontWeight: 700,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '3px'
           }}>
-            {rateTrend === 'down' ? '▼ Declining' : '▲ Rising'}
+            {rateTrend === 'down' ? (
+              <><TrendingDown size={16} strokeWidth={1.5} /> Declining</>
+            ) : (
+              <><TrendingUp size={16} strokeWidth={1.5} /> Rising</>
+            )}
           </span>
         </div>
         <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px' }}>
@@ -164,7 +175,7 @@ function KpiRow({ summaryData }) {
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', color: 'var(--text-secondary)' }}>
           <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Clearance Rate</span>
-          <MdShield size={18} style={{ color: 'var(--accent-success)' }} />
+          <Shield size={18} strokeWidth={1.5} style={{ color: 'var(--accent-success)' }} />
         </div>
         <div style={{ marginTop: '10px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
@@ -221,7 +232,7 @@ function KpiRow({ summaryData }) {
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', color: 'var(--text-secondary)' }}>
           <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Total Arrests</span>
-          <MdPeople size={18} style={{ color: 'var(--accent-primary)' }} />
+          <Users size={18} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
         </div>
         <div style={{ display: 'flex', alignItems: 'baseline', marginTop: '10px' }}>
           <span style={{ fontSize: '28px', fontWeight: 700 }}>{totalArrests}</span>
@@ -248,7 +259,7 @@ function KpiRow({ summaryData }) {
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', color: 'var(--text-secondary)' }}>
           <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Pending Chargesheets</span>
-          <MdReportProblem size={18} style={{ color: pendingChargesheets > 20 ? 'var(--accent-warning)' : 'var(--text-secondary)' }} />
+          <AlertTriangle size={18} strokeWidth={1.5} style={{ color: pendingChargesheets > 20 ? 'var(--accent-warning)' : 'var(--text-secondary)' }} />
         </div>
         <div style={{ display: 'flex', alignItems: 'baseline', marginTop: '10px' }}>
           <span style={{
@@ -295,7 +306,7 @@ function KpiRow({ summaryData }) {
             title="Computed based on Heinous Crime ratio, response times, and local spatiotemporal clearance scores."
             style={{ display: 'flex', alignItems: 'center' }}
           >
-            <MdOutlineInfo size={16} />
+            <Info size={16} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'baseline', marginTop: '10px' }}>
