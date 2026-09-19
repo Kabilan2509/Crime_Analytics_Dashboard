@@ -406,138 +406,151 @@ function CaseOverview() {
   return (
     <div className="page-content case-overview-page text-inverse">
       <style>{`
-        /* Global typography & structure layout matching Command Center */
+        /* ----------------------------------------------------
+           REPORT-STYLE DESIGN SYSTEM FOR CASE REGISTRY
+           ---------------------------------------------------- */
         .case-overview-page {
-          font-family: 'Consolas', 'Courier New', Courier, monospace !important;
+          background-color: #faf8f5 !important;
+          color: #1e293b !important;
+          font-family: 'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
         }
-        .case-overview-page input,
-        .case-overview-page button,
+        .case-overview-page * {
+          font-family: 'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        .case-overview-page code,
+        .case-overview-page pre,
+        .case-overview-page .font-mono,
+        .case-overview-page .mono-text {
+          font-family: Consolas, 'Courier New', Courier, monospace !important;
+        }
+
+        .case-overview-page .card,
+        .case-overview-page .flat-section,
+        .case-overview-page .milestone-strip,
+        .case-overview-page .map-panel,
         .case-overview-page select,
-        .case-overview-page strong,
-        .case-overview-page span,
-        .case-overview-page div {
-          font-family: 'Consolas', 'Courier New', Courier, monospace !important;
+        .case-overview-page button,
+        .case-overview-page input,
+        .case-overview-page .status-badge,
+        .case-overview-page .recent-chip,
+        .case-overview-page .suggestions-dropdown,
+        .case-overview-page .case-action-card-highlight,
+        .case-overview-page .case-action-card-highlight-timeline {
+          border-radius: 0px !important;
+          box-shadow: none !important;
         }
-        .search-container-sticky {
+
+        /* Light mode elements */
+        .case-overview-page .flat-section,
+        .case-overview-page .milestone-strip,
+        .case-overview-page .card {
+          background-color: #ffffff !important;
+          border: 1px solid #cbd5e1 !important;
+          padding: 16px !important;
+          margin-bottom: 16px !important;
+        }
+        .case-overview-page .search-container-sticky {
           position: sticky;
           top: 0;
           z-index: 1000;
-          background: var(--bg-app);
+          background-color: #faf8f5 !important;
           padding: 12px 24px;
           margin: -24px -24px 20px -24px;
-          border-bottom: 1px solid var(--border-color);
+          border-bottom: 1px solid #cbd5e1 !important;
         }
-        .search-container-normal {
+        .case-overview-page .search-container-normal {
           padding: 12px 0;
           margin-bottom: 20px;
         }
-        .suggestions-dropdown {
+        .case-overview-page .suggestions-dropdown {
           position: absolute;
           top: 100%;
           left: 0;
           right: 0;
-          background: var(--bg-panel);
-          border: 1px solid var(--border-strong);
+          background-color: #ffffff !important;
+          border: 1px solid #cbd5e1 !important;
           z-index: 1010;
           max-height: 400px;
           overflow-y: auto;
           margin-top: 4px;
-          border-radius: 0px !important;
         }
-        .suggestion-row {
+        .case-overview-page .suggestion-row {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 12px 16px;
-          border-bottom: 1px solid var(--border-color);
+          padding: 10px 14px;
+          border-bottom: 1px solid #f1f5f9;
           cursor: pointer;
-          transition: background var(--transition);
         }
-        .suggestion-row:hover, .suggestion-row.highlighted {
-          background: var(--bg-panel-alt);
+        .case-overview-page .suggestion-row:hover,
+        .case-overview-page .suggestion-row.highlighted {
+          background-color: #f8fafc !important;
         }
-        .suggestion-row.restricted {
+        .case-overview-page .suggestion-row.restricted {
           opacity: 0.6;
           cursor: not-allowed;
           background: rgba(0,0,0,0.03);
         }
-        .suggestion-meta {
+        .case-overview-page .suggestion-meta {
           display: flex;
           align-items: center;
           gap: 12px;
           font-size: 11px;
-          color: var(--text-muted);
+          color: #64748b;
           margin-top: 4px;
         }
-        
-        /* Badges: round pills are allowed for active accent details */
-        .status-badge {
-          padding: 2px 8px;
-          border-radius: 99px;
-          font-size: 10px;
-          font-weight: 600;
-          text-transform: uppercase;
+
+        .case-overview-page .section-label {
+          font-size: 9px !important;
+          text-transform: uppercase !important;
+          letter-spacing: 1.5px !important;
+          color: #64748b !important;
+          font-weight: 700 !important;
+          display: block !important;
+          margin-bottom: 12px !important;
         }
-        .status-badge.under-investigation { background: rgba(255, 140, 0, 0.15); color: var(--accent-warning); }
-        .status-badge.charge-sheeted { background: rgba(0, 91, 150, 0.15); color: var(--accent-primary); }
-        .status-badge.closed { background: rgba(0, 128, 0, 0.15); color: var(--accent-success); }
-        .status-badge.convicted { background: rgba(0, 128, 0, 0.25); color: var(--accent-success); }
-        .status-badge.acquitted { background: rgba(112, 130, 154, 0.2); color: var(--text-secondary); }
-        
-        /* Recent chips: pill shape accents */
-        .recent-chip {
+        .case-overview-page .status-badge {
+          padding: 3px 8px;
+          font-size: 10px;
+          font-weight: 700;
+          text-transform: uppercase;
+          border: 1px solid transparent;
+        }
+        .case-overview-page .status-badge.under-investigation { background: rgba(217, 119, 6, 0.12); color: #d97706; border-color: rgba(217, 119, 6, 0.3); }
+        .case-overview-page .status-badge.charge-sheeted { background: rgba(37, 99, 235, 0.12); color: #2563eb; border-color: rgba(37, 99, 235, 0.3); }
+        .case-overview-page .status-badge.closed { background: rgba(22, 163, 74, 0.12); color: #16a34a; border-color: rgba(22, 163, 74, 0.3); }
+        .case-overview-page .status-badge.convicted { background: rgba(22, 163, 74, 0.2); color: #16a34a; border-color: #16a34a; }
+        .case-overview-page .status-badge.acquitted { background: rgba(100, 116, 139, 0.15); color: #64748b; border-color: rgba(100, 116, 139, 0.3); }
+
+        .case-overview-page .recent-chip {
           display: inline-flex;
           align-items: center;
           gap: 6px;
-          padding: 6px 12px;
-          background: var(--bg-panel);
-          border: 1px solid var(--border-color);
-          border-radius: 99px;
+          padding: 4px 10px;
+          background-color: #ffffff;
+          border: 1px solid #cbd5e1;
           cursor: pointer;
-          font-size: 12px;
-          color: var(--text-secondary);
-          transition: all var(--transition);
+          font-size: 11px;
+          font-weight: 600;
+          color: #1e293b;
         }
-        .recent-chip:hover {
-          border-color: var(--accent-primary);
-          color: var(--text-primary);
-          background: var(--bg-panel-alt);
-        }
-
-        /* Command Center visual style: Flat panels with hairline dividers */
-        .flat-section {
-          background: var(--bg-panel) !important;
-          border: 1px solid var(--border-color) !important;
-          border-bottom: 1px solid var(--border-color) !important;
-          padding: 20px !important;
-          border-radius: 12px !important;
-          box-shadow: var(--shadow-card) !important;
-          margin-bottom: 18px !important;
-        }
-        .section-label {
-          font-size: 11px !important;
-          text-transform: uppercase !important;
-          letter-spacing: 0.15em !important;
-          color: var(--text-muted) !important;
-          font-weight: 700 !important;
-          display: block !important;
-          margin-bottom: 16px !important;
+        .case-overview-page .recent-chip:hover {
+          border-color: #2563eb;
+          color: #2563eb;
+          background-color: rgba(37, 99, 235, 0.05);
         }
 
-        /* Stepper Progression Strip */
-        .milestone-strip {
+        /* Milestone strip */
+        .case-overview-page .milestone-strip {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 20px !important;
-          background: var(--bg-panel) !important;
-          border: 1px solid var(--border-color) !important;
-          border-radius: 12px !important;
-          box-shadow: var(--shadow-card) !important;
-          margin-bottom: 24px !important;
+          padding: 16px !important;
+          background-color: #ffffff !important;
+          border: 1px solid #cbd5e1 !important;
           overflow-x: auto;
         }
-        .milestone-item {
+        .case-overview-page .milestone-item {
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -546,165 +559,255 @@ function CaseOverview() {
           position: relative;
           min-width: 120px;
         }
-        .milestone-item:not(:last-child)::after {
+        .case-overview-page .milestone-item:not(:last-child)::after {
           content: '';
           position: absolute;
           top: 14px;
           left: 50%;
           width: 100%;
           height: 2px;
-          background: var(--border-color);
+          background: #cbd5e1;
           z-index: 1;
         }
-        .milestone-item.completed:not(:last-child)::after {
-          background: var(--accent-success);
+        .case-overview-page .milestone-item.completed:not(:last-child)::after {
+          background: #16a34a;
         }
-        .milestone-dot {
-          width: 30px;
-          height: 30px;
-          border-radius: 50%;
-          background: var(--bg-panel-alt);
-          border: 2px solid var(--border-color);
+        .case-overview-page .milestone-dot {
+          width: 28px;
+          height: 28px;
+          border-radius: 0px !important;
+          background: #f8fafc;
+          border: 1px solid #cbd5e1;
           display: flex;
           align-items: center;
           justify-content: center;
           z-index: 2;
-          font-size: 14px;
-          color: var(--text-muted);
-          transition: all var(--transition);
+          font-size: 12px;
+          font-weight: 700;
+          color: #64748b;
         }
-        .milestone-item.completed .milestone-dot {
-          background: var(--accent-success);
-          border-color: var(--accent-success);
-          color: #fff;
+        .case-overview-page .milestone-item.completed .milestone-dot {
+          background: #16a34a;
+          border-color: #16a34a;
+          color: #ffffff;
         }
-        .milestone-label {
+        .case-overview-page .milestone-label {
           font-size: 11px;
-          font-weight: 600;
-          color: var(--text-secondary);
+          font-weight: 700;
+          text-transform: uppercase;
+          color: #1e293b;
           margin-top: 8px;
         }
-        .milestone-date {
+        .case-overview-page .milestone-date {
           font-size: 10px;
-          color: var(--text-muted);
+          color: #64748b;
           margin-top: 2px;
         }
 
-        /* Stat tiles grid inside Evidence Snapshot */
-        .evidence-grid {
+        /* Evidence tiles */
+        .case-overview-page .evidence-grid {
           display: grid;
           grid-template-columns: repeat(3, 1fr);
-          border: 1px solid var(--border-color);
-          background: transparent;
-          border-radius: 0px !important;
+          border: 1px solid #cbd5e1;
+          background: #ffffff;
           margin-bottom: 14px;
         }
-        .evidence-tile {
-          padding: 16px 12px;
+        .case-overview-page .evidence-tile {
+          padding: 14px 10px;
           text-align: center;
-          background: transparent;
-          border-radius: 0px !important;
         }
-        .evidence-tile:not(:last-child) {
-          border-right: 1px solid var(--border-color);
+        .case-overview-page .evidence-tile:not(:last-child) {
+          border-right: 1px solid #cbd5e1;
         }
-        .evidence-tile-label {
-          font-size: 10px;
+        .case-overview-page .evidence-tile-label {
+          font-size: 9px;
           text-transform: uppercase;
           letter-spacing: 0.1em;
-          color: var(--text-muted);
+          color: #64748b;
+          font-weight: 700;
           display: block;
         }
-        .evidence-tile-val {
-          font-size: 24px;
-          font-weight: 700;
-          color: var(--text-primary);
+        .case-overview-page .evidence-tile-val {
+          font-size: 22px;
+          font-weight: 800;
+          color: #1e293b;
           display: block;
           margin-top: 4px;
         }
 
-        /* Maps panel sits flush */
-        .map-panel {
-          border: 1px solid var(--border-color) !important;
-          border-radius: 0px !important;
+        .case-overview-page .map-panel {
+          border: 1px solid #cbd5e1 !important;
           overflow: hidden !important;
         }
 
-        .case-action-card-highlight {
+        .case-overview-page .case-action-card-highlight,
+        .case-overview-page .case-action-card-highlight-timeline {
           display: flex;
           align-items: center;
           justify-content: space-between;
           padding: 12px 16px;
-          background: var(--bg-panel-alt, #0f172a);
-          color: var(--text-primary) !important;
-          border: 1px solid var(--border-color);
-          border-left: 3px solid var(--accent-primary);
-          border-radius: 6px;
+          background: #f8fafc !important;
+          color: #1e293b !important;
+          border: 1px solid #cbd5e1 !important;
+          border-left: 4px solid #2563eb !important;
           cursor: pointer;
-          transition: all 0.15s ease;
           margin-top: 10px;
         }
-        .case-action-card-highlight:hover {
-          background: var(--bg-panel);
-          border-color: var(--accent-primary);
-        }
-        .case-action-card-highlight-timeline {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 12px 16px;
-          background: var(--bg-panel-alt, #0f172a);
-          color: var(--text-primary) !important;
-          border: 1px solid var(--border-color);
-          border-left: 3px solid var(--accent-primary);
-          border-radius: 6px;
-          cursor: pointer;
-          transition: all 0.15s ease;
-          margin-top: 10px;
-        }
-        .case-action-card-highlight-timeline:hover {
-          background: var(--bg-panel);
-          border-color: var(--accent-primary);
+        .case-overview-page .case-action-card-highlight:hover,
+        .case-overview-page .case-action-card-highlight-timeline:hover {
+          background: #f1f5f9 !important;
+          border-color: #2563eb !important;
         }
 
-        .case-content-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 40px; margin-bottom: 20px; }
-        .case-subject-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-        @media (max-width: 900px) {
-          .search-container-sticky { padding: 10px 16px; margin: -20px -16px 16px; }
-          .case-content-grid, .case-subject-grid { grid-template-columns: 1fr !important; gap: 20px; }
-          .milestone-strip { justify-content: flex-start; padding-inline: 8px !important; }
-          .evidence-grid { grid-template-columns: 1fr !important; }
-          .evidence-tile { border-right: none !important; border-bottom: 1px solid var(--border-color); }
-          .evidence-tile:last-child { border-bottom: none; }
-        }
-        @media (max-width: 560px) {
-          .suggestion-row { align-items: flex-start; flex-direction: column; gap: 6px; }
-          .milestone-item { min-width: 104px; }
-          .flat-section { padding-block: 16px !important; }
-        }
+        .case-overview-page .case-content-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 24px; margin-bottom: 20px; }
+        .case-overview-page .case-subject-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 
-        .skeleton-row {
-          height: 50px;
-          background: linear-gradient(90deg, var(--bg-panel-alt) 25%, var(--bg-panel) 50%, var(--bg-panel-alt) 75%);
-          background-size: 200% 100%;
-          animation: loading-pulse 1.5s infinite;
-          border-radius: 0px !important;
-          margin-bottom: 8px;
-        }
-        @keyframes loading-pulse {
-          0% { background-position: 200% 0; }
-          100% { background-position: -200% 0; }
-        }
-        
-        .action-bar-persistent {
+        .case-overview-page .action-bar-persistent {
           display: flex;
           align-items: center;
           justify-content: flex-end;
           gap: 12px;
-          padding: 24px 0px 0px 0px !important;
-          background: var(--bg-app) !important;
-          border-top: 1px solid var(--border-color) !important;
-          margin-top: 24px;
+          padding: 16px 0 0 0 !important;
+          background: transparent !important;
+          border-top: 1px solid #cbd5e1 !important;
+          margin-top: 20px;
+        }
+
+        /* Buttons matching Report styling */
+        .case-overview-page button,
+        .case-overview-page .session-btn {
+          border: 1px solid #2563eb !important;
+          background-color: #2563eb !important;
+          color: #ffffff !important;
+          padding: 6px 16px !important;
+          font-size: 12px !important;
+          text-transform: uppercase !important;
+          font-weight: bold !important;
+          cursor: pointer !important;
+          height: 32px !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          gap: 6px !important;
+        }
+        .case-overview-page button:hover:not(:disabled),
+        .case-overview-page .session-btn:hover:not(:disabled) {
+          background-color: #1d4ed8 !important;
+          border-color: #1d4ed8 !important;
+        }
+        .case-overview-page button.session-btn:not(.primary),
+        .case-overview-page .session-btn-secondary {
+          background-color: transparent !important;
+          color: #2563eb !important;
+          border: 1px solid #2563eb !important;
+        }
+        .case-overview-page button.session-btn:not(.primary):hover {
+          background-color: rgba(37, 99, 235, 0.05) !important;
+        }
+
+        /* Dark mode overrides */
+        .theme-dark .case-overview-page,
+        [data-theme="dark"] .case-overview-page {
+          background-color: #0B0E11 !important;
+          color: #edf3fb !important;
+        }
+        .theme-dark .case-overview-page .flat-section,
+        .theme-dark .case-overview-page .milestone-strip,
+        .theme-dark .case-overview-page .card,
+        [data-theme="dark"] .case-overview-page .flat-section,
+        [data-theme="dark"] .case-overview-page .milestone-strip,
+        [data-theme="dark"] .case-overview-page .card {
+          background-color: #0B0E11 !important;
+          border: 1px solid rgba(173, 193, 214, 0.15) !important;
+        }
+        .theme-dark .case-overview-page .search-container-sticky,
+        [data-theme="dark"] .case-overview-page .search-container-sticky {
+          background-color: #0B0E11 !important;
+          border-bottom: 1px solid rgba(173, 193, 214, 0.15) !important;
+        }
+        .theme-dark .case-overview-page .suggestions-dropdown,
+        [data-theme="dark"] .case-overview-page .suggestions-dropdown {
+          background-color: #0B0E11 !important;
+          border: 1px solid rgba(173, 193, 214, 0.15) !important;
+        }
+        .theme-dark .case-overview-page .suggestion-row,
+        [data-theme="dark"] .case-overview-page .suggestion-row {
+          border-bottom: 1px solid rgba(173, 193, 214, 0.1) !important;
+        }
+        .theme-dark .case-overview-page .suggestion-row:hover,
+        .theme-dark .case-overview-page .suggestion-row.highlighted,
+        [data-theme="dark"] .case-overview-page .suggestion-row:hover,
+        [data-theme="dark"] .case-overview-page .suggestion-row.highlighted {
+          background-color: #142132 !important;
+        }
+        .theme-dark .case-overview-page .suggestion-meta,
+        .theme-dark .case-overview-page .section-label,
+        [data-theme="dark"] .case-overview-page .suggestion-meta,
+        [data-theme="dark"] .case-overview-page .section-label {
+          color: #8fa2b8 !important;
+        }
+        .theme-dark .case-overview-page .evidence-grid,
+        [data-theme="dark"] .case-overview-page .evidence-grid {
+          background-color: #0B0E11 !important;
+          border-color: rgba(173, 193, 214, 0.15) !important;
+        }
+        .theme-dark .case-overview-page .evidence-tile:not(:last-child),
+        [data-theme="dark"] .case-overview-page .evidence-tile:not(:last-child) {
+          border-right-color: rgba(173, 193, 214, 0.15) !important;
+        }
+        .theme-dark .case-overview-page .evidence-tile-val,
+        [data-theme="dark"] .case-overview-page .evidence-tile-val {
+          color: #edf3fb !important;
+        }
+        .theme-dark .case-overview-page .evidence-tile-label,
+        [data-theme="dark"] .case-overview-page .evidence-tile-label {
+          color: #8fa2b8 !important;
+        }
+        .theme-dark .case-overview-page .map-panel,
+        [data-theme="dark"] .case-overview-page .map-panel {
+          border-color: rgba(173, 193, 214, 0.15) !important;
+        }
+        .theme-dark .case-overview-page .case-action-card-highlight,
+        .theme-dark .case-overview-page .case-action-card-highlight-timeline,
+        [data-theme="dark"] .case-overview-page .case-action-card-highlight,
+        [data-theme="dark"] .case-overview-page .case-action-card-highlight-timeline {
+          background-color: #142132 !important;
+          border-color: rgba(173, 193, 214, 0.15) !important;
+          color: #edf3fb !important;
+        }
+        .theme-dark .case-overview-page .action-bar-persistent,
+        [data-theme="dark"] .case-overview-page .action-bar-persistent {
+          border-top-color: rgba(173, 193, 214, 0.15) !important;
+        }
+        .theme-dark .case-overview-page .recent-chip,
+        [data-theme="dark"] .case-overview-page .recent-chip {
+          background-color: #142132 !important;
+          border-color: rgba(173, 193, 214, 0.15) !important;
+          color: #edf3fb !important;
+        }
+        .theme-dark .case-overview-page .milestone-dot,
+        [data-theme="dark"] .case-overview-page .milestone-dot {
+          background-color: #142132 !important;
+          border-color: rgba(173, 193, 214, 0.15) !important;
+          color: #8fa2b8 !important;
+        }
+        .theme-dark .case-overview-page .milestone-label,
+        [data-theme="dark"] .case-overview-page .milestone-label {
+          color: #edf3fb !important;
+        }
+
+        @media (max-width: 900px) {
+          .case-overview-page .search-container-sticky { padding: 10px 16px; margin: -20px -16px 16px; }
+          .case-overview-page .case-content-grid, .case-overview-page .case-subject-grid { grid-template-columns: 1fr !important; gap: 20px; }
+          .case-overview-page .milestone-strip { justify-content: flex-start; padding-inline: 8px !important; }
+          .case-overview-page .evidence-grid { grid-template-columns: 1fr !important; }
+          .case-overview-page .evidence-tile { border-right: none !important; border-bottom: 1px solid #cbd5e1; }
+          .case-overview-page .evidence-tile:last-child { border-bottom: none; }
+        }
+        @media (max-width: 560px) {
+          .case-overview-page .suggestion-row { align-items: flex-start; flex-direction: column; gap: 6px; }
+          .case-overview-page .milestone-item { min-width: 104px; }
+          .case-overview-page .flat-section { padding-block: 16px !important; }
         }
       `}</style>
 

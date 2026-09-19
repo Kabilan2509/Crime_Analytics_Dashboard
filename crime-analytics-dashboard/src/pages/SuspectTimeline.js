@@ -452,45 +452,62 @@ function SuspectTimeline() {
   return (
     <div className="page-content suspect-timeline-page text-inverse">
       <style>{`
+        /* ----------------------------------------------------
+           REPORT-STYLE DESIGN SYSTEM FOR SUSPECT TIMELINE
+           ---------------------------------------------------- */
         .suspect-timeline-page {
-          font-family: 'Public Sans', sans-serif !important;
+          background-color: #faf8f5 !important;
+          color: #1e293b !important;
+          font-family: 'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
         }
+        .suspect-timeline-page * {
+          font-family: 'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        .suspect-timeline-page code,
+        .suspect-timeline-page pre,
+        .suspect-timeline-page .font-mono,
+        .suspect-timeline-page .mono-text {
+          font-family: Consolas, 'Courier New', Courier, monospace !important;
+        }
+
         .suspect-timeline-page input,
         .suspect-timeline-page button,
         .suspect-timeline-page select,
-        .suspect-timeline-page strong,
-        .suspect-timeline-page span,
-        .suspect-timeline-page div {
-          font-family: 'Public Sans', sans-serif !important;
-          border-radius: 4px !important;
+        .suspect-timeline-page .flat-section,
+        .suspect-timeline-page .card,
+        .suspect-timeline-page .detail-drawer,
+        .suspect-timeline-page .status-badge,
+        .suspect-timeline-page .filter-chip,
+        .suspect-timeline-page .node-bubble {
+          border-radius: 0px !important;
+          box-shadow: none !important;
         }
-        .flat-section {
-          background: var(--bg-panel) !important;
-          border: 1px solid var(--border-color) !important;
-          border-bottom: 1px solid var(--border-color) !important;
-          border-radius: 12px !important;
-          box-shadow: var(--shadow-card) !important;
-          padding: 18px !important;
-          margin-bottom: 18px !important;
+
+        /* Light mode elements */
+        .suspect-timeline-page .flat-section,
+        .suspect-timeline-page .card {
+          background-color: #ffffff !important;
+          border: 1px solid #cbd5e1 !important;
+          padding: 16px !important;
+          margin-bottom: 16px !important;
         }
-        .section-label {
-          font-size: 11px !important;
+        .suspect-timeline-page .section-label {
+          font-size: 9px !important;
           text-transform: uppercase !important;
-          letter-spacing: 0.15em !important;
-          color: var(--text-muted) !important;
+          letter-spacing: 1.5px !important;
+          color: #64748b !important;
           font-weight: 700 !important;
           display: block !important;
           margin-bottom: 12px !important;
         }
-        .status-badge {
-          padding: 2px 8px;
-          border-radius: 99px !important; /* accent rounded pills */
+        .suspect-timeline-page .status-badge {
+          padding: 3px 8px;
           font-size: 10px;
-          font-weight: 600;
+          font-weight: 700;
           text-transform: uppercase;
         }
-        .status-badge.heinous { background: rgba(200,0,0,0.15); color: var(--accent-danger); }
-        .status-badge.standard { background: rgba(255,140,0,0.15); color: var(--accent-warning); }
+        .suspect-timeline-page .status-badge.heinous { background: rgba(220, 38, 38, 0.12); color: #dc2626; border: 1px solid rgba(220, 38, 38, 0.3); }
+        .suspect-timeline-page .status-badge.standard { background: rgba(217, 119, 6, 0.12); color: #d97706; border: 1px solid rgba(217, 119, 6, 0.3); }
 
         /* Stepper-style chronological lollipop list */
         .lollipop-list {
@@ -504,16 +521,12 @@ function SuspectTimeline() {
           top: 8px;
           bottom: 8px;
           width: 2px;
-          background: var(--border-color);
+          background: #cbd5e1;
         }
         .lollipop-item {
           position: relative;
-          margin-bottom: 20px;
+          margin-bottom: 18px;
           cursor: pointer;
-          transition: transform var(--transition);
-        }
-        .lollipop-item:hover {
-          transform: translateX(4px);
         }
         .lollipop-dot {
           position: absolute;
@@ -521,77 +534,145 @@ function SuspectTimeline() {
           top: 3px;
           width: 12px;
           height: 12px;
-          border-radius: 50% !important; /* Lollipop nodes stay circular */
-          border: 2px solid var(--border-color);
-          background: var(--bg-panel-alt);
+          border-radius: 0px !important;
+          border: 2px solid #cbd5e1;
+          background: #ffffff;
           z-index: 10;
         }
         .lollipop-item.selected .lollipop-dot {
-          border-color: var(--accent-primary) !important;
-          outline: 2px solid var(--accent-primary);
-          outline-offset: 1px;
+          border-color: #2563eb !important;
+          background-color: #2563eb !important;
         }
-        
+
         /* Filter chips */
         .filter-chip {
           display: inline-flex;
           align-items: center;
           gap: 6px;
-          padding: 6px 12px;
-          background: var(--bg-panel);
-          border: 1px solid var(--border-color);
+          padding: 5px 12px;
+          background-color: #ffffff;
+          border: 1px solid #cbd5e1;
           cursor: pointer;
           font-size: 11px;
-          color: var(--text-secondary);
-          transition: all var(--transition);
+          font-weight: 600;
+          color: #64748b;
           text-transform: uppercase;
         }
         .filter-chip:hover, .filter-chip.active {
-          color: var(--text-primary);
-          background: var(--bg-panel-alt);
-        }
-
-        /* Network Graph visuals */
-        .network-graph-container {
-          height: 200px;
-          border: 1px solid var(--border-color);
-          background: var(--bg-panel-alt, #0b111e);
-          position: relative;
-          overflow: hidden;
-        }
-        .node-bubble {
-          position: absolute;
-          padding: 6px 10px;
-          font-size: 11px;
-          font-weight: bold;
-          border: 1px solid var(--border-color);
-          background: var(--bg-panel-alt);
-          color: var(--text-primary);
-          cursor: pointer;
-          transform: translate(-50%, -50%);
-        }
-        .node-bubble:hover, .node-bubble.active {
-          border-color: var(--accent-primary);
-          background: rgba(77, 163, 214, 0.15);
+          color: #2563eb;
+          border-color: #2563eb;
+          background-color: rgba(37, 99, 235, 0.05);
         }
 
         .map-panel {
-          border: 1px solid var(--border-color) !important;
+          border: 1px solid #cbd5e1 !important;
         }
 
-        /* Slide-in drawer container layout */
         .detail-drawer {
-          border: 1px solid var(--border-color);
-          background: var(--bg-panel-alt);
-          border-radius: 8px !important;
+          border: 1px solid #cbd5e1;
+          background-color: #ffffff;
           padding: 16px;
           margin-top: 14px;
         }
-        .suspect-workspace-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 30px; margin-top: 14px; }
+        .suspect-workspace-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 24px; margin-top: 14px; }
+
+        /* Form inputs & buttons */
+        .suspect-timeline-page select,
+        .suspect-timeline-page input {
+          border: 1px solid #cbd5e1 !important;
+          background-color: #ffffff !important;
+          color: #1e293b !important;
+          padding: 6px 10px !important;
+          font-size: 12px !important;
+          outline: none !important;
+          height: 32px !important;
+        }
+        .suspect-timeline-page select:focus,
+        .suspect-timeline-page input:focus {
+          border-color: #2563eb !important;
+        }
+        .suspect-timeline-page button {
+          border: 1px solid #2563eb !important;
+          background-color: #2563eb !important;
+          color: #ffffff !important;
+          padding: 6px 16px !important;
+          font-size: 12px !important;
+          text-transform: uppercase !important;
+          font-weight: bold !important;
+          cursor: pointer !important;
+          height: 32px !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          gap: 6px !important;
+        }
+        .suspect-timeline-page button:hover:not(:disabled) {
+          background-color: #1d4ed8 !important;
+          border-color: #1d4ed8 !important;
+        }
+        .suspect-timeline-page button.btn-secondary {
+          background-color: transparent !important;
+          color: #2563eb !important;
+          border: 1px solid #2563eb !important;
+        }
+
+        /* Dark mode overrides */
+        .theme-dark .suspect-timeline-page,
+        [data-theme="dark"] .suspect-timeline-page {
+          background-color: #0B0E11 !important;
+          color: #edf3fb !important;
+        }
+        .theme-dark .suspect-timeline-page .flat-section,
+        .theme-dark .suspect-timeline-page .card,
+        .theme-dark .suspect-timeline-page .detail-drawer,
+        [data-theme="dark"] .suspect-timeline-page .flat-section,
+        [data-theme="dark"] .suspect-timeline-page .card,
+        [data-theme="dark"] .suspect-timeline-page .detail-drawer {
+          background-color: #0B0E11 !important;
+          border: 1px solid rgba(173, 193, 214, 0.15) !important;
+        }
+        .theme-dark .suspect-timeline-page .section-label,
+        [data-theme="dark"] .suspect-timeline-page .section-label {
+          color: #8fa2b8 !important;
+        }
+        .theme-dark .suspect-timeline-page select,
+        .theme-dark .suspect-timeline-page input,
+        [data-theme="dark"] .suspect-timeline-page select,
+        [data-theme="dark"] .suspect-timeline-page input {
+          background-color: #0B0E11 !important;
+          border: 1px solid rgba(173, 193, 214, 0.15) !important;
+          color: #edf3fb !important;
+        }
+        .theme-dark .suspect-timeline-page .filter-chip,
+        [data-theme="dark"] .suspect-timeline-page .filter-chip {
+          background-color: #142132 !important;
+          border-color: rgba(173, 193, 214, 0.15) !important;
+          color: #8fa2b8 !important;
+        }
+        .theme-dark .suspect-timeline-page .filter-chip:hover,
+        .theme-dark .suspect-timeline-page .filter-chip.active,
+        [data-theme="dark"] .suspect-timeline-page .filter-chip:hover,
+        [data-theme="dark"] .suspect-timeline-page .filter-chip.active {
+          color: #2563eb !important;
+          border-color: #2563eb !important;
+        }
+        .theme-dark .suspect-timeline-page .map-panel,
+        [data-theme="dark"] .suspect-timeline-page .map-panel {
+          border-color: rgba(173, 193, 214, 0.15) !important;
+        }
+        .theme-dark .suspect-timeline-page .lollipop-axis,
+        [data-theme="dark"] .suspect-timeline-page .lollipop-axis {
+          background: rgba(173, 193, 214, 0.15) !important;
+        }
+        .theme-dark .suspect-timeline-page .lollipop-dot,
+        [data-theme="dark"] .suspect-timeline-page .lollipop-dot {
+          border-color: rgba(173, 193, 214, 0.3) !important;
+          background: #142132 !important;
+        }
+
         @media (max-width: 900px) {
           .suspect-workspace-grid { grid-template-columns: 1fr !important; gap: 20px; }
           .detail-drawer { padding: 14px; }
-          .network-graph-container { min-height: 240px; }
         }
         @media (max-width: 560px) {
           .suspect-timeline-page .flat-section { padding-block: 14px !important; }
