@@ -328,99 +328,160 @@ function BriefingPage() {
         </div>
       )}
 
-      {/* Command Center CSS variables and font styles injected scoped */}
+      {/* Scoped CSS Style Injection matching Report Page Design System */}
       <style>{`
         /* ----------------------------------------------------
-           COMMAND CENTER THEME COPIED TO BRIEFING
+           REPORT-STYLE DESIGN SYSTEM FOR OPERATIONAL BRIEFING
            ---------------------------------------------------- */
-         .briefing-page {
+        .briefing-page {
           background-color: #faf8f5 !important;
           color: #1e293b !important;
-          font-family: 'Consolas', 'Courier New', Courier, monospace !important;
+          font-family: 'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
         }
         .briefing-page * {
-          font-family: 'Consolas', 'Courier New', Courier, monospace !important;
+          font-family: 'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
-        .briefing-page {
-          font-size: 14px !important;
-          line-height: 1.5 !important;
+        .briefing-page code,
+        .briefing-page pre,
+        .briefing-page .font-mono,
+        .briefing-page .mono-text {
+          font-family: Consolas, 'Courier New', Courier, monospace !important;
         }
-        .briefing-page .briefing-section-heading {
-          font-size: 16px !important;
-          line-height: 1.4 !important;
-          letter-spacing: 0.06em !important;
-        }
-        .briefing-page .section-eyebrow {
-          font-size: 15px !important;
-          line-height: 1.4 !important;
-          letter-spacing: 0.06em !important;
-        }
-        .briefing-page .card-title,
-        .briefing-page h3.card-title,
-        .briefing-page h4.card-title {
-          font-size: 18px !important;
-          line-height: 1.4 !important;
-        }
-        .briefing-page .card p,
-        .briefing-page .card li,
-        .briefing-page .card td,
-        .briefing-page .card label {
-          font-size: 14px !important;
-          line-height: 1.55 !important;
-        }
-        .briefing-page .card th {
-          font-size: 13px !important;
-          line-height: 1.4 !important;
-        }
-        .briefing-page select,
-        .briefing-page input,
-        .briefing-page button,
-        .briefing-page .stats-btn {
-          font-size: 14px !important;
-          line-height: 1.35 !important;
-        }
-        .briefing-page .kpi-card > div:last-child {
-          font-size: 13px !important;
-          line-height: 1.4 !important;
-        }
-        .briefing-page .recharts-text,
-        .briefing-page .recharts-legend-item-text {
-          font-size: 12px !important;
-        }
+
         .briefing-page .card,
         .briefing-page .kpi-card,
+        .briefing-page .stats-page-header,
+        .briefing-page .stats-filter-bar-container,
         .briefing-page select,
         .briefing-page button,
         .briefing-page input,
-        .briefing-page .stats-filter-bar-container,
-        .briefing-page .stats-page-header,
-        .briefing-page .stats-btn {
+        .briefing-page .stats-btn,
+        .briefing-page .badge {
           border-radius: 0px !important;
           box-shadow: none !important;
         }
         
-        /* Light mode elements colors */
+        /* Light mode elements */
         .briefing-page .card,
         .briefing-page .kpi-card,
         .briefing-page .stats-page-header {
           background-color: #ffffff !important;
           border: 1px solid #cbd5e1 !important;
+          padding: 16px !important;
+        }
+        .briefing-page .card-header {
+          border-bottom: 1px solid #cbd5e1 !important;
+          padding-bottom: 8px !important;
+          margin-bottom: 12px !important;
+          background: transparent !important;
+        }
+        .briefing-page .card-title,
+        .briefing-page h3.card-title,
+        .briefing-page h4.card-title,
+        .briefing-page .briefing-section-heading {
+          color: #1e293b !important;
+          text-transform: uppercase !important;
+          font-size: 13px !important;
+          font-weight: 700 !important;
+          letter-spacing: 0.05em !important;
+          margin: 0 !important;
+          display: flex !important;
+          align-items: center !important;
+          gap: 6px !important;
+        }
+        .briefing-page .section-eyebrow {
+          color: #64748b !important;
+          font-size: 9px !important;
+          text-transform: uppercase !important;
+          letter-spacing: 1.5px !important;
+          margin-bottom: 4px !important;
+          font-weight: bold !important;
+        }
+        .briefing-page .form-label {
+          font-size: 10px !important;
+          text-transform: uppercase !important;
+          color: #64748b !important;
+          font-weight: 600 !important;
         }
         .briefing-page .stats-filter-bar-container {
+          background-color: #ffffff !important;
           border-top: 1px solid #cbd5e1 !important;
           border-bottom: 1px solid #cbd5e1 !important;
         }
         .briefing-page select,
         .briefing-page input,
-        .briefing-page .stats-btn,
-        .briefing-page button:not(.header-menu-btn):not(.mobile-filter-header button) {
+        .briefing-page .form-select,
+        .briefing-page .form-input {
           border: 1px solid #cbd5e1 !important;
           background-color: #ffffff !important;
           color: #1e293b !important;
+          padding: 6px 10px !important;
+          font-size: 12px !important;
+          outline: none !important;
+          height: 32px !important;
         }
-        .briefing-page .card-header {
+        .briefing-page select:focus,
+        .briefing-page input:focus {
+          border-color: #2563eb !important;
+        }
+        .briefing-page .stats-btn,
+        .briefing-page button:not(.header-menu-btn):not(.mobile-filter-header button) {
+          border: 1px solid #2563eb !important;
+          background-color: #2563eb !important;
+          color: #ffffff !important;
+          padding: 6px 16px !important;
+          font-size: 12px !important;
+          text-transform: uppercase !important;
+          font-weight: bold !important;
+          cursor: pointer !important;
+          height: 32px !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          gap: 6px !important;
+        }
+        .briefing-page .stats-btn:hover:not(:disabled),
+        .briefing-page button:not(.header-menu-btn):not(.mobile-filter-header button):hover:not(:disabled) {
+          background-color: #1d4ed8 !important;
+          border-color: #1d4ed8 !important;
+        }
+        .briefing-page .stats-btn-secondary,
+        .briefing-page button.stats-btn-secondary {
+          background-color: transparent !important;
+          color: #2563eb !important;
+          border: 1px solid #2563eb !important;
+        }
+        .briefing-page .stats-btn-secondary:hover {
+          background-color: rgba(37, 99, 235, 0.05) !important;
+        }
+        .briefing-page table,
+        .briefing-page .data-table {
+          width: 100% !important;
+          border-collapse: collapse !important;
+        }
+        .briefing-page th,
+        .briefing-page .data-table th {
+          text-transform: uppercase !important;
+          font-size: 11px !important;
+          color: #64748b !important;
           border-bottom: 1px solid #cbd5e1 !important;
+          padding: 8px !important;
+          text-align: left !important;
           background: transparent !important;
+          font-weight: 600 !important;
+          letter-spacing: 0.5px !important;
+        }
+        .briefing-page td,
+        .briefing-page .data-table td {
+          padding: 8px !important;
+          border-bottom: 1px solid #f1f5f9 !important;
+          font-size: 12px !important;
+          color: #1e293b !important;
+          background: transparent !important;
+        }
+        .briefing-page tbody tr:hover td,
+        .briefing-page .data-table tbody tr:hover td {
+          background-color: rgba(0, 0, 0, 0.02) !important;
         }
         
         /* Dark mode overrides */
@@ -438,14 +499,34 @@ function BriefingPage() {
           background-color: #0B0E11 !important;
           border: 1px solid rgba(173, 193, 214, 0.15) !important;
         }
+        .theme-dark .briefing-page .card-header,
+        [data-theme="dark"] .briefing-page .card-header {
+          border-bottom: 1px solid rgba(173, 193, 214, 0.15) !important;
+        }
+        .theme-dark .briefing-page .card-title,
+        .theme-dark .briefing-page h3.card-title,
+        .theme-dark .briefing-page h4.card-title,
+        .theme-dark .briefing-page .briefing-section-heading,
+        [data-theme="dark"] .briefing-page .card-title,
+        [data-theme="dark"] .briefing-page h3.card-title,
+        [data-theme="dark"] .briefing-page h4.card-title,
+        [data-theme="dark"] .briefing-page .briefing-section-heading {
+          color: #edf3fb !important;
+        }
+        .theme-dark .briefing-page .section-eyebrow,
+        .theme-dark .briefing-page .form-label,
+        [data-theme="dark"] .briefing-page .section-eyebrow,
+        [data-theme="dark"] .briefing-page .form-label {
+          color: #8fa2b8 !important;
+        }
         .theme-dark .briefing-page select,
         .theme-dark .briefing-page input,
-        .theme-dark .briefing-page .stats-btn,
-        .theme-dark .briefing-page button:not(.header-menu-btn):not(.mobile-filter-header button),
+        .theme-dark .briefing-page .form-select,
+        .theme-dark .briefing-page .form-input,
         [data-theme="dark"] .briefing-page select,
         [data-theme="dark"] .briefing-page input,
-        [data-theme="dark"] .briefing-page .stats-btn,
-        [data-theme="dark"] .briefing-page button:not(.header-menu-btn):not(.mobile-filter-header button) {
+        [data-theme="dark"] .briefing-page .form-select,
+        [data-theme="dark"] .briefing-page .form-input {
           background-color: #0B0E11 !important;
           border: 1px solid rgba(173, 193, 214, 0.15) !important;
           color: #edf3fb !important;
@@ -456,9 +537,23 @@ function BriefingPage() {
           border-bottom: 1px solid rgba(173, 193, 214, 0.15) !important;
           background-color: #0B0E11 !important;
         }
-        .theme-dark .briefing-page .card-header,
-        [data-theme="dark"] .briefing-page .card-header {
-          border-bottom: 1px solid rgba(173, 193, 214, 0.15) !important;
+        .theme-dark .briefing-page th,
+        .theme-dark .briefing-page .data-table th,
+        [data-theme="dark"] .briefing-page th,
+        [data-theme="dark"] .briefing-page .data-table th {
+          color: #8fa2b8 !important;
+          border-bottom: 1px solid rgba(173, 193, 214, 0.25) !important;
+        }
+        .theme-dark .briefing-page td,
+        .theme-dark .briefing-page .data-table td,
+        [data-theme="dark"] .briefing-page td,
+        [data-theme="dark"] .briefing-page .data-table td {
+          border-bottom: 1px solid rgba(173, 193, 214, 0.1) !important;
+          color: #edf3fb !important;
+        }
+        .theme-dark .briefing-page tbody tr:hover td,
+        .theme-dark .briefing-page .data-table tbody tr:hover td {
+          background-color: rgba(255, 255, 255, 0.02) !important;
         }
 
         @keyframes spin {

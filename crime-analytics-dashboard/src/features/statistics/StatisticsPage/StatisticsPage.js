@@ -432,23 +432,30 @@ function StatisticsPage({ defaultDistrict = 'all', defaultCrimeType = 'all', def
       {/* Global page command-center theme and keyframes animations */}
       <style>{`
         /* ----------------------------------------------------
-           COMMAND CENTER STYLE OVERRIDES FOR STATISTICS
+           REPORT-STYLE DESIGN SYSTEM FOR STATISTICS PAGE
            ---------------------------------------------------- */
         .statistics-page {
           background-color: #faf8f5 !important;
           color: #1e293b !important;
-          font-family: 'Consolas', 'Courier New', Courier, monospace !important;
+          font-family: 'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
         }
         .statistics-page * {
-          font-family: 'Consolas', 'Courier New', Courier, monospace !important;
+          font-family: 'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
+        .statistics-page code,
+        .statistics-page pre,
+        .statistics-page .font-mono,
+        .statistics-page .mono-text {
+          font-family: Consolas, 'Courier New', Courier, monospace !important;
+        }
+
         .statistics-page .card,
         .statistics-page .kpi-card,
+        .statistics-page .stats-page-header,
+        .statistics-page .stats-filter-bar-container,
         .statistics-page select,
         .statistics-page button,
         .statistics-page input,
-        .statistics-page .stats-filter-bar-container,
-        .statistics-page .stats-page-header,
         .statistics-page .stats-btn {
           border-radius: 0px !important;
           box-shadow: none !important;
@@ -460,22 +467,149 @@ function StatisticsPage({ defaultDistrict = 'all', defaultCrimeType = 'all', def
         .statistics-page .stats-page-header {
           background-color: #ffffff !important;
           border: 1px solid #cbd5e1 !important;
+          padding: 16px !important;
+        }
+        .statistics-page .card-header {
+          border-bottom: 1px solid #cbd5e1 !important;
+          padding-bottom: 8px !important;
+          margin-bottom: 12px !important;
+          background: transparent !important;
+        }
+        .statistics-page .card-title,
+        .statistics-page h3.card-title,
+        .statistics-page h4.card-title {
+          color: #1e293b !important;
+          text-transform: uppercase !important;
+          font-size: 13px !important;
+          font-weight: 700 !important;
+          letter-spacing: 0.05em !important;
+          margin: 0 !important;
+          display: flex !important;
+          align-items: center !important;
+          gap: 6px !important;
+        }
+        .statistics-page .section-eyebrow {
+          color: #64748b !important;
+          font-size: 9px !important;
+          text-transform: uppercase !important;
+          letter-spacing: 1.5px !important;
+          margin-bottom: 4px !important;
+          font-weight: bold !important;
+        }
+        .statistics-page .form-label {
+          font-size: 10px !important;
+          text-transform: uppercase !important;
+          color: #64748b !important;
+          font-weight: 600 !important;
         }
         .statistics-page .stats-filter-bar-container {
+          background-color: #ffffff !important;
           border-top: 1px solid #cbd5e1 !important;
           border-bottom: 1px solid #cbd5e1 !important;
         }
         .statistics-page select,
         .statistics-page input,
-        .statistics-page .stats-btn,
-        .statistics-page button:not(.header-menu-btn):not(.mobile-filter-header button) {
+        .statistics-page .form-select,
+        .statistics-page .form-input {
           border: 1px solid #cbd5e1 !important;
           background-color: #ffffff !important;
           color: #1e293b !important;
+          padding: 6px 10px !important;
+          font-size: 12px !important;
+          outline: none !important;
+          height: 32px !important;
         }
-        .statistics-page .card-header {
-          border-bottom: 1px solid #cbd5e1 !important;
+        .statistics-page select:focus,
+        .statistics-page input:focus {
+          border-color: #2563eb !important;
+        }
+        .statistics-page .stats-btn,
+        .statistics-page button:not(.header-menu-btn):not(.mobile-filter-header button) {
+          border: 1px solid #2563eb !important;
+          background-color: #2563eb !important;
+          color: #ffffff !important;
+          padding: 6px 16px !important;
+          font-size: 12px !important;
+          text-transform: uppercase !important;
+          font-weight: bold !important;
+          cursor: pointer !important;
+          height: 32px !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          gap: 6px !important;
+        }
+        .statistics-page .stats-btn:hover:not(:disabled),
+        .statistics-page button:not(.header-menu-btn):not(.mobile-filter-header button):hover:not(:disabled) {
+          background-color: #1d4ed8 !important;
+          border-color: #1d4ed8 !important;
+        }
+        .statistics-page .stats-btn-secondary,
+        .statistics-page button.stats-btn-secondary {
+          background-color: transparent !important;
+          color: #2563eb !important;
+          border: 1px solid #2563eb !important;
+        }
+        .statistics-page .stats-btn-secondary:hover {
+          background-color: rgba(37, 99, 235, 0.05) !important;
+        }
+        .statistics-page .tabs-header {
+          display: flex !important;
+          border-bottom: 2px solid #cbd5e1 !important;
+          margin-bottom: 16px !important;
+          gap: 16px !important;
+        }
+        .statistics-page .tab-button {
           background: transparent !important;
+          border: none !important;
+          color: #64748b !important;
+          padding: 8px 16px !important;
+          font-size: 13px !important;
+          font-weight: bold !important;
+          text-transform: uppercase !important;
+          cursor: pointer !important;
+          position: relative !important;
+        }
+        .statistics-page .tab-button.active {
+          color: #2563eb !important;
+        }
+        .statistics-page .tab-button.active::after {
+          content: '' !important;
+          position: absolute !important;
+          bottom: -2px !important;
+          left: 0 !important;
+          right: 0 !important;
+          height: 2px !important;
+          background-color: #2563eb !important;
+        }
+        .statistics-page table,
+        .statistics-page .data-table {
+          width: 100% !important;
+          border-collapse: collapse !important;
+        }
+        .statistics-page th,
+        .statistics-page .data-table th {
+          text-transform: uppercase !important;
+          font-size: 11px !important;
+          color: #64748b !important;
+          border-bottom: 1px solid #cbd5e1 !important;
+          padding: 8px !important;
+          text-align: left !important;
+          background: transparent !important;
+          font-weight: 600 !important;
+          letter-spacing: 0.5px !important;
+        }
+        .statistics-page td,
+        .statistics-page .data-table td {
+          padding: 8px !important;
+          border-bottom: 1px solid #f1f5f9 !important;
+          font-size: 12px !important;
+          color: #1e293b !important;
+          background: transparent !important;
+        }
+        .statistics-page tbody tr:hover td,
+        .statistics-page .data-table tbody tr:hover td {
+          background-color: rgba(0, 0, 0, 0.02) !important;
         }
         
         /* Dark mode overrides */
@@ -493,14 +627,32 @@ function StatisticsPage({ defaultDistrict = 'all', defaultCrimeType = 'all', def
           background-color: #0B0E11 !important;
           border: 1px solid rgba(173, 193, 214, 0.15) !important;
         }
+        .theme-dark .statistics-page .card-header,
+        [data-theme="dark"] .statistics-page .card-header {
+          border-bottom: 1px solid rgba(173, 193, 214, 0.15) !important;
+        }
+        .theme-dark .statistics-page .card-title,
+        .theme-dark .statistics-page h3.card-title,
+        .theme-dark .statistics-page h4.card-title,
+        [data-theme="dark"] .statistics-page .card-title,
+        [data-theme="dark"] .statistics-page h3.card-title,
+        [data-theme="dark"] .statistics-page h4.card-title {
+          color: #edf3fb !important;
+        }
+        .theme-dark .statistics-page .section-eyebrow,
+        .theme-dark .statistics-page .form-label,
+        [data-theme="dark"] .statistics-page .section-eyebrow,
+        [data-theme="dark"] .statistics-page .form-label {
+          color: #8fa2b8 !important;
+        }
         .theme-dark .statistics-page select,
         .theme-dark .statistics-page input,
-        .theme-dark .statistics-page .stats-btn,
-        .theme-dark .statistics-page button:not(.header-menu-btn):not(.mobile-filter-header button),
+        .theme-dark .statistics-page .form-select,
+        .theme-dark .statistics-page .form-input,
         [data-theme="dark"] .statistics-page select,
         [data-theme="dark"] .statistics-page input,
-        [data-theme="dark"] .statistics-page .stats-btn,
-        [data-theme="dark"] .statistics-page button:not(.header-menu-btn):not(.mobile-filter-header button) {
+        [data-theme="dark"] .statistics-page .form-select,
+        [data-theme="dark"] .statistics-page .form-input {
           background-color: #0B0E11 !important;
           border: 1px solid rgba(173, 193, 214, 0.15) !important;
           color: #edf3fb !important;
@@ -511,9 +663,33 @@ function StatisticsPage({ defaultDistrict = 'all', defaultCrimeType = 'all', def
           border-bottom: 1px solid rgba(173, 193, 214, 0.15) !important;
           background-color: #0B0E11 !important;
         }
-        .theme-dark .statistics-page .card-header,
-        [data-theme="dark"] .statistics-page .card-header {
-          border-bottom: 1px solid rgba(173, 193, 214, 0.15) !important;
+        .theme-dark .statistics-page th,
+        .theme-dark .statistics-page .data-table th,
+        [data-theme="dark"] .statistics-page th,
+        [data-theme="dark"] .statistics-page .data-table th {
+          color: #8fa2b8 !important;
+          border-bottom: 1px solid rgba(173, 193, 214, 0.25) !important;
+        }
+        .theme-dark .statistics-page td,
+        .theme-dark .statistics-page .data-table td,
+        [data-theme="dark"] .statistics-page td,
+        [data-theme="dark"] .statistics-page .data-table td {
+          border-bottom: 1px solid rgba(173, 193, 214, 0.1) !important;
+          color: #edf3fb !important;
+        }
+        .theme-dark .statistics-page tbody tr:hover td,
+        .theme-dark .statistics-page .data-table tbody tr:hover td,
+        [data-theme="dark"] .statistics-page tbody tr:hover td,
+        [data-theme="dark"] .statistics-page .data-table tbody tr:hover td {
+          background-color: rgba(255, 255, 255, 0.02) !important;
+        }
+        .theme-dark .statistics-page .tab-button,
+        [data-theme="dark"] .statistics-page .tab-button {
+          color: #8fa2b8 !important;
+        }
+        .theme-dark .statistics-page .tab-button.active,
+        [data-theme="dark"] .statistics-page .tab-button.active {
+          color: #2563eb !important;
         }
 
         @keyframes spin {
