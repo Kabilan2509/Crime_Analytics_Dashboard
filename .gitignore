@@ -34,3 +34,6 @@ Thumbs.db
 # Catalyst local artifacts
 catalyst-debug.log
 .catalystrc
+
+# Documentation
+documentation/

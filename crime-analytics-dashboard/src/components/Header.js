@@ -28,6 +28,7 @@ const PAGE_TITLES = {
   '/reports':   { title: 'Briefing & Report Generator', subtitle: 'Intelligence summaries and briefing exports' },
   '/settings':  { title: 'Command Center Configuration', subtitle: 'Thresholds, refresh frequencies, and scaling settings' },
   '/predictions':{ title: 'Predictions', subtitle: 'Predictive intelligence modeling and regional risk forecasts' },
+  '/digitize':  { title: 'Smart FIR Digitization Deck', subtitle: 'Physical & handwritten complaint intake with Document AI' },
 };
 
 const NAVIGATION_GROUPS = [
@@ -44,8 +45,9 @@ const NAVIGATION_GROUPS = [
   },
   {
     id: 'investigations', label: 'Investigations', icon: <Shield size={16} strokeWidth={1.5} />,
-    paths: ['/cases', '/case-overview', '/evidence', '/evidence-workspace', '/suspect-timeline'],
+    paths: ['/cases', '/case-overview', '/evidence', '/evidence-workspace', '/suspect-timeline', '/digitize'],
     items: [
+      { path: '/digitize', label: 'Smart FIR Digitization', detail: 'Ingest physical & handwritten complaints via AI' },
       { path: '/cases', label: 'Case Registry', detail: 'Find and review FIR and case records' },
       { path: '/evidence', label: 'Evidence Workspace', detail: 'Review linked evidence and case material' },
       { path: '/suspect-timeline', label: 'Suspect Timeline', detail: 'Trace linked events and entities' },

@@ -502,6 +502,36 @@ app.post('/api/copilot/chat', async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
+// ROUTES: Document AI Ingestion Engine (Physical / Handwritten FIR Intake)
+// ═══════════════════════════════════════════════════════════════════════════
+const documentIngestion = require('./documentIngestionService');
+
+app.post('/api/ingest/parse-document', async (req, res) => {
+  try {
+    const catalystApp = catalyst.initialize(req);
+    const { text, fileName, imageBase64 } = req.body || {};
+    
+    // Pass imageBase64 to Zia OCR and text analysis
+    const parsedResult = await documentIngestion.parseComplaintText(catalystApp, text || '', { fileName, imageBase64 });
+    return res.status(200).json(parsedResult);
+  } catch (err) {
+    console.error('[Ingest Parse Route] Error:', err);
+    return res.status(500).json({ error: errorMessage(err) });
+  }
+});
+
+app.post('/api/ingest/commit-fir', async (req, res) => {
+  try {
+    const catalystApp = catalyst.initialize(req);
+    const result = await documentIngestion.commitIngestedFIR(catalystApp, req.body || {});
+    return res.status(200).json(result);
+  } catch (err) {
+    console.error('[Ingest Commit Route] Error:', err);
+    return res.status(500).json({ error: errorMessage(err) });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
 // ROUTE: Catalyst Cron Webhook Trigger - Threat & Investigation Audit
 // ═══════════════════════════════════════════════════════════════════════════
 let localCronAlerts = null;

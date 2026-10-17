@@ -31,6 +31,7 @@ const EvidenceCorrelation = lazy(() => import('./pages/EvidenceCorrelation'));
 const CaseOverview = lazy(() => import('./pages/CaseOverview'));
 const SuspectTimeline = lazy(() => import('./pages/SuspectTimeline'));
 const UserManagement = lazy(() => import('./pages/UserManagement'));
+const DocumentDigitization = lazy(() => import('./pages/DocumentDigitization'));
 
 /* Loading fallback for lazy pages */
 function PageLoader({ compact = false }) {
@@ -164,6 +165,7 @@ function App() {
                     <Route path="/case-overview/:caseId" element={<CaseOverview />} />
                     <Route path="/suspect-timeline" element={<SuspectTimeline />} />
                     <Route path="/suspect-timeline/:caseId" element={<SuspectTimeline />} />
+                    <Route path="/digitize" element={<DocumentDigitization />} />
                     <Route path="/network" element={<NetworkGraph />} />
 
                     {/* Analytics Pages */}
