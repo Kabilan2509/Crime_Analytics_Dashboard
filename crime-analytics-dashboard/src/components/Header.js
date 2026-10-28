@@ -437,22 +437,28 @@ function Header({ theme, onToggleTheme, onToggleSidebar, sidebarCollapsed, sideb
           display: flex;
           justify-content: space-between;
           align-items: center;
-          gap: 16px;
-          padding: 0 24px;
+          gap: 12px;
+          padding: 0 20px;
           height: 48px;
+          min-height: 48px;
           border-bottom: 1px solid #e2e8f0;
+          white-space: nowrap;
+          overflow: visible !important;
+          position: relative;
         }
 
         .portal-menu-links {
           display: flex;
           flex: 1 1 auto;
           min-width: 0;
-          gap: 18px;
+          gap: 12px;
           list-style: none;
           margin: 0;
           padding: 0;
           height: 100%;
           align-items: center;
+          flex-wrap: nowrap;
+          white-space: nowrap;
         }
 
         .portal-menu-item {
@@ -460,6 +466,8 @@ function Header({ theme, onToggleTheme, onToggleSidebar, sidebarCollapsed, sideb
           display: flex;
           align-items: center;
           position: relative;
+          flex-shrink: 0;
+          white-space: nowrap;
         }
 
         /* Replaced by the grouped workflow menu below. Keeping the old links
@@ -477,16 +485,19 @@ function Header({ theme, onToggleTheme, onToggleSidebar, sidebarCollapsed, sideb
           font-size: 13px;
           display: flex;
           align-items: center;
-          gap: 6px;
+          gap: 5px;
           padding: 0 4px;
           height: 100%;
           border-bottom: 3px solid transparent;
           transition: all 0.15s ease;
+          white-space: nowrap;
+          flex-shrink: 0;
         }
 
         .portal-nav-link svg {
           color: #64748b;
           transition: color 0.15s ease;
+          flex-shrink: 0;
         }
 
         .portal-nav-link:hover {
@@ -517,13 +528,15 @@ function Header({ theme, onToggleTheme, onToggleSidebar, sidebarCollapsed, sideb
           border-bottom: 3px solid transparent;
           cursor: pointer;
           font-family: inherit;
+          white-space: nowrap;
+          flex-shrink: 0;
         }
 
         .portal-investigation-menu {
           position: absolute;
           top: calc(100% - 1px);
           left: 0;
-          z-index: 1102;
+          z-index: 1250 !important;
           width: 290px;
           margin: 0;
           padding: 6px;
@@ -566,8 +579,8 @@ function Header({ theme, onToggleTheme, onToggleSidebar, sidebarCollapsed, sideb
           display: inline-flex;
           align-items: center;
           gap: 6px;
-          height: 32px;
-          padding: 0 14px 0 10px;
+          height: 30px;
+          padding: 0 12px 0 8px;
           border: 1px solid rgba(92, 46, 145, 0.15);
           border-radius: 20px;
           background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
@@ -579,6 +592,8 @@ function Header({ theme, onToggleTheme, onToggleSidebar, sidebarCollapsed, sideb
           letter-spacing: 0.3px;
           box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05), inset 0 1px 0 rgba(255,255,255,0.8);
           transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+          white-space: nowrap;
+          flex-shrink: 0;
         }
 
         .portal-back-button:hover,
@@ -601,10 +616,12 @@ function Header({ theme, onToggleTheme, onToggleSidebar, sidebarCollapsed, sideb
           display: flex;
           flex-direction: column;
           justify-content: center;
-          min-width: 112px;
+          min-width: auto;
           padding-right: 8px;
           border-right: 1px solid #e2e8f0;
           line-height: 1.15;
+          white-space: nowrap;
+          flex-shrink: 0;
         }
 
         .portal-workflow-context span {
@@ -631,7 +648,9 @@ function Header({ theme, onToggleTheme, onToggleSidebar, sidebarCollapsed, sideb
           display: flex;
           flex: 0 0 auto;
           align-items: center;
-          gap: 12px;
+          gap: 10px;
+          flex-shrink: 0;
+          white-space: nowrap;
         }
 
         /* Command banner inside horizontal menu */

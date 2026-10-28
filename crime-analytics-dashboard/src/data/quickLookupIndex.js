@@ -56,6 +56,19 @@ export const QUICK_LOOKUP_INDEX = [
     description: "AI-predicted crime risk by district and time period."
   },
   {
+    title: 'Smart FIR Digitization',
+    path: '/digitize',
+    section: 'Investigation',
+    keywords: [
+      "fir", "digitize", "digitization", "register fir", "new fir", "register case",
+      "intake", "fir intake", "document scan", "ocr", "zia ocr", "complaint",
+      "fir entry", "manual entry", "cctns entry", "fir registration",
+      "crime registration", "new complaint", "physical complaint", "handwritten",
+      "document digitization", "smart fir", "ingest", "case registration"
+    ],
+    description: "Register a new FIR manually or scan a physical complaint document via Zia OCR into the CCTNS DataStore."
+  },
+  {
     title: 'Case Overview',
     path: '/cases',
     section: 'Investigation',

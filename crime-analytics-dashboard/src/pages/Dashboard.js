@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useSecurity } from '../context/SecurityContext';
 import { useDateFilter } from '../context/DateFilterContext';
 import DashboardCharts from '../features/dashboard/DashboardCharts';
@@ -358,6 +359,167 @@ function Dashboard({
           <span>KSP SECURE TRANSIT COMMAND SYSTEM ACTIVE</span>
         </div>
         <span className="badge badge-ai" style={{ fontSize: '9px', borderRadius: '0px' }}>AI DISPATCH ENABLED</span>
+      </div>
+
+      {/* ── Quick Action Station Strip ─────────────────────────────────────── */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
+        gap: 12,
+        marginBottom: 24,
+      }}>
+        {/* FIR Intake Terminal */}
+        <Link to="/digitize" style={{ textDecoration: 'none' }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 14,
+            padding: '14px 16px',
+            background: '#ffffff',
+            border: '1px solid #cbd5e1',
+            borderLeft: '4px solid #172a43',
+            borderRadius: 2,
+            cursor: 'pointer',
+            transition: 'box-shadow 0.15s ease',
+          }}
+          onMouseEnter={e => e.currentTarget.style.boxShadow = '0 2px 10px rgba(23,42,67,0.12)'}
+          onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
+          >
+            {/* Icon: a stylised document with a pen — no AI imagery */}
+            <div style={{
+              width: 40, height: 40, flexShrink: 0,
+              background: '#172a43',
+              borderRadius: 3,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              {/* Plain SVG document + pen — police stationery style */}
+              <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+                {/* Document outline */}
+                <rect x="3" y="1" width="13" height="17" rx="1.5" fill="#1e3a5f" stroke="#93c5fd" strokeWidth="1.2"/>
+                {/* Folded corner */}
+                <path d="M13 1 L16 4 L13 4 Z" fill="#93c5fd" opacity="0.5"/>
+                {/* Lines on doc */}
+                <line x1="5.5" y1="7" x2="12.5" y2="7" stroke="#93c5fd" strokeWidth="1" strokeLinecap="round"/>
+                <line x1="5.5" y1="10" x2="12.5" y2="10" stroke="#93c5fd" strokeWidth="1" strokeLinecap="round"/>
+                <line x1="5.5" y1="13" x2="9.5" y2="13" stroke="#93c5fd" strokeWidth="1" strokeLinecap="round"/>
+                {/* Pen tip at bottom-right */}
+                <rect x="13" y="14" width="3.5" height="7" rx="0.8" transform="rotate(-40 13 14)" fill="#f59e0b" stroke="#92400e" strokeWidth="0.7"/>
+                <path d="M15.5 19.5 L14.8 21.5 L16.2 21.5 Z" fill="#1e293b"/>
+              </svg>
+            </div>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#172a43', letterSpacing: '0.01em' }}>FIR Intake Terminal</div>
+              <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>Register new complaint · CCTNS DataStore</div>
+            </div>
+          </div>
+        </Link>
+
+        {/* GIS Crime Map */}
+        <Link to="/map" style={{ textDecoration: 'none' }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 14,
+            padding: '14px 16px',
+            background: '#ffffff',
+            border: '1px solid #cbd5e1',
+            borderLeft: '4px solid #245fa8',
+            borderRadius: 2,
+            cursor: 'pointer',
+            transition: 'box-shadow 0.15s ease',
+          }}
+          onMouseEnter={e => e.currentTarget.style.boxShadow = '0 2px 10px rgba(36,95,168,0.12)'}
+          onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
+          >
+            <div style={{
+              width: 40, height: 40, flexShrink: 0,
+              background: '#245fa8',
+              borderRadius: 3,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+                {/* Map pin */}
+                <path d="M11 2C8.24 2 6 4.24 6 7c0 4.25 5 12 5 12s5-7.75 5-12c0-2.76-2.24-5-5-5z" fill="#bfdbfe" stroke="#93c5fd" strokeWidth="1.2"/>
+                <circle cx="11" cy="7" r="2" fill="#1d4ed8"/>
+                {/* Grid lines */}
+                <line x1="3" y1="18" x2="19" y2="18" stroke="#93c5fd" strokeWidth="0.8" strokeDasharray="1.5 1.5"/>
+                <line x1="3" y1="15" x2="7" y2="15" stroke="#93c5fd" strokeWidth="0.8" strokeDasharray="1.5 1.5"/>
+              </svg>
+            </div>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#172a43' }}>GIS Intelligence Map</div>
+              <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>Hotspots · District heatmap</div>
+            </div>
+          </div>
+        </Link>
+
+        {/* Operational Briefing */}
+        <Link to="/briefing" style={{ textDecoration: 'none' }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 14,
+            padding: '14px 16px',
+            background: '#ffffff',
+            border: '1px solid #cbd5e1',
+            borderLeft: '4px solid #15803d',
+            borderRadius: 2,
+            cursor: 'pointer',
+            transition: 'box-shadow 0.15s ease',
+          }}
+          onMouseEnter={e => e.currentTarget.style.boxShadow = '0 2px 10px rgba(21,128,61,0.12)'}
+          onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
+          >
+            <div style={{
+              width: 40, height: 40, flexShrink: 0,
+              background: '#15803d',
+              borderRadius: 3,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+                {/* Shield */}
+                <path d="M11 2L4 5v5c0 4.42 2.97 8.57 7 9.93C15.03 18.57 18 14.42 18 10V5L11 2z" fill="#166534" stroke="#86efac" strokeWidth="1.2"/>
+                {/* Tick */}
+                <path d="M8 11L10.5 13.5L14.5 9" stroke="#86efac" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#172a43' }}>Operational Briefing</div>
+              <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>Threat assessment · Recommendations</div>
+            </div>
+          </div>
+        </Link>
+
+        {/* Statistics Suite */}
+        <Link to="/statistics" style={{ textDecoration: 'none' }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 14,
+            padding: '14px 16px',
+            background: '#ffffff',
+            border: '1px solid #cbd5e1',
+            borderLeft: '4px solid #7c3aed',
+            borderRadius: 2,
+            cursor: 'pointer',
+            transition: 'box-shadow 0.15s ease',
+          }}
+          onMouseEnter={e => e.currentTarget.style.boxShadow = '0 2px 10px rgba(124,58,237,0.12)'}
+          onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
+          >
+            <div style={{
+              width: 40, height: 40, flexShrink: 0,
+              background: '#7c3aed',
+              borderRadius: 3,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+                {/* Bar chart bars */}
+                <rect x="3" y="13" width="4" height="7" rx="0.5" fill="#ddd6fe"/>
+                <rect x="9" y="8"  width="4" height="12" rx="0.5" fill="#c4b5fd"/>
+                <rect x="15" y="5" width="4" height="15" rx="0.5" fill="#a78bfa"/>
+                {/* Baseline */}
+                <line x1="2" y1="20" x2="20" y2="20" stroke="#c4b5fd" strokeWidth="1"/>
+              </svg>
+            </div>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#172a43' }}>Crime Statistics</div>
+              <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>Patterns · Trends · Rankings</div>
+            </div>
+          </div>
+        </Link>
       </div>
 
       {/* Condensed Operational Overview KPI Strip */}

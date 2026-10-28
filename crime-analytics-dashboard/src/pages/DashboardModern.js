@@ -124,7 +124,8 @@ function DashboardModern({
       colDistrict: "District / station",
       colOffence: "Offence",
       colStatus: "Status",
-      cardCronTitle: "Run Catalyst Cron Audit"
+      cardCronTitle: "Run Catalyst Cron Audit",
+      cardFirTitle: "FIR Intake Terminal"
     },
     kn: {
       kicker: "ರಾಜ್ಯ ಕಾರ್ಯಾಚರಣೆ ಕೇಂದ್ರ",
@@ -167,7 +168,8 @@ function DashboardModern({
       colDistrict: "ಜಿಲ್ಲೆ / ಪೊಲೀಸ್ ಠಾಣೆ",
       colOffence: "ಅಪರಾಧದ ವಿವರ",
       colStatus: "ಸ್ಥಿತಿ",
-      cardCronTitle: "ಕ್ರಾನ್ ಆಡಿಟ್ ರನ್ ಮಾಡಿ"
+      cardCronTitle: "ಕ್ರಾನ್ ಆಡಿಟ್ ರನ್ ಮಾಡಿ",
+      cardFirTitle: "ಎಫ್ಐಆರ್ ದಾಖಲು ಟರ್ಮಿನಲ್"
     }
   };
 
@@ -599,6 +601,26 @@ function DashboardModern({
         <div className="gov-tabs-content">
           {activeConsoleTab === 'ops' && (
             <div className="gov-service-grid">
+              {/* FIR Intake Terminal — police stationery document+pen, no AI imagery */}
+              <div className="gov-service-item" onClick={() => navigate('/digitize')}>
+                <div className="gov-item-icon">
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    {/* Document page */}
+                    <rect x="2.5" y="1" width="11" height="15" rx="1.2" fill="none" stroke="currentColor" strokeWidth="1.4"/>
+                    {/* Folded top-right corner */}
+                    <path d="M10.5 1 L13.5 4 L10.5 4 Z" fill="currentColor" opacity="0.25"/>
+                    {/* Ruled lines on document */}
+                    <line x1="4.5" y1="6.5" x2="11.5" y2="6.5" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
+                    <line x1="4.5" y1="9" x2="11.5" y2="9" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
+                    <line x1="4.5" y1="11.5" x2="8.5" y2="11.5" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
+                    {/* Pen nib overlapping bottom-right */}
+                    <line x1="11" y1="13" x2="17" y2="7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+                    <path d="M17 7 L18.5 5.5 L16 6.5 Z" fill="currentColor"/>
+                    <circle cx="11.5" cy="13.5" r="0.7" fill="currentColor"/>
+                  </svg>
+                </div>
+                <span className="gov-item-label">{t.cardFirTitle}</span>
+              </div>
               <div className="gov-service-item" onClick={() => navigate('/map')}>
                 <div className="gov-item-icon"><Map size={16} strokeWidth={1.5} /></div>
                 <span className="gov-item-label">{t.cardMapTitle}</span>

@@ -9,6 +9,7 @@ const FILLER_WORDS = new Set([
 ]);
 
 const popularSearches = [
+  { title: 'Smart FIR Digitization', path: '/digitize' },
   { title: 'Crime Statistics', path: '/statistics' },
   { title: 'Reports', path: '/reports' },
   { title: 'AI Copilot', path: '/copilot' },
