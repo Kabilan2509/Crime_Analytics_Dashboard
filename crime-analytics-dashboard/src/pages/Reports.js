@@ -149,7 +149,7 @@ function Reports() {
     } else {
       setAccessNotice({
         caseId: c.CaseMasterID,
-        crimeNo: isCommandMode ? c.FIRNo : maskText(c.FIRNo || `FIR-${c.CaseMasterID}`, 6, 4),
+        crimeNo: isCommandMode ? c.CrimeNo : maskText(c.CrimeNo || `FIR-${c.CaseMasterID}`, 6, 4),
         station: c.policeStationName,
         district: c.districtName
       });
@@ -626,7 +626,7 @@ function Reports() {
   const exportCSV = () => {
     const rows = filteredCases.map(c => ({
       'Case ID': c.CaseMasterID,
-      'FIR Number': isCommandMode ? c.FIRNo : maskText(c.FIRNo || `FIR-${c.CaseMasterID}`, 6, 4),
+      'FIR Number': isCommandMode ? c.CrimeNo : maskText(c.CrimeNo || `FIR-${c.CaseMasterID}`, 6, 4),
       'Crime Group': c.majorHeadName,
       'Crime Type': c.minorHeadName,
       'District': c.districtName,
@@ -649,7 +649,7 @@ function Reports() {
       // Tabular case records sheet
       const ws1Data = filteredCases.map(c => ({
         'Case ID': c.CaseMasterID,
-        'FIR Number': isCommandMode ? c.FIRNo : maskText(c.FIRNo || `FIR-${c.CaseMasterID}`, 6, 4),
+        'FIR Number': isCommandMode ? c.CrimeNo : maskText(c.CrimeNo || `FIR-${c.CaseMasterID}`, 6, 4),
         'Crime Group': c.majorHeadName,
         'Crime Type': c.minorHeadName,
         'District': c.districtName,
@@ -680,7 +680,7 @@ function Reports() {
       console.error('XLSX export failed:', err);
       const headers = ['Case ID', 'FIR Number', 'Crime Group', 'Crime Type', 'District', 'Station', 'Officer', 'Date Registered', 'Status', 'Severity'];
       const rows = filteredCases.map(c => [
-        c.CaseMasterID, isCommandMode ? c.FIRNo : maskText(c.FIRNo || `FIR-${c.CaseMasterID}`, 6, 4),
+        c.CaseMasterID, isCommandMode ? c.CrimeNo : maskText(c.CrimeNo || `FIR-${c.CaseMasterID}`, 6, 4),
         c.majorHeadName, c.minorHeadName, c.districtName, c.policeStationName,
         isCommandMode ? c.officerName : maskText(c.officerName || 'Officer', 3, 3),
         String(c.CrimeRegisteredDate).split(' ')[0], c.statusName, c.gravityLabel
@@ -775,7 +775,7 @@ function Reports() {
           head: [['Case ID', 'FIR Number', 'Crime Group', 'Crime Type', 'District', 'Station', 'Registered', 'Status', 'Severity']],
           body: filteredCases.map(c => [
             c.CaseMasterID,
-            isCommandMode ? c.FIRNo : maskText(c.FIRNo || `FIR-${c.CaseMasterID}`, 6, 4),
+            isCommandMode ? c.CrimeNo : maskText(c.CrimeNo || `FIR-${c.CaseMasterID}`, 6, 4),
             c.majorHeadName, c.minorHeadName, c.districtName, c.policeStationName,
             String(c.CrimeRegisteredDate).split(' ')[0], c.statusName, c.gravityLabel
           ].map(sanitizePdfText)),
@@ -843,7 +843,7 @@ function Reports() {
           metadata: [{ label: 'Applied filters', value: getAppliedFiltersText() }, { label: 'Matching cases', value: filteredCases.length }],
           sections: [{ heading: 'Case Records', table: {
             headers: ['Case ID', 'FIR Number', 'Crime Group', 'District', 'Station', 'Registered', 'Status', 'Severity'],
-            rows: filteredCases.map(c => [c.CaseMasterID, isCommandMode ? c.FIRNo : maskText(c.FIRNo || `FIR-${c.CaseMasterID}`, 6, 4), c.majorHeadName, c.districtName, c.policeStationName, String(c.CrimeRegisteredDate).split(' ')[0], c.statusName, c.gravityLabel]),
+            rows: filteredCases.map(c => [c.CaseMasterID, isCommandMode ? c.CrimeNo : maskText(c.CrimeNo || `FIR-${c.CaseMasterID}`, 6, 4), c.majorHeadName, c.districtName, c.policeStationName, String(c.CrimeRegisteredDate).split(' ')[0], c.statusName, c.gravityLabel]),
           } }],
         });
     } finally {
@@ -940,7 +940,7 @@ function Reports() {
               {sortedCases.map(c => (
                 <tr key={c.CaseMasterID} style={{ borderBottom: '1px solid #eee' }}>
                   <td style={{ padding: '6px' }}>{c.CaseMasterID}</td>
-                  <td style={{ padding: '6px' }}><strong>{isCommandMode ? c.FIRNo : maskText(c.FIRNo || `FIR-${c.CaseMasterID}`, 6, 4)}</strong></td>
+                  <td style={{ padding: '6px' }}><strong>{isCommandMode ? c.CrimeNo : maskText(c.CrimeNo || `FIR-${c.CaseMasterID}`, 6, 4)}</strong></td>
                   <td style={{ padding: '6px' }}>{c.minorHeadName}</td>
                   <td style={{ padding: '6px' }}>{c.policeStationName} ({c.districtName})</td>
                   <td style={{ padding: '6px', color: c.isHeinous ? '#dc2626' : '#555', fontWeight: c.isHeinous ? 'bold' : 'normal' }}>
@@ -975,7 +975,7 @@ function Reports() {
             <tbody>
               {filteredCases.slice(0, 5).map(c => (
                 <tr key={c.CaseMasterID} style={{ borderBottom: '1px solid #eee' }}>
-                  <td style={{ padding: '6px' }}><strong>{isCommandMode ? c.FIRNo : maskText(c.FIRNo || `FIR-${c.CaseMasterID}`, 6, 4)}</strong></td>
+                  <td style={{ padding: '6px' }}><strong>{isCommandMode ? c.CrimeNo : maskText(c.CrimeNo || `FIR-${c.CaseMasterID}`, 6, 4)}</strong></td>
                   <td style={{ padding: '6px' }}>{c.majorHeadName}</td>
                   <td style={{ padding: '6px' }}>{isCommandMode ? c.officerName : maskText(c.officerName || 'Officer', 3, 3)}</td>
                   <td style={{ padding: '6px' }}>{String(c.CrimeRegisteredDate).split(' ')[0]}</td>
@@ -3041,7 +3041,7 @@ function Reports() {
                             <ExternalLink size={16} strokeWidth={1.5} style={{ opacity: 0.8 }} />
                           </span>
                         </td>
-                        <td><strong>{isCommandMode ? c.FIRNo : maskText(c.FIRNo || `FIR-${c.CaseMasterID}`, 6, 4)}</strong></td>
+                        <td><strong>{isCommandMode ? c.CrimeNo : maskText(c.CrimeNo || `FIR-${c.CaseMasterID}`, 6, 4)}</strong></td>
                         <td>{c.majorHeadName}</td>
                         <td>{c.minorHeadName}</td>
                         <td>{c.districtName}</td>

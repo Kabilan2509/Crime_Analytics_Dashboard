@@ -49,7 +49,6 @@ const NAVIGATION_GROUPS = [
     items: [
       { path: '/digitize', label: 'Smart FIR Digitization', detail: 'Ingest physical & handwritten complaints via AI' },
       { path: '/cases', label: 'Case Registry', detail: 'Find and review FIR and case records' },
-      { path: '/evidence', label: 'Evidence Workspace', detail: 'Review linked evidence and case material' },
       { path: '/suspect-timeline', label: 'Suspect Timeline', detail: 'Trace linked events and entities' },
     ],
   },
@@ -974,7 +973,6 @@ function Header({ theme, onToggleTheme, onToggleSidebar, sidebarCollapsed, sideb
               <ul className="portal-investigation-menu" role="menu" aria-label="Investigation Hub">
                 <li role="none"><Link role="menuitem" className="portal-investigation-option" to="/case-overview" onClick={() => setOpenNavigationGroup('')}>Case Registry Overview</Link></li>
                 <li role="none"><Link role="menuitem" className="portal-investigation-option" to="/suspect-timeline" onClick={() => setOpenNavigationGroup('')}>Suspect Timeline Tracker</Link></li>
-                <li role="none"><Link role="menuitem" className="portal-investigation-option" to="/evidence-workspace" onClick={() => setOpenNavigationGroup('')}>Evidence Workshop</Link></li>
               </ul>
             )}
           </li>

@@ -9,8 +9,8 @@ import {
 import 'leaflet/dist/leaflet.css';
 import ThemeAwareTileLayer from '../components/ui/ThemeAwareTileLayer';
 import {
-  Shield, Info, ClipboardList, MapPin, TrendingUp,
-  Lock, BarChart3, Bell, Zap, X
+  Shield, Info, MapPin, TrendingUp,
+  BarChart3, Bell, X
 } from 'lucide-react';
 
 import {
@@ -20,7 +20,6 @@ import {
   getMonthlyCounts,
   districtCenters
 } from '../data/schemaSelectors';
-import { useSecurity } from '../context/SecurityContext';
 import { playAlertSound } from '../utils/audioAlert';
 
 import {
@@ -89,145 +88,8 @@ function Predictions({
   dateRange = 'all',
   searchQuery = '',
 }) {
-  const { session } = useSecurity();
-  const isAnalystMode = session.accessLevel !== 'command';
-
-  const healthStats = useMemo(() => {
-    let result = [...caseViews];
-    
-    // Apply district filter
-    if (selectedDistrict !== 'all') {
-      result = result.filter(c => String(c.districtID) === String(selectedDistrict));
-    }
-    
-    // Apply crime head/category filter
-    if (selectedCrimeType !== 'all') {
-      result = result.filter(c => String(c.CrimeMajorHeadID) === String(selectedCrimeType));
-    }
-    
-    // Apply dateRange filter
-    if (dateRange && dateRange !== 'all') {
-      const now = new Date();
-      const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
-      let start = new Date(end);
-
-      if (dateRange === '24h') {
-        start.setDate(start.getDate() - 1);
-      } else if (dateRange === '7d') {
-        start.setDate(start.getDate() - 7);
-      } else if (dateRange === '30d') {
-        start.setMonth(start.getMonth() - 1);
-      } else if (dateRange === '365d') {
-        start.setFullYear(start.getFullYear() - 1);
-      }
-      start.setHours(0, 0, 0, 0);
-
-      result = result.filter(c => {
-        if (!c.registeredDateObj) return false;
-        return c.registeredDateObj >= start && c.registeredDateObj <= end;
-      });
-    }
-
-    const isSingleDistrict = selectedDistrict && selectedDistrict !== 'all';
-    const totalCases = result.length;
-    const heinousCasesCount = result.filter(c => c.isHeinous).length;
-    const highRiskDistrictsCount = new Set(result.filter(c => c.isHeinous).map(c => c.districtID)).size;
-    const crimeHotspotsCount = new Set(result.filter(c => c.isHeinous).map(c => c.PoliceStationID)).size;
-    const avgInvestigationTime = Math.max(30, 45 + (totalCases % 15));
-    
-    // Long Pending Cases
-    const sixMonthsAgo = new Date();
-    sixMonthsAgo.setDate(sixMonthsAgo.getDate() - 180);
-    const longPendingCasesCount = result.filter(c => c.statusName === 'Under Investigation' && c.registeredDateObj < sixMonthsAgo).length;
-
-    const isHighRisk = heinousCasesCount >= 2;
-    const isModRisk = heinousCasesCount === 1;
-
-    const riskCard = isSingleDistrict
-      ? {
-          label: 'High-Risk Status',
-          value: isHighRisk ? 'High Risk' : isModRisk ? 'Moderate Risk' : 'Low Risk',
-          caption: heinousCasesCount > 0
-            ? `${heinousCasesCount} heinous offence${heinousCasesCount > 1 ? 's' : ''}`
-            : 'Zero heinous offences',
-          status: isHighRisk ? 'danger' : isModRisk ? 'warning' : 'success',
-          tone: isHighRisk ? 'red' : isModRisk ? 'amber' : 'green',
-        }
-      : {
-          label: 'High-Risk Districts',
-          value: highRiskDistrictsCount.toLocaleString(),
-          caption: 'Hotspot Jurisdictions',
-          status: highRiskDistrictsCount >= 5 ? 'danger' : highRiskDistrictsCount >= 2 ? 'warning' : 'success',
-          tone: highRiskDistrictsCount >= 5 ? 'red' : highRiskDistrictsCount >= 2 ? 'amber' : 'green',
-        };
-
-    return [
-      riskCard,
-      { label: 'Crime Hotspots', value: crimeHotspotsCount.toLocaleString(), caption: 'Critical Stations', status: crimeHotspotsCount >= 5 ? 'danger' : crimeHotspotsCount >= 2 ? 'warning' : 'success' },
-      { label: 'Avg Investigation Time', value: `${avgInvestigationTime} Days`, caption: 'Analytical Velocity', status: avgInvestigationTime > 45 ? 'warning' : 'success' },
-      { label: 'Long Pending Cases', value: longPendingCasesCount.toLocaleString(), caption: 'Over 180 Days', status: longPendingCasesCount >= 10 ? 'danger' : longPendingCasesCount >= 3 ? 'warning' : 'success' }
-    ];
-  }, [selectedDistrict, selectedCrimeType, dateRange]);
-
-  const renderHealthKpiStrip = (title, stats) => (
-    <div style={{ marginBottom: '24px' }}>
-      <div className="section-eyebrow" style={{
-        color: 'var(--text-secondary)',
-        fontSize: '11px',
-        textTransform: 'uppercase',
-        letterSpacing: '1.5px',
-        margin: '18px 0 10px 0',
-        paddingLeft: '10px',
-        borderLeft: '3px solid var(--accent-primary)',
-        fontWeight: 'bold'
-      }}>{title}</div>
-      <div className="ops-stat-strip" style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(4, 1fr)',
-        border: '1px solid var(--border-color)',
-        borderRadius: '0px',
-        backgroundColor: 'var(--bg-panel)'
-      }}>
-        {stats.map((stat, idx) => (
-          <div key={idx} className="ops-stat-block" style={{
-            padding: '12px 16px',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            backgroundColor: 'var(--bg-panel)',
-            borderRight: idx < stats.length - 1 ? '1px solid var(--border-color)' : 'none'
-          }}>
-            <div className="ops-stat-label" style={{
-              fontFamily: 'Consolas, monospace',
-              fontSize: '11px',
-              fontWeight: 600,
-              textTransform: 'uppercase',
-              color: 'var(--text-muted)',
-              letterSpacing: '0.5px',
-              marginBottom: '2px'
-            }}>{stat.label}</div>
-            <div className="ops-stat-value" style={{
-              fontFamily: 'Consolas, monospace',
-              fontSize: '24px',
-              fontWeight: 800,
-              color: stat.status === 'success' ? 'var(--accent-success)' : stat.status === 'warning' ? 'var(--accent-warning)' : stat.status === 'danger' ? 'var(--accent-danger)' : 'var(--text-primary)',
-              marginBottom: '2px'
-            }}>{stat.value}</div>
-            <div className="ops-stat-caption" style={{
-              fontFamily: 'Consolas, monospace',
-              fontSize: '9.5px',
-              color: 'var(--text-muted)',
-              fontStyle: 'italic',
-              fontWeight: 'normal'
-            }}>{stat.caption}</div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-
   // State Management
-  const [timeHorizon, setTimeHorizon] = useState('7d'); // '24h' | '7d' | '30d'
+  const [timeHorizon, setTimeHorizon] = useState('7d'); // '7d' | '30d'
   const [selectedMapDistrict, setSelectedMapDistrict] = useState(null);
   const [sortConfig, setSortConfig] = useState({ key: 'predicted', direction: 'desc' });
   const [lastRunTime] = useState(() => {
@@ -236,15 +98,6 @@ function Predictions({
     d.setMinutes(d.getMinutes() - 42);
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   });
-
-  // Action / Recommendation Checklist state
-  const [tasks, setTasks] = useState([
-    { id: 1, text: 'Deploy 2 night patrol units to Bengaluru Urban hotspots', districtID: 1, status: 'Planned', time: 'Immediate' },
-    { id: 2, text: 'Audit CCTV feeds around high-risk transit hubs in Mysuru', districtID: 3, status: 'Planned', time: 'Next 24h' },
-    { id: 3, text: 'Launch anti-phishing citizen awareness campaign for Bengaluru Urban', districtID: 1, status: 'Deployed', time: 'Ongoing' },
-    { id: 4, text: 'Coordinate highway mobile patrols along Mangaluru port routes', districtID: 4, status: 'Planned', time: 'Immediate' },
-    { id: 5, text: 'Conduct review meeting for Hubli-Dharwad local beat officers', districtID: 5, status: 'Planned', time: 'Next 48h' }
-  ]);
 
   // Apply filters dynamically in memory
   const filteredCases = useMemo(() => {
@@ -331,7 +184,6 @@ function Predictions({
 
   // Multiplier scaling for time horizons
   const horizonMultiplier = useMemo(() => {
-    if (timeHorizon === '24h') return 0.08;
     if (timeHorizon === '7d') return 0.45;
     return 1.8;
   }, [timeHorizon]);
@@ -453,7 +305,6 @@ function Predictions({
   // Section 6: Dynamic Risk Factors based on active selection & categories
   const dynamicRiskFactors = useMemo(() => {
     const list = [];
-    const activeDistrictName = activeMapDetails ? activeMapDetails.name : 'State-level';
 
     // 1. Spikes / clusters factor
     if (anomalies.length > 0) {
@@ -482,11 +333,6 @@ function Predictions({
           desc: 'Major cargo shipping state highways and local border zones show elevated property crime and cargo theft risks.'
         });
       }
-    } else {
-      list.push({
-        title: 'Karnataka Monsoon / Seasonality shift',
-        desc: 'Elevated rural property and minor land disputes expected to peak dynamically over upcoming weeks due to seasonal shifts.'
-      });
     }
 
     // 3. Category specific factor
@@ -504,48 +350,6 @@ function Predictions({
 
     return list.slice(0, 3);
   }, [anomalies, activeMapDetails, selectedCrimeType]);
-
-  // Handle Action Checklist status toggle
-  const handleToggleTask = (id) => {
-    if (isAnalystMode) {
-      playAlertSound(200, 0.22); // low error buzzer
-      alert('Access Denied: Field Officers and Redacted Analysts do not have permissions to deploy state resources.');
-      return;
-    }
-
-    setTasks(prev => prev.map(t => {
-      if (t.id === id) {
-        const nextStatus = t.status === 'Planned' ? 'Deployed' : 'Planned';
-        if (nextStatus === 'Deployed') {
-          playAlertSound(600, 0.08); // high confirm note
-        } else {
-          playAlertSound(400, 0.08); // lower toggle note
-        }
-        return { ...t, status: nextStatus };
-      }
-      return t;
-    }));
-  };
-
-  // Add a task from the map panel
-  const handleDispatchFromMap = (districtName, districtID) => {
-    if (isAnalystMode) {
-      playAlertSound(200, 0.22);
-      alert('Access Denied: Field Officers and Redacted Analysts do not have permissions to deploy state resources.');
-      return;
-    }
-
-    playAlertSound(700, 0.08);
-    const newTask = {
-      id: Date.now(),
-      text: `Immediate mobile squad dispatch to ${districtName} for ${timeHorizon} risk mitigations`,
-      districtID,
-      status: 'Deployed',
-      time: 'Immediate'
-    };
-    setTasks(prev => [newTask, ...prev]);
-    alert(`Tactical Deployment Dispatched:\nMobile squads directed to hotspots in ${districtName}. Added to operational checklists.`);
-  };
 
   // Center coordinates for leaflet
   const defaultCenter = [14.65, 75.9];
@@ -565,44 +369,14 @@ function Predictions({
     <div className="page-content predictive-brief-page text-inverse">
       <section className="prediction-hero" aria-labelledby="prediction-hero-title">
         <div>
-          <span className="prediction-hero-eyebrow">KSP intelligence command · predictive operations</span>
+          <span className="prediction-hero-eyebrow">KSP intelligence · crime risk forecast</span>
           <h1 id="prediction-hero-title">Crime Risk Forecast Centre</h1>
-          <p>Prioritised district risk signals, projected case volume, and deployment guidance for the next operational window.</p>
+          <p>Prioritised district risk signals and projected case volume for the selected forecast window.</p>
         </div>
         <div className="prediction-hero-meta">
-          <span><i className="prediction-live-dot" /> Model active</span>
           <span>Last run {lastRunTime} IST</span>
-          <strong>{predictionTableData[0]?.name || 'Statewide'} priority</strong>
         </div>
       </section>
-
-      {/* 0. Access Ribbon / Session Header */}
-      {isAnalystMode ? (
-        <div style={{
-          display: 'flex', gap: '10px', alignItems: 'center',
-          background: 'rgba(255, 77, 77, 0.08)', border: '1px solid var(--accent-danger)',
-          padding: '12px 20px', borderRadius: '4px', marginBottom: '20px', fontSize: '13px'
-        }}>
-          <Lock size={16} strokeWidth={1.5} style={{ color: 'var(--accent-danger)' }} />
-          <span><strong>READ-ONLY ANALYST SESSION ACTIVE:</strong> Sensitive predictive indicators and tactical checklist triggers are restricted. Authenticate with Command permissions to execute.</span>
-        </div>
-      ) : (
-        <div style={{
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          padding: '12px 20px', background: 'transparent',
-          border: '1px solid var(--border-color)', borderRadius: '4px', marginBottom: '20px',
-          fontSize: '13px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent-success)', display: 'inline-block' }} />
-            <span>KSP AI FORECAST ENGINE ONLINE: <strong>COMMAND LEVEL ACCESS</strong></span>
-          </div>
-          <span className="badge badge-ai" style={{ fontSize: '9px', borderRadius: '0px', padding: '2px 6px', background: 'rgba(56, 151, 216, 0.12)', color: 'var(--accent-primary)', fontWeight: 700 }}>VERIFIED REALTIME</span>
-        </div>
-      )}
-
-      {/* Relocated Operational Health metrics */}
-      {renderHealthKpiStrip('Operational Health Indicators', healthStats)}
 
       {/* 1. Forecast Overview Header (KPI Row) */}
       <div className="section-eyebrow">PREDICTIVE ANALYTICS BRIEFING OVERVIEW</div>
@@ -631,7 +405,7 @@ function Predictions({
             </span>
           </div>
           <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px' }}>
-            Expected crime volume in the next {timeHorizon === '24h' ? '24 hours' : timeHorizon === '7d' ? '7 days' : '30 days'}.
+            Expected crime volume in the next {timeHorizon === '7d' ? '7 days' : '30 days'}.
           </div>
         </div>
 
@@ -678,34 +452,10 @@ function Predictions({
             </strong>
           </div>
           <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '14px' }}>
-            Risk Score: <strong>{predictionTableData[0]?.score || 'N/A'}</strong>. High density hotspot requires priority patrol beats.
+            Risk Score: <strong>{predictionTableData[0]?.score || 'N/A'}</strong>. Highest modeled score in the current forecast.
           </div>
         </div>
 
-        {/* KPI 4: System Model Accuracy */}
-        <div className="kpi-card" style={{
-          background: 'var(--bg-panel)',
-          border: '1px solid var(--border-color)',
-          borderRadius: '12px',
-          padding: '16px',
-          boxShadow: 'var(--shadow-card)'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', color: 'var(--text-secondary)' }}>
-            <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Model Validation Accuracy</span>
-            <Shield size={18} strokeWidth={1.5} style={{ color: 'var(--accent-success)' }} />
-          </div>
-          <div style={{ display: 'flex', alignItems: 'baseline', marginTop: '10px' }}>
-            <strong style={{ fontSize: '26px', color: 'var(--text-primary)' }}>
-              {(94.2 + (filteredCases.length % 7) * 0.1).toFixed(1)}%
-            </strong>
-            <span className="badge badge-success" style={{ marginLeft: '10px', fontSize: '10px' }}>
-              Stable
-            </span>
-          </div>
-          <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px' }}>
-            Validation parameters derived from historical backtesting vs actual case matching.
-          </div>
-        </div>
       </div>
 
       {/* 2. Spatial Risk Map & Details Drawer */}
@@ -729,7 +479,7 @@ function Predictions({
             
             {/* Map Horizon Toggle Buttons */}
             <div style={{ display: 'flex', gap: '4px', background: 'var(--bg-panel-alt)', padding: '2px', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
-              {['24h', '7d', '30d'].map((h) => (
+              {['7d', '30d'].map((h) => (
                 <button
                   key={h}
                   type="button"
@@ -856,17 +606,6 @@ function Predictions({
                   })}
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => handleDispatchFromMap(activeMapDetails.name, activeMapDetails.id)}
-                  style={{
-                    width: '100%', background: 'var(--accent-primary)', color: '#fff', border: 'none',
-                    padding: '8px 12px', borderRadius: '4px', fontSize: '12px', fontWeight: 600,
-                    cursor: 'pointer', transition: 'opacity 0.2s', minHeight: '36px'
-                  }}
-                >
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><Zap size={16} strokeWidth={1.5} /> Deploy Resources</span>
-                </button>
               </div>
             )}
           </div>
@@ -1085,8 +824,8 @@ function Predictions({
         </article>
       </div>
 
-      {/* 6. Risk Factors Panel & 7. Scenario Planning Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: '20px', marginBottom: '24px' }}>
+      {/* Risk Factors Panel */}
+      <div style={{ marginBottom: '24px' }}>
         
         {/* Risk Factors & Alerts Panel */}
         <article className="card" style={{
@@ -1117,132 +856,10 @@ function Predictions({
           </div>
         </article>
 
-        {/* Scenario Planning Cards */}
-        <article className="card" style={{
-          background: 'var(--bg-panel)',
-          border: '1px solid var(--border-color)',
-          borderRadius: '12px',
-          padding: '20px',
-          boxShadow: 'var(--shadow-card)'
-        }}>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '14px' }}>
-            <BarChart3 size={18} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
-            <h3 style={{ margin: 0, fontSize: '18px', color: 'var(--text-primary)' }}>Scenario Planning Projections</h3>
-          </div>
-          <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-            Forecast thresholds model potential deviations under best-case, expected, and worst-case tactical scenarios:
-          </p>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
-            {/* Best Case */}
-            <div style={{
-              background: 'rgba(0, 200, 83, 0.04)', border: '1px solid rgba(0, 200, 83, 0.15)',
-              borderRadius: '8px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px'
-            }}>
-              <span className="badge badge-success" style={{ alignSelf: 'flex-start', fontSize: '9px' }}>Best Case</span>
-              <strong style={{ fontSize: '22px', color: 'var(--accent-success)' }}>
-                {Math.round(totalHorizonForecast * 0.82)}
-              </strong>
-              <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Estimated Volume</span>
-              <ul style={{ margin: '6px 0 0 0', paddingLeft: '12px', fontSize: '10px', color: 'var(--text-secondary)', lineHeight: 1.3 }}>
-                <li>Optimal visibility</li>
-                <li>Increased beats</li>
-                <li>Low holiday spill</li>
-              </ul>
-            </div>
-
-            {/* Expected Case */}
-            <div style={{
-              background: 'rgba(56, 151, 216, 0.04)', border: '1px solid rgba(56, 151, 216, 0.15)',
-              borderRadius: '8px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px'
-            }}>
-              <span className="badge badge-info" style={{ alignSelf: 'flex-start', fontSize: '9px' }}>Expected</span>
-              <strong style={{ fontSize: '22px', color: 'var(--accent-primary)' }}>
-                {totalHorizonForecast}
-              </strong>
-              <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Estimated Volume</span>
-              <ul style={{ margin: '6px 0 0 0', paddingLeft: '12px', fontSize: '10px', color: 'var(--text-secondary)', lineHeight: 1.3 }}>
-                <li>Seasonal norms</li>
-                <li>Standard routes</li>
-                <li>Mean crime rates</li>
-              </ul>
-            </div>
-
-            {/* Worst Case */}
-            <div style={{
-              background: 'rgba(255, 77, 77, 0.04)', border: '1px solid rgba(255, 77, 77, 0.15)',
-              borderRadius: '8px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px'
-            }}>
-              <span className="badge badge-danger" style={{ alignSelf: 'flex-start', fontSize: '9px' }}>Worst Case</span>
-              <strong style={{ fontSize: '22px', color: 'var(--accent-danger)' }}>
-                {Math.round(totalHorizonForecast * 1.25)}
-              </strong>
-              <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Estimated Volume</span>
-              <ul style={{ margin: '6px 0 0 0', paddingLeft: '12px', fontSize: '10px', color: 'var(--text-secondary)', lineHeight: 1.3 }}>
-                <li>Monsoon delays</li>
-                <li>Protest clusters</li>
-                <li>Transit blockade</li>
-              </ul>
-            </div>
-          </div>
-        </article>
       </div>
 
-      {/* 8. Recommendations & Actions & 9. Model Widget */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: '20px', marginBottom: '24px' }}>
-        
-        {/* Action Recommendations List */}
-        <article className="card" style={{
-          background: 'var(--bg-panel)',
-          border: '1px solid var(--border-color)',
-          borderRadius: '12px',
-          padding: '20px',
-          boxShadow: 'var(--shadow-card)'
-        }}>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '14px' }}>
-            <ClipboardList size={18} strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />
-            <h3 style={{ margin: 0, fontSize: '18px', color: 'var(--text-primary)' }}>Tactical Action Recommendations</h3>
-          </div>
-          <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-            Verify or trigger mobilization statuses for predictive hotspot zones:
-          </p>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {tasks.map((t) => (
-              <div
-                key={t.id}
-                onClick={() => handleToggleTask(t.id)}
-                style={{
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  padding: '10px 14px', background: 'var(--bg-panel-alt)',
-                  border: '1px solid var(--border-color)', borderRadius: '6px',
-                  cursor: 'pointer', opacity: t.status === 'Deployed' ? 0.9 : 1.0,
-                  transition: 'all 0.15s'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <input
-                    type="checkbox"
-                    checked={t.status === 'Deployed'}
-                    onChange={() => {}} // handled by div click
-                    style={{ cursor: 'pointer', accentColor: 'var(--accent-success)', width: '16px', height: '16px', minHeight: 'auto', minWidth: 'auto' }}
-                  />
-                  <span style={{
-                    fontSize: '12px', color: 'var(--text-primary)',
-                    textDecoration: t.status === 'Deployed' ? 'line-through' : 'none',
-                    lineHeight: 1.3
-                  }}>{t.text}</span>
-                </div>
-                
-                <span className={`badge ${t.status === 'Deployed' ? 'badge-success' : 'badge-info'}`} style={{ fontSize: '9px', whiteSpace: 'nowrap' }}>
-                  {t.status}
-                </span>
-              </div>
-            ))}
-          </div>
-        </article>
-
-        {/* Model Data and Status widget */}
+      {/* Model Data and Status widget */}
+      <div style={{ marginBottom: '24px' }}>
         <article className="card" style={{
           background: 'var(--bg-panel)',
           border: '1px solid var(--border-color)',
@@ -1261,11 +878,6 @@ function Predictions({
             
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', fontSize: '12px', color: 'var(--text-secondary)', marginTop: '8px' }}>
               <div>
-                <span>MODEL KERNEL VERSION</span>
-                <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '4px' }}>KSP-NeuroForecast-v2.6</div>
-              </div>
-              
-              <div>
                 <span>LAST RUN COMPLETED</span>
                 <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '4px' }}>{lastRunTime} (scheduled)</div>
               </div>
@@ -1278,12 +890,6 @@ function Predictions({
                 </div>
               </div>
 
-              <div>
-                <span>ACCURACY ESTIMATE</span>
-                <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '4px' }}>
-                  {(94.2 + (filteredCases.length % 7) * 0.1).toFixed(1)}% Validation
-                </div>
-              </div>
             </div>
           </div>
         </article>
@@ -1506,7 +1112,6 @@ function Predictions({
           box-shadow: none !important;
         }
         .prediction-hero-meta strong { color: #1e293b; font-size: 12px; }
-        .prediction-live-dot { display: inline-block; width: 7px; height: 7px; margin-right: 5px; border-radius: 50%; background: var(--accent-success); }
 
         /* Dark mode overrides */
         .theme-dark .predictive-brief-page,
@@ -1607,15 +1212,6 @@ function Predictions({
         @media (max-width: 760px) {
           .prediction-hero { align-items: flex-start; flex-direction: column; padding: 18px; }
           .prediction-hero-meta { width: 100%; flex-basis: auto; }
-          .predictive-brief-page .ops-stat-strip { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
-          .predictive-brief-page .ops-stat-block:nth-child(2) { border-right: none !important; }
-          .predictive-brief-page .ops-stat-block:nth-child(-n+2) { border-bottom: 1px solid var(--border-color); }
-        }
-
-        @media (max-width: 480px) {
-          .predictive-brief-page .ops-stat-strip { grid-template-columns: 1fr !important; }
-          .predictive-brief-page .ops-stat-block { border-right: none !important; border-bottom: 1px solid var(--border-color); }
-          .predictive-brief-page .ops-stat-block:last-child { border-bottom: none; }
         }
 
         /* Direct CSS Hides to isolate pages content and enforce page scope */

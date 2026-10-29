@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MADHUKAR · Incident Data Request Lifecycle</title>
+  <style>
+    /* ------------------------------------------------------------------
+       RESET & TYPOGRAPHY: 100% Offline, System Fallbacks & IBM Plex
+       ------------------------------------------------------------------ */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #FFFFFF;
+      color: #1B2430;
+      font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    #presentation-container {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #FFFFFF;
+    }
+    svg {
+      width: 100%;
+      height: 100%;
+      max-width: 100vw;
+      max-height: 100vh;
+      display: block;
+      user-select: none;
+    }
+    /* Step visibility transition */
+    .step-item {
+      transition: opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .step-hidden {
+      opacity: 0 !important;
+      pointer-events: none;
+    }
+    /* Typography styles in SVG */
+    .title { font-size: 32px; font-weight: 700; fill: #1B2430; letter-spacing: -0.5px; }
+    .subtitle { font-size: 18px; font-weight: 400; fill: #4A5565; }
+    .p-title { font-size: 28px; font-weight: 600; fill: #1B2430; text-anchor: middle; }
+    .p-sub { font-size: 18px; font-weight: 400; fill: #4A5565; text-anchor: middle; }
+    .msg-p { font-size: 22px; font-weight: 600; fill: #1B2430; text-anchor: middle; }
+    .msg-p-left { font-size: 22px; font-weight: 600; fill: #1B2430; text-anchor: start; }
+    .msg-q { font-size: 18px; font-weight: 400; fill: #4A5565; text-anchor: middle; }
+    .msg-q-mono { font-size: 18px; font-weight: 400; fill: #4A5565; text-anchor: middle; font-family: 'IBM Plex Mono', monospace; }
+    .msg-q-left { font-size: 18px; font-weight: 400; fill: #4A5565; text-anchor: start; }
+    .msg-reply { font-size: 20px; font-weight: 600; fill: #4A5565; text-anchor: middle; }
+    .frame-title { font-size: 20px; font-weight: 600; fill: #6B3B00; }
+    .frame-badge { font-size: 16px; font-weight: 700; fill: #ffffff; letter-spacing: 1px; text-anchor: middle; }
+    .step-num { font-size: 16px; font-weight: 700; fill: #ffffff; text-anchor: middle; dominant-baseline: central; }
+  </style>
+</head>
+<body>
+  <div id="presentation-container">
+    <svg viewBox="0 0 1920 1080" width="1920" height="1080">
+      <defs>
+        <!-- Arrowhead Markers -->
+        <marker id="arrow-req" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#1D4E89"/>
+        </marker>
+        <marker id="arrow-res" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#3B4758"/>
+        </marker>
+        <marker id="arrow-self" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#1D4E89"/>
+        </marker>
+      </defs>
+
+      <!-- Canvas Background -->
+      <rect width="1920" height="1080" fill="#FFFFFF"/>
+
+      <!-- ==================== HEADER ==================== -->
+      <g id="header-group">
+        <text x="50" y="44" class="title">MADHUKAR · Incident Data Request Lifecycle</text>
+        <text x="50" y="70" class="subtitle">Execution flow from officer sign-in to verified Command Center intelligence rendering</text>
+        <line x1="50" y1="84" x2="1870" y2="84" stroke="#C9CED6" stroke-width="1.5"/>
+      </g>
+
+      <!-- ==================== PARTICIPANTS ==================== -->
+      <!-- Lifelines -->
+      <g id="lifelines" stroke="#C9CED6" stroke-width="1.5" stroke-dasharray="6 6">
+        <line x1="180" y1="172" x2="180" y2="1035"/>
+        <line x1="560" y1="172" x2="560" y2="1035"/>
+        <line x1="940" y1="172" x2="940" y2="1035"/>
+        <line x1="1320" y1="172" x2="1320" y2="1035"/>
+        <line x1="1700" y1="172" x2="1700" y2="1035"/>
+      </g>
+
+      <!-- Execution Activations -->
+      <g id="activations" fill="#F4F6F8" stroke="#C9CED6" stroke-width="1.5">
+        <!-- P2 (React App) -->
+        <rect x="553" y="215" width="14" height="145"/>
+        <rect x="553" y="395" width="14" height="30"/>
+        <rect x="553" y="585" width="14" height="30"/>
+        <rect x="553" y="825" width="14" height="195"/>
+        <!-- P3 (Auth) -->
+        <rect x="933" y="275" width="14" height="80"/>
+        <!-- P4 (Crime API) -->
+        <rect x="1313" y="395" width="14" height="450"/>
+        <!-- P5 (Data Store) -->
+        <rect x="1693" y="695" width="14" height="70"/>
+      </g>
+
+      <!-- Participant Boxes -->
+      <!-- 1. Police Officer -->
+      <g id="participant-1" transform="translate(50, 96)">
+        <rect width="260" height="76" rx="4" fill="#FFFFFF" stroke="#1B2430" stroke-width="1.5"/>
+        <rect x="0" y="72" width="260" height="4" fill="#1D4E89"/>
+        <text x="130" y="38" class="p-title">Police Officer</text>
+        <text x="130" y="60" class="p-sub">Browser</text>
+      </g>
+
+      <!-- 2. MADHUKAR Web App -->
+      <g id="participant-2" transform="translate(410, 96)">
+        <rect width="300" height="76" rx="4" fill="#FFFFFF" stroke="#1B2430" stroke-width="1.5"/>
+        <rect x="0" y="72" width="300" height="4" fill="#1D4E89"/>
+        <text x="150" y="38" class="p-title">MADHUKAR Web App</text>
+        <text x="150" y="60" class="p-sub">Zoho Catalyst hosting</text>
+      </g>
+
+      <!-- 3. Catalyst Authentication -->
+      <g id="participant-3" transform="translate(770, 96)">
+        <rect width="340" height="76" rx="4" fill="#FFFFFF" stroke="#1B2430" stroke-width="1.5"/>
+        <rect x="0" y="72" width="340" height="4" fill="#1D4E89"/>
+        <text x="170" y="38" class="p-title">Catalyst Authentication</text>
+        <text x="170" y="60" class="p-sub">Session validation</text>
+      </g>
+
+      <!-- 4. Crime API -->
+      <g id="participant-4" transform="translate(1170, 96)">
+        <rect width="300" height="76" rx="4" fill="#FFFFFF" stroke="#1B2430" stroke-width="1.5"/>
+        <rect x="0" y="72" width="300" height="4" fill="#1D4E89"/>
+        <text x="150" y="38" class="p-title">Crime API</text>
+        <text x="150" y="60" class="p-sub">Catalyst serverless function</text>
+      </g>
+
+      <!-- 5. Catalyst Data Store -->
+      <g id="participant-5" transform="translate(1560, 96)">
+        <rect width="280" height="76" rx="4" fill="#FFFFFF" stroke="#1B2430" stroke-width="1.5"/>
+        <rect x="0" y="72" width="280" height="4" fill="#1D4E89"/>
+        <text x="140" y="38" class="p-title">Catalyst Data Store</text>
+        <text x="140" y="60" class="p-sub">26 tables</text>
+      </g>
+
+
+      <!-- ==================== MESSAGES & SEQUENCES ==================== -->
+
+      <!-- STEP 1: Officer opens dashboard -->
+      <g id="step-1" class="step-item">
+        <circle cx="180" cy="224" r="14" fill="#1D4E89"/>
+        <text x="180" y="224" class="step-num">1</text>
+        <line x1="194" y1="224" x2="553" y2="224" stroke="#1D4E89" stroke-width="2" marker-end="url(#arrow-req)"/>
+        <rect x="235" y="196" width="280" height="24" fill="#FFFFFF"/>
+        <text x="375" y="214" class="msg-p">Officer opens dashboard</text>
+      </g>
+
+      <!-- STEP 2: Check officer signed in -->
+      <g id="step-2" class="step-item">
+        <circle cx="560" cy="284" r="14" fill="#1D4E89"/>
+        <text x="560" y="284" class="step-num">2</text>
+        <line x1="574" y1="284" x2="933" y2="284" stroke="#1D4E89" stroke-width="2" marker-end="url(#arrow-req)"/>
+        <rect x="620" y="256" width="270" height="24" fill="#FFFFFF"/>
+        <text x="755" y="274" class="msg-p">Check officer signed in</text>
+      </g>
+
+      <!-- UNNUMBERED REPLY: Signed in -->
+      <g id="step-auth-reply" class="step-item">
+        <line x1="933" y1="344" x2="567" y2="344" stroke="#3B4758" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrow-res)"/>
+        <rect x="695" y="316" width="110" height="24" fill="#FFFFFF"/>
+        <text x="750" y="334" class="msg-reply">Signed in</text>
+      </g>
+
+      <!-- STEP 3: Ask for all crime data -->
+      <g id="step-3" class="step-item">
+        <circle cx="560" cy="404" r="14" fill="#1D4E89"/>
+        <text x="560" y="404" class="step-num">3</text>
+        <line x1="574" y1="404" x2="1313" y2="404" stroke="#1D4E89" stroke-width="2" marker-end="url(#arrow-req)"/>
+        <rect x="815" y="376" width="250" height="24" fill="#FFFFFF"/>
+        <text x="940" y="394" class="msg-p">Ask for all crime data</text>
+      </g>
+
+      <!-- STEP 4: Look in server memory (kept 5 minutes) -->
+      <g id="step-4" class="step-item">
+        <circle cx="1320" cy="465" r="14" fill="#1D4E89"/>
+        <text x="1320" y="465" class="step-num">4</text>
+        <path d="M 1327 455 L 1365 455 L 1365 480 L 1334 480" fill="none" stroke="#1D4E89" stroke-width="2" marker-end="url(#arrow-self)"/>
+        <text x="1380" y="462" class="msg-p-left">Look in server memory</text>
+        <text x="1380" y="482" class="msg-q-left">Kept 5 minutes · Per container instance</text>
+      </g>
+
+
+      <!-- ==================== UML "ALT" CACHE FRAME ==================== -->
+      <g id="cache-frame" class="step-item">
+        <!-- Outer Frame Box -->
+        <rect x="490" y="510" width="1280" height="345" fill="#FBF3E4" stroke="#854D0E" stroke-width="1.5"/>
+        
+        <!-- Alt Tab -->
+        <path d="M 490 510 L 560 510 L 560 536 L 490 536 Z" fill="#854D0E"/>
+        <text x="525" y="528" class="frame-badge">ALT</text>
+
+        <!-- CASE A: Data is fresh -->
+        <text x="575" y="530" class="frame-title">Case: Data is fresh (under 5 minutes)</text>
+        
+        <!-- STEP 5 (Case A): Reply instantly from memory -->
+        <g id="step-5a">
+          <circle cx="1320" cy="595" r="14" fill="#3B4758"/>
+          <text x="1320" y="595" class="step-num">5</text>
+          <line x1="1306" y1="595" x2="567" y2="595" stroke="#3B4758" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrow-res)"/>
+          <rect x="740" y="567" width="400" height="24" fill="#FBF3E4"/>
+          <text x="940" y="585" class="msg-p">Reply instantly from memory</text>
+        </g>
+
+        <!-- Dividing Dashed Line -->
+        <line x1="490" y1="625" x2="1770" y2="625" stroke="#854D0E" stroke-width="1.5" stroke-dasharray="8 6"/>
+
+        <!-- CASE B: First request, or data older than 5 minutes -->
+        <text x="505" y="650" class="frame-title">Case: First request, or data older than 5 minutes</text>
+
+        <!-- STEP 5 (Case B): Read all 26 tables -->
+        <g id="step-5b">
+          <circle cx="1320" cy="712" r="14" fill="#1D4E89"/>
+          <text x="1320" y="712" class="step-num">5</text>
+          <line x1="1334" y1="712" x2="1693" y2="712" stroke="#1D4E89" stroke-width="2" marker-end="url(#arrow-req)"/>
+          <rect x="1380" y="658" width="260" height="48" fill="#FBF3E4"/>
+          <text x="1510" y="674" class="msg-p">Read all 26 tables</text>
+          <text x="1510" y="698" class="msg-q-mono">pages of 300 rows · ZCQL</text>
+        </g>
+
+        <!-- STEP 6: Records returned -->
+        <g id="step-6">
+          <circle cx="1700" cy="755" r="14" fill="#3B4758"/>
+          <text x="1700" y="755" class="step-num">6</text>
+          <line x1="1686" y1="755" x2="1327" y2="755" stroke="#3B4758" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrow-res)"/>
+          <rect x="1420" y="727" width="180" height="24" fill="#FBF3E4"/>
+          <text x="1510" y="745" class="msg-p">Records returned</text>
+        </g>
+
+        <!-- STEP 7: Save in memory for 5 minutes -->
+        <g id="step-7">
+          <circle cx="1320" cy="795" r="14" fill="#1D4E89"/>
+          <text x="1320" y="795" class="step-num">7</text>
+          <path d="M 1327 785 L 1365 785 L 1365 808 L 1334 808" fill="none" stroke="#1D4E89" stroke-width="2" marker-end="url(#arrow-self)"/>
+          <text x="1380" y="800" class="msg-p-left">Save in memory for 5 minutes</text>
+        </g>
+
+        <!-- STEP 8: Send all data -->
+        <g id="step-8">
+          <circle cx="1320" cy="835" r="14" fill="#3B4758"/>
+          <text x="1320" y="835" class="step-num">8</text>
+          <line x1="1306" y1="835" x2="567" y2="835" stroke="#3B4758" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrow-res)"/>
+          <rect x="860" y="807" width="160" height="24" fill="#FBF3E4"/>
+          <text x="940" y="825" class="msg-p">Send all data</text>
+        </g>
+      </g>
+
+
+      <!-- ==================== POST-CACHE CLIENT PROCESSING ==================== -->
+
+      <!-- STEP 9: Prepare data · Zero-Trust PII Masking (Corrected for DPDP Act) -->
+      <g id="step-9" class="step-item">
+        <circle cx="560" cy="915" r="14" fill="#1D4E89"/>
+        <text x="560" y="915" class="step-num">9</text>
+        <path d="M 567 905 L 605 905 L 605 928 L 574 928" fill="none" stroke="#1D4E89" stroke-width="2" marker-end="url(#arrow-self)"/>
+        <rect x="615" y="890" width="315" height="48" fill="#FFFFFF"/>
+        <text x="620" y="910" class="msg-p-left">Prepare data for display</text>
+        <text x="620" y="930" class="msg-q-left">Mask PII by default · Zero-Trust Redacted Mode</text>
+      </g>
+
+      <!-- STEP 10: Command Center shows KPIs, map and charts -->
+      <g id="step-10" class="step-item">
+        <circle cx="560" cy="1005" r="14" fill="#3B4758"/>
+        <text x="560" y="1005" class="step-num">10</text>
+        <line x1="546" y1="1005" x2="194" y2="1005" stroke="#3B4758" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrow-res)"/>
+        <rect x="230" y="950" width="280" height="46" fill="#FFFFFF"/>
+        <text x="370" y="966" class="msg-p">Command Center ready</text>
+        <text x="370" y="990" class="msg-q">Shows KPIs, map and charts</text>
+      </g>
+
+    </svg>
+  </div>
+
+  <script>
+    // ------------------------------------------------------------------
+    // KEYBOARD NAVIGATION (Zero Visible UI)
+    // ------------------------------------------------------------------
+    (function() {
+      const stepIds = [
+        'step-1',
+        'step-2',
+        'step-auth-reply',
+        'step-3',
+        'step-4',
+        'cache-frame',
+        'step-9',
+        'step-10'
+      ];
+
+      const stepElements = stepIds.map(id => document.getElementById(id));
+      
+      // Default state on load = everything visible
+      let currentStepIndex = stepElements.length;
+
+      function updateVisibility() {
+        stepElements.forEach((el, index) => {
+          if (!el) return;
+          if (index < currentStepIndex) {
+            el.classList.remove('step-hidden');
+          } else {
+            el.classList.add('step-hidden');
+          }
+        });
+      }
+
+      window.addEventListener('keydown', (e) => {
+        // Space or Right Arrow reveals the next numbered step
+        if (e.code === 'Space' || e.code === 'ArrowRight' || e.code === 'PageDown') {
+          e.preventDefault();
+          if (currentStepIndex < stepElements.length) {
+            currentStepIndex++;
+            updateVisibility();
+          }
+        }
+        // Left Arrow hides the current step
+        else if (e.code === 'ArrowLeft' || e.code === 'PageUp' || e.code === 'Backspace') {
+          e.preventDefault();
+          if (currentStepIndex > 0) {
+            currentStepIndex--;
+            updateVisibility();
+          }
+        }
+        // Home or '0' resets to blank / participants only
+        else if (e.code === 'Home' || e.key === '0') {
+          e.preventDefault();
+          currentStepIndex = 0;
+          updateVisibility();
+        }
+        // End reveals all
+        else if (e.code === 'End') {
+          e.preventDefault();
+          currentStepIndex = stepElements.length;
+          updateVisibility();
+        }
+        // 'F' toggles fullscreen
+        else if (e.key === 'f' || e.key === 'F') {
+          e.preventDefault();
+          if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(() => {});
+          } else {
+            document.exitFullscreen().catch(() => {});
+          }
+        }
+      });
+
+      // Initial call ensures all are visible on load
+      updateVisibility();
+    })();
+  </script>
+</body>
+</html>
